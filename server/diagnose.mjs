@@ -244,26 +244,20 @@ async function logCall(userId, status, message) {
   if (error) console.error('[diagnose] could not log call', error.message);
 }
 
-// True when the caller has a journey in a session (cohort) whose code is still valid.
-export async function activeSession(userId) {
-  const { data, error } = await admin.from('journeys')
-    .select('id, cohorts!inner(active_until)').eq('user_id', userId);
-  if (error) console.error('[diagnose] session check failed', error.message);
-  const now = Date.now();
-  return (data || []).some((j) => !j.cohorts.active_until || new Date(j.cohorts.active_until).getTime() > now);
-}
-
 // Returns a message if the caller (or the whole site) has hit today's limit, else null.
+// A limit of 0 (the default) means no limit.
 export async function limitReached(userId) {
+  const { dailyAiLimitPerUser: perUser, dailyAiLimitGlobal: global } = config;
+  if (!perUser && !global) return null;
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const [mine, all] = await Promise.all([
     admin.from('ai_calls').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since),
     admin.from('ai_calls').select('id', { count: 'exact', head: true }).gte('created_at', since),
   ]);
-  if ((mine.count ?? 0) >= config.dailyAiLimitPerUser) {
-    return `Had ${config.dailyAiLimitPerUser} diagnosis sehari telah dicapai. Cuba semula esok, atau edit Quick Fix secara manual.`;
+  if (perUser && (mine.count ?? 0) >= perUser) {
+    return `Had ${perUser} diagnosis sehari telah dicapai. Cuba semula esok, atau edit Quick Fix secara manual.`;
   }
-  if ((all.count ?? 0) >= config.dailyAiLimitGlobal) {
+  if (global && (all.count ?? 0) >= global) {
     return 'Had harian AI untuk semua peserta telah dicapai. Sila maklumkan fasilitator.';
   }
   return null;

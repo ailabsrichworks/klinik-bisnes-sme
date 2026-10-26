@@ -2,7 +2,7 @@
 
 Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: business profile → evidence → AI diagnosis → one Quick Fix → 7-day tracker. Plus a trainer dashboard.
 
-Participants have **no login**: opening `/?c=CODE` with a valid session code signs them in anonymously (Supabase anonymous sign-in). Without a valid code they are asked for one, and `/api/diagnose` refuses callers without a journey in a valid session. Participants can look up a single code (`cohort_by_code`) but cannot list sessions. Trainers sign in with email on `/trainer` only, and the staff check never matches an anonymous user. `cohorts.active_until` exists for code expiry but is unused for now (NULL = never expires).
+The participant tool is **public, with no login**: anyone opening the site is signed in anonymously (Supabase anonymous sign-in). A facilitator's link `/?c=CODE` files the participant under that session for the trainer dashboard; without a code they appear under "Tanpa sesi", and an unrecognised code offers to continue without one. Participants can look up a single code (`cohort_by_code`) but cannot list sessions. Trainers sign in with email on `/trainer` only, and the staff check never matches an anonymous user. `cohorts.active_until` exists for code expiry but is unused for now (NULL = never expires).
 
 The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_Gap_AI_v3_Developer_Spec.md`): pathways `cost` (Cash Flow / Profit), `content` (Marketing), `live` (Sales) and the `missing` fallback. Deterministic rules live in `public/js/rules.mjs` and are shared by the browser and the server: cost and LIVE maths, the evidence check, the LIVE guard (never `live` without LIVE experience and real LIVE evidence) and RM198 programme fit. Programme fit is decided by these rules only, never by the model; for RM30K+ participants it shows a neutral line, and no class duration is shown anywhere.
 
@@ -20,7 +20,7 @@ The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_
 
 | Path | Who | What |
 |---|---|---|
-| `/?c=CODE` | Participants | The five-step tool. Without a valid code it asks for one. `?step=5` opens the tracker. |
+| `/` or `/?c=CODE` | Participants | The five-step tool, open to anyone. `?c=` files the participant under a session. `?step=5` opens the tracker. |
 | `/trainer` | Trainers / admins | Cohorts, participant progress, detail view, CSV export |
 | `/privacy` | Everyone | Privacy notice (**draft — fill the `[ ]` placeholders and get it approved**) |
 
@@ -29,7 +29,7 @@ The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_
 | Endpoint | Auth | Notes |
 |---|---|---|
 | `GET /api/config` | none | Supabase URL + anon key (public by design), notice version |
-| `POST /api/diagnose` | Bearer | Needs a journey in a valid session; per-user and site-wide daily limits, logged to `ai_calls` |
+| `POST /api/diagnose` | Bearer | Any signed-in (incl. anonymous) user; per-IP burst limit, optional daily limits, logged to `ai_calls` |
 | `DELETE /api/me` | Bearer | Deletes uploads + auth user; rows cascade |
 | `GET /healthz` | none | Railway health check |
 
@@ -59,7 +59,7 @@ New service from this repo → set the variables from `.env.example` → health 
 
 ## Cost guard
 
-Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort; Sonnet would otherwise default to `high`). `DAILY_AI_LIMIT_PER_USER` and `DAILY_AI_LIMIT_GLOBAL` cap calls per rolling 24 h. Also set a spend limit in the Anthropic console. Usage per call is in the `ai_calls` table.
+Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort; Sonnet would otherwise default to `high`). The site is public and the daily caps are **off by default** (`DAILY_AI_LIMIT_PER_USER` / `DAILY_AI_LIMIT_GLOBAL` empty or 0); set them to cap calls per rolling 24 h. The per-IP limiter (20 diagnoses per minute) always applies. **Set a spend limit in the Anthropic console** — with no caps it is the only cost guard. Usage per call is in the `ai_calls` table.
 
 ## Tests
 
@@ -69,7 +69,7 @@ node --env-file=.env test/acceptance.mjs         # spec §7 T01–T12 against th
 node --env-file=.env test/acceptance.mjs T05 T08 # a subset
 ```
 
-The acceptance runner creates a throwaway session code and `@example.com` participants through the admin API (no email sent), and deletes them afterwards. `node --env-file=.env test/rls.mjs` checks the access rules (code lookup, no session listing, journeys and uploads only inside a session, anonymous users never staff).
+The acceptance runner creates a throwaway session code and `@example.com` participants through the admin API (no email sent), and deletes them afterwards. `node --env-file=.env test/rls.mjs` checks the access rules (code lookup, no session listing, expired codes refused, uploads need a journey, anonymous users never staff).
 
 ## Before the first real cohort
 - Privacy notice approved, placeholders filled, retention periods decided.

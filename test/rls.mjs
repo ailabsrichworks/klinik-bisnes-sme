@@ -47,15 +47,20 @@ try {
   // Journeys only inside an active session
   const bad = await p.sb.from('journeys').insert({ user_id: p.uid, cohort_id: expired.id, state: {} });
   check('journey in expired session refused', !!bad.error, bad.error?.message);
-  const none = await p.sb.from('journeys').insert({ user_id: p.uid, cohort_id: null, state: {} });
-  check('journey without a session refused', !!none.error);
   const upBefore = await p.sb.storage.from('evidence').upload(`${p.uid}/x.txt`, new Blob(['x'], { type: 'text/plain' }));
-  check('upload refused before joining an active session', !!upBefore.error);
+  check('upload refused before the participant has a journey', !!upBefore.error);
   const ok = await p.sb.from('journeys').insert({ user_id: p.uid, cohort_id: live.id, state: {} }).select('id').single();
   check('journey in active session allowed', !ok.error, ok.error?.message);
   const upAfter = await p.sb.storage.from('evidence').upload(`${p.uid}/x.txt`, new Blob(['x'], { type: 'text/plain' }));
   check('upload allowed inside active session', !upAfter.error, upAfter.error?.message);
   if (!upAfter.error) await admin.storage.from('evidence').remove([`${p.uid}/x.txt`]);
+
+  // Public use: no session code needed
+  const q = await emailUser();
+  const open = await q.sb.from('journeys').insert({ user_id: q.uid, cohort_id: null, state: {} }).select('id').single();
+  check('journey without a session code allowed (public)', !open.error, open.error?.message);
+  const upOpen = await q.sb.storage.from('evidence').upload(`${q.uid}/x.txt`, new Blob(['x'], { type: 'text/plain' }));
+  check('upload allowed with a no-code journey', !upOpen.error, upOpen.error?.message);
 
   // Staff
   const t = await emailUser('trainer');
@@ -75,6 +80,8 @@ try {
     users.push(as.user.id);
     const aj = await a.from('journeys').insert({ user_id: as.user.id, cohort_id: live.id, state: {} }).select('id').single();
     check('anonymous participant can join active session', !aj.error, aj.error?.message);
+    const an = await a.from('journeys').insert({ user_id: as.user.id, cohort_id: null, state: {} }).select('id').single();
+    check('anonymous participant can start without a code', !an.error, an.error?.message);
     // Even if an anonymous user's profile were promoted, it must never pass the staff check.
     await admin.from('profiles').update({ role: 'admin' }).eq('id', as.user.id);
     const al = await a.from('cohorts').select('id').in('id', [live.id, expired.id]);

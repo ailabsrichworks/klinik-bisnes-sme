@@ -1,5 +1,5 @@
 // Participant app: five steps, saved to the participant's Supabase journey row.
-// No login: participants join a session anonymously with its code (?c=CODE).
+// No login: anyone can use it (anonymous sign-in). A facilitator's ?c=CODE files them under that session.
 import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit, templateTasks, TASK_TITLE_MAX, TASK_PROOF_MAX } from './rules.mjs';
 
 (async () => {
@@ -49,7 +49,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     return data?.[0] || null;
   }
 
-  // Without a valid code there is no session and no diagnosis.
+  // Shown when a code is not recognised; the participant can fix it or continue without one.
   function askForCode(text = '', isError = false) {
     showOnly('codeGate');
     $('codeInput').value = cohortCode();
@@ -65,7 +65,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       $('loadingGate').innerHTML = '<p>Data gagal dimuatkan. Semak sambungan internet dan muat semula halaman.</p>';
       return;
     }
-    if (!cohort) return askForCode(cohortCode() ? 'Kod sesi ini tidak sah. Dapatkan pautan daripada fasilitator anda.' : '', !!cohortCode());
+    if (cohortCode() && !cohort) return askForCode('Kod sesi ini tidak sah.', true);
     const s = await KB.session();
     if (s?.user) return start(s.user);
     const { data, error } = await sb.auth.signInAnonymously();
@@ -76,6 +76,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     start(data.user);
   }
 
+  $('noCodeBtn').onclick = () => { try { localStorage.removeItem(COHORT_KEY); } catch {} boot(); };
   $('codeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = normCode($('codeInput').value);
@@ -118,13 +119,15 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   }
 
   async function loadJourney() {
-    $('cohortLabel').textContent = `${cohort.name}${cohort.session_date ? ' · ' + new Date(cohort.session_date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
-    const { data: rows, error } = await sb.from('journeys').select('*').eq('user_id', user.id).eq('cohort_id', cohort.id).limit(1);
+    if (cohort) $('cohortLabel').textContent = `${cohort.name}${cohort.session_date ? ' · ' + new Date(cohort.session_date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
+    let q = sb.from('journeys').select('*').eq('user_id', user.id).limit(1);
+    q = cohort ? q.eq('cohort_id', cohort.id) : q.is('cohort_id', null);
+    const { data: rows, error } = await q;
     if (error) throw error;
     if (rows.length) {
       journey = rows[0];
     } else {
-      const { data, error: e2 } = await sb.from('journeys').insert({ user_id: user.id, cohort_id: cohort.id, state: blank() }).select().single();
+      const { data, error: e2 } = await sb.from('journeys').insert({ user_id: user.id, cohort_id: cohort?.id ?? null, state: blank() }).select().single();
       if (e2) throw e2;
       journey = data;
     }

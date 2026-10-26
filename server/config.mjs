@@ -16,10 +16,10 @@ export const config = {
   claudeModel: env.CLAUDE_MODEL || 'claude-sonnet-5-5',
   claudeEffort: env.CLAUDE_EFFORT || 'medium',
 
-  // Per participant per day, and across the whole site per day (cost guard).
-  // Anonymous participants are free to create, so the per-user cap is low; the global cap is the real guard.
-  dailyAiLimitPerUser: int(env.DAILY_AI_LIMIT_PER_USER, 3),
-  dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 400),
+  // Optional daily caps per participant and across the whole site; 0 or unset = no limit.
+  // With no caps, the Anthropic console spend limit is the only cost guard.
+  dailyAiLimitPerUser: int(env.DAILY_AI_LIMIT_PER_USER, 0),
+  dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 0),
 
   resendKey: env.RESEND_API_KEY || '',
   emailFrom: env.EMAIL_FROM || '',

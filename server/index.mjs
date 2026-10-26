@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config, missingConfig } from './config.mjs';
 import { admin, userFromRequest } from './supabase.mjs';
-import { diagnose, limitReached, activeSession, DiagnoseError } from './diagnose.mjs';
+import { diagnose, limitReached, DiagnoseError } from './diagnose.mjs';
 import { startReminderLoop } from './reminders.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -87,7 +87,6 @@ app.get('/api/config', (_req, res) => {
 
 app.post('/api/diagnose', sameOrigin, ipLimit(20), express.json({ limit: '64kb' }), requireUser, async (req, res) => {
   try {
-    if (!(await activeSession(req.user.id))) return res.status(403).json({ error: 'Pautan sesi tidak sah. Dapatkan pautan daripada fasilitator anda.' });
     const limit = await limitReached(req.user.id);
     if (limit) return res.status(429).json({ error: limit });
     const result = await diagnose({ userId: req.user.id, body: req.body || {} });

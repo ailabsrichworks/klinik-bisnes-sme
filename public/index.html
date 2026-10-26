@@ -32,14 +32,14 @@
       </div>
     </section>
 
-    <!-- ─── session code (participants have no login) ─── -->
+    <!-- ─── session code: optional, shown only when a code in the link is not recognised ─── -->
     <section class="gate" id="codeGate" hidden aria-labelledby="codeTitle">
-      <div class="kicker">Masuk sesi</div>
-      <h2 id="codeTitle">Dapatkan pautan daripada fasilitator anda.</h2>
-      <p>Alat ini dibuka melalui pautan atau kod sesi Klinik Bisnes SME. Tiada emel atau password diperlukan.</p>
+      <div class="kicker">Kod sesi</div>
+      <h2 id="codeTitle">Kod sesi ini tidak dijumpai.</h2>
+      <p>Semak kod daripada fasilitator anda, atau teruskan tanpa kod. Tiada emel atau password diperlukan.</p>
       <form id="codeForm" novalidate>
         <div class="field"><label for="codeInput">Kod sesi</label><input id="codeInput" autocomplete="off" autocapitalize="characters" maxlength="24" placeholder="Contoh: KL-NOV26"></div>
-        <button type="submit" class="btn primary" id="codeBtn">Masuk sesi</button>
+        <div class="row wrap"><button type="submit" class="btn primary" id="codeBtn">Masuk sesi</button><button type="button" class="btn outline" id="noCodeBtn">Teruskan tanpa kod</button></div>
       </form>
       <div id="codeMessage" class="message" role="status" aria-live="polite"></div>
       <p class="small-print">Dengan meneruskan, anda bersetuju dengan <a href="/privacy">notis privasi</a> kami.</p>
