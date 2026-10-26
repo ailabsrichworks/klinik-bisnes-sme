@@ -67,7 +67,12 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     }
     if (cohortCode() && !cohort) return askForCode('Kod sesi ini tidak sah.', true);
     const s = await KB.session();
-    if (s?.user) return start(s.user);
+    if (s?.user) {
+      // The saved login may belong to a user that was deleted; check with the server before reusing it.
+      const { data: live, error: gone } = await sb.auth.getUser();
+      if (live?.user && !gone) return start(live.user);
+      await sb.auth.signOut({ scope: 'local' });
+    }
     const { data, error } = await sb.auth.signInAnonymously();
     if (error) {
       console.error(error);
@@ -95,6 +100,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       $('consentBtn').onclick = async () => {
         if (!$('noticeAccept').checked) return msg('consentMessage', 'Tandakan persetujuan untuk meneruskan.', true);
         const { error } = await sb.from('consents').insert({ user_id: u.id, kind: 'privacy_notice', granted: true, notice_version: KB.cfg.noticeVersion });
+        if (error?.code === '23503') { await sb.auth.signOut({ scope: 'local' }); return boot(); } // user no longer exists: start a fresh session
         if (error) return msg('consentMessage', 'Gagal menyimpan. Cuba lagi.', true);
         loadApp();
       };
