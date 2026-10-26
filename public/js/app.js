@@ -1,5 +1,5 @@
 // Participant app: five steps, saved to the participant's Supabase journey row.
-import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit } from './rules.mjs';
+import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit, templateTasks, TASK_TITLE_MAX, TASK_PROOF_MAX } from './rules.mjs';
 
 (async () => {
   'use strict';
@@ -231,7 +231,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       state.pathway = chosen; state.confirmed = true;
       if (changed) {
         state.quickFix = chosen === state.diagnosis.pathway ? state.diagnosis.quickFix : defaultFix(chosen);
-        state.tasks = generateTasks(chosen); state.quality = [false, false, false];
+        state.tasks = tasksFor(chosen); state.quality = [false, false, false];
       }
       safeSave(); return true;
     }
@@ -300,14 +300,12 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     }
     return 'FACT-FINDING ACTION\nFakta penting untuk dicari: [satu maklumat yang hilang].\nDi mana mendapatkan fakta: [seller statement / insight platform / log LIVE / rekod content].\nSiapa akan semak: [nama / peranan].\nTarikh: [dalam 7 hari].\nJangan buat keputusan tentang punca sales sebelum bukti mencukupi.';
   }
-  function generateTasks(p) {
-    const lists = {
-      cost: [['Catat harga jual dan kos yang benar-benar diketahui', 'Rekod ringkas satu produk'], ['Pilih SATU kategori kos yang belum jelas', 'Nama kos untuk disemak'], ['Dapatkan dokumen asal kos itu', 'Resit / seller statement'], ['Catat nilai, unit dan tarikh kos', 'Bukti kos yang disahkan'], ['Semak sama ada kos itu berubah', 'Perbezaan / status semakan'], ['Kemas kini Cost Gap Snapshot', 'Snapshot baharu'], ['Catat jurang selebihnya & pilihan langkah seterusnya', 'Ringkasan tujuh hari']],
-      content: [['Catat jumlah post dan masa content minggu lepas', 'Baseline seminggu'], ['Senaraikan tiga soalan pelanggan yang pernah diterima', 'Senarai soalan sebenar'], ['Pilih SATU soalan untuk satu post', 'Topik & sasaran post'], ['Sediakan rangka ringkas tanpa mereka fakta', 'Draf ringkas'], ['Terbitkan satu post apabila siap dan sesuai', 'Pautan / tarikh post'], ['Catat reach / saves / enquiry jika tersedia', 'Data dari platform'], ['Semak sama ada tindakan boleh diulang', 'Ulasan tujuh hari']],
-      live: [['Pilih satu LIVE terakhir yang ada rekod', 'Tarikh & platform LIVE'], ['Semak jumlah claim untuk sesi itu', 'Claim log tanpa data customer'], ['Padankan paid orders kepada cohort yang sama', 'Jumlah paid disahkan'], ['Catat bila invoice / link bayaran dihantar', 'Timestamp invoice'], ['Kira jurang claim → paid yang sah', 'Bilangan dan kadar sebenar'], ['Pilih SATU proses untuk diperiksa lagi', 'Jurang dan tindakan pilihan'], ['Catat keputusan awal & data yang masih hilang', 'Ringkasan tujuh hari']],
-      missing: [['Nyatakan satu soalan yang paling penting', 'Soalan spesifik'], ['Kenal pasti rekod / sumber asal', 'Senarai sumber'], ['Tentukan siapa akan menyemak', 'Pemilik tindakan'], ['Cari dokumen berkaitan', 'Bukti sumber'], ['Tentukan sama ada data lengkap / belum lengkap', 'Status data'], ['Kemaskan profil / bukti yang diperoleh', 'Ringkasan bukti'], ['Tentukan sama ada sesuai untuk diagnosis semula', 'Keputusan berdasarkan fakta']],
-    };
-    return (lists[p] || lists.missing).map(([title, proof], i) => ({ day: i + 1, title, proof, status: 'belum', note: '' }));
+  const toTracker = (list) => list.map(({ title, proof }, i) => ({ day: i + 1, title, proof, status: 'belum', note: '' }));
+  function generateTasks(p) { return toTracker(templateTasks(p)); }
+  // AI tasks only for the pathway the AI diagnosed; any other pathway gets that pathway's template.
+  function tasksFor(p) {
+    const d = state.diagnosis;
+    return d && p === d.pathway && Array.isArray(d.tasks) && d.tasks.length === 7 ? toTracker(d.tasks) : generateTasks(p);
   }
   function demoDiagnose() {
     const p = inferPath(); const ev = txt(state.evidenceText);
@@ -354,7 +352,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
         result = demoDiagnose();
       }
       state.diagnosis = result; state.pathway = result.pathway; state.confirmed = false; state.quickFix = result.quickFix;
-      state.quality = [false, false, false]; state.tasks = generateTasks(result.pathway); state.metrics = ['', '', ''];
+      state.quality = [false, false, false]; state.tasks = tasksFor(result.pathway); state.metrics = ['', '', ''];
       $('confirmDiagnosis').checked = false;
       drawDiagnosis(); drawBuild(); go(2);
     } catch (err) {
@@ -391,18 +389,22 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   // ─────────────── tracker & report ───────────────
   function drawTracker() {
     if (!state.diagnosis) return;
-    if (!state.tasks || state.tasks.length !== 7) state.tasks = generateTasks(currentPath());
+    if (!state.tasks || state.tasks.length !== 7) state.tasks = tasksFor(currentPath());
     const root = $('tracker'); root.innerHTML = '';
     state.tasks.forEach((item, i) => {
       const wrap = document.createElement('div');
       wrap.className = 'task' + (item.status === 'selesai' ? ' done' : '');
-      wrap.innerHTML = `<div class="day">Hari ${i + 1}</div><div class="task-head"><strong>${scrub(item.title)}</strong><select aria-label="Status Hari ${i + 1}" data-status="${i}"><option value="belum">Belum mula</option><option value="sedang">Sedang buat</option><option value="selesai">Selesai ✓</option></select></div><div class="proof">Bukti cadangan: ${scrub(item.proof)}</div><input class="track-note" maxlength="450" data-note="${i}" aria-label="Bukti atau nota Hari ${i + 1}" placeholder="Catat bukti / pautan / angka sebenar (tanpa data customer)">`;
+      wrap.innerHTML = `<div class="day">Hari ${i + 1}</div><div class="task-head"><textarea class="task-title" rows="2" maxlength="${TASK_TITLE_MAX}" data-title="${i}" aria-label="Tugasan Hari ${i + 1} (boleh diedit)"></textarea><select aria-label="Status Hari ${i + 1}" data-status="${i}"><option value="belum">Belum mula</option><option value="sedang">Sedang buat</option><option value="selesai">Selesai ✓</option></select></div><label class="proof">Bukti cadangan: <input class="task-proof" maxlength="${TASK_PROOF_MAX}" data-proof="${i}" aria-label="Bukti cadangan Hari ${i + 1} (boleh diedit)"></label><input class="track-note" maxlength="450" data-note="${i}" aria-label="Bukti atau nota Hari ${i + 1}" placeholder="Catat bukti / pautan / angka sebenar (tanpa data customer)">`;
       root.appendChild(wrap);
       wrap.querySelector('[data-status]').value = item.status;
+      wrap.querySelector('[data-title]').value = item.title || '';
+      wrap.querySelector('[data-proof]').value = item.proof || '';
       wrap.querySelector('[data-note]').value = item.note || '';
     });
     $$('#tracker [data-status]').forEach((el) => { el.onchange = () => { state.tasks[+el.dataset.status].status = el.value; safeSave(); drawTracker(); drawReport(); }; });
     $$('#tracker [data-note]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.note].note = el.value; safeSave(); drawReport(); }; });
+    $$('#tracker [data-title]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.title].title = el.value; safeSave(); drawReport(); }; });
+    $$('#tracker [data-proof]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.proof].proof = el.value; safeSave(); }; });
     const done = state.tasks.filter((t) => t.status === 'selesai').length;
     $('completionText').textContent = `${done} daripada 7 selesai`;
     $('completionBar').style.width = `${(100 * done) / 7}%`;
@@ -507,7 +509,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   $('pathwaySelect').onchange = () => {
     state.pathway = $('pathwaySelect').value;
     state.quickFix = state.pathway === state.diagnosis?.pathway ? state.diagnosis.quickFix : defaultFix(state.pathway);
-    state.tasks = generateTasks(state.pathway); state.quality = [false, false, false];
+    state.tasks = tasksFor(state.pathway); state.quality = [false, false, false];
     drawProgramme(); safeSave();
   };
   $('prevBtn').onclick = () => go(step - 1);

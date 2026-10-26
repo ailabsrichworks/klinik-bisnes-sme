@@ -14,24 +14,34 @@ const FIXTURES = new URL('./fixtures/', import.meta.url);
 const owner = { business: 'Kek Pisang Mak Long', product: 'Kek pisang loaf', channel: 'Shopee / Marketplace', revenue: 'RM3,000 – bawah RM10,000', businessActive: 'yes', ownerAuthority: 'yes' };
 const PROGRAMME_WORDS = /RM\s?198|Kira Cost|Content Sebulan|Live Laris|kelas berbayar|kelas.{0,40}\bjam\b|\bjam\b.{0,40}kelas/i;
 const text = (r) => [r.title, r.reason, ...(r.observations || []), ...(r.unknowns || []), r.quickFix].join('\n');
+const taskText = (r) => (r.tasks || []).map((t) => `${t.title} | ${t.proof}`).join('\n');
+const PAID_CLASS = /30\s?(hari|idea)|kalendar (content )?(sebulan|30)|tiga senario|3 senario|harga minimum|rundown|skrip|\bSOP\b/i;
+const SELLING_ACTION = /terbit(kan)?\s|post(kan)?\s(satu|di)|(?<!pernah )buat LIVE|mula(kan)? LIVE|jalankan LIVE|hantar (mesej )?follow.?up|tawar(kan)?/i;
+// Tracker checks: 7 AI-written tasks, no paid-class deliverables; `own` = inputs that must appear; factFinding = no selling actions.
+const tracker = (r, { own, factFinding } = {}) => [
+  r.tasks?.length === 7 && (r.tasksSource === 'ai' || !!r.guard), // the LIVE guard deliberately swaps in the template
+  !PAID_CLASS.test(taskText(r)),
+  ...(own ? [own.test(taskText(r))] : []),
+  ...(factFinding ? [!SELLING_ACTION.test(taskText(r))] : []),
+];
 
 const TESTS = [
   { id: 'T01', input: { business: { ...owner, product: 'Tudung bawal' }, pain: 'cost', costs: { sellingPrice: '25', materialCost: '12' }, evidence_text: 'Kos supplier RM12 sehelai. Fee platform Shopee saya tak pasti berapa.' },
-    expect: (r) => [r.pathway === 'cost', /RM\s?13(\.00)?\b/.test(text(r)), /platform|fee|komisen/i.test(text(r))], fit: 'ready' },
+    expect: (r) => [r.pathway === 'cost', /RM\s?13(\.00)?\b/.test(text(r)), /platform|fee|komisen/i.test(text(r)), ...tracker(r, { own: /tudung/i }), /fee|komisen|platform/i.test(taskText(r))], fit: 'ready' },
   { id: 'T02', input: { business: owner, pain: 'cost', costs: { sellingPrice: '25', materialCost: '10', packagingCost: '2' } },
     expect: (r) => [r.pathway === 'cost', /RM\s?13(\.00)?\b/.test(text(r)), !/(?<!bukan\s)(?<!BUKAN\s)\b(net profit|untung bersih)\b(?!\s*\))/i.test(r.title + r.reason)] },
   { id: 'T03', input: { business: owner, pain: 'content', content: { postsWeek: '1', hoursWeek: '6', hasContentPlan: 'no', tracksContent: 'no' } },
-    expect: (r) => [r.pathway === 'content', !/30\s?hari|sebulan|kalendar 30/i.test(r.quickFix)], fit: 'ready' },
+    expect: (r) => [r.pathway === 'content', !/30\s?hari|sebulan|kalendar 30/i.test(r.quickFix), ...tracker(r, { own: /kek|soalan/i })], fit: 'ready' },
   { id: 'T04', input: { business: owner, pain: 'content', content: { postsWeek: '5', hoursWeek: '4', hasContentPlan: 'yes', tracksContent: 'yes' }, evidence_text: 'Saya post 5 kali seminggu ikut jadual dan semak insight, tapi sales masih rendah.' },
     expect: (r) => [['content', 'missing'].includes(r.pathway)], review: 'no blanket claim that content cadence caused low sales' },
   { id: 'T05', input: { business: { ...owner, channel: 'TikTok / LIVE' }, pain: 'live', live: { liveExperience: 'yes', liveViewers: '180', liveClaims: '12', livePaid: '8', invoiceTiming: 'next_day' }, evidence_text: 'LIVE TikTok Sabtu lepas. 12 claim, 8 bayar (cutoff sama, 48 jam).' },
-    expect: (r) => [r.pathway === 'live', /33[.,]3/.test(text(r)), /\b4\b/.test(text(r))], review: 'no assertion that invoice delay caused the gap', fit: 'ready' },
+    expect: (r) => [r.pathway === 'live', /33[.,]3/.test(text(r)), /\b4\b/.test(text(r)), ...tracker(r, { own: /\b12\b|\b8\b|claim/i })], review: 'no assertion that invoice delay caused the gap', fit: 'ready' },
   { id: 'T06', input: { business: owner, pain: 'live', live: { liveExperience: 'no' }, evidence_text: 'Saya belum pernah LIVE. Macam mana nak mula LIVE jual kek?' },
-    expect: (r) => [r.pathway === 'missing'], fitPath: 'live' },
+    expect: (r) => [r.pathway === 'missing', ...tracker(r, { factFinding: true })], fitPath: 'live' },
   { id: 'T07', input: { business: { ...owner, channel: 'WhatsApp' }, pain: 'live', live: {}, evidence_text: '' }, file: ['whatsapp-chat.png', 'image/png'],
-    expect: (r) => [r.pathway !== 'live'] },
+    expect: (r) => [r.pathway !== 'live', ...(r.pathway === 'missing' ? tracker(r, { factFinding: true }) : [r.tasks?.length === 7])] },
   { id: 'T08', input: { business: owner, pain: 'live', live: { liveExperience: 'yes', liveClaims: '8', livePaid: '12' } },
-    expect: (r) => [r.pathway === 'missing', !/-\s?\d+(\.\d+)?\s?%/.test(text(r))] },
+    expect: (r) => [r.pathway === 'missing', !/-\s?\d+(\.\d+)?\s?%/.test(text(r)), ...tracker(r, { factFinding: true })] },
   { id: 'T09', input: { business: owner, pain: 'unknown', evidence_text: '' }, file: ['whatsapp-chat.png', 'image/png'],
     expect: (r) => [!!r.pathway && r.observations.length > 0], review: 'observations only from what is visible; AI mode reads the image (offline-demo wording checked in the UI)' },
   { id: 'T10', input: { business: owner, pain: 'cost', evidence_text: '', costs: {} }, status: 422 },

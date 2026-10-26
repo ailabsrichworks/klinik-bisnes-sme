@@ -4,6 +4,8 @@ Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: busines
 
 The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_Gap_AI_v3_Developer_Spec.md`): pathways `cost` (Cash Flow / Profit), `content` (Marketing), `live` (Sales) and the `missing` fallback. Deterministic rules live in `public/js/rules.mjs` and are shared by the browser and the server: cost and LIVE maths, the evidence check, the LIVE guard (never `live` without LIVE experience and real LIVE evidence) and RM198 programme fit. Programme fit is decided by these rules only, never by the model; for RM30K+ participants it shows a neutral line, and no class duration is shown anywhere.
 
+**Departure from spec §4 (agreed):** the 7-day tracker tasks are written by the model in the same call as the diagnosis (`tasks`: 7 × `{title, proof}`, naming the participant's own product, costs, questions or LIVE numbers). The server validates them (`normalizeTasks`: exactly 7, none empty, long text shortened at a word boundary) and falls back to the v3 prototype templates (`TASK_TEMPLATES`) when they are unusable, when AI is off, when the LIVE guard changes the pathway, or when the participant picks a different pathway. Participants can edit each task and its proof in the tracker.
+
 - **App:** Node 20+ / Express (`server/`) serving static pages (`public/`)
 - **Data & login:** Supabase (Postgres + RLS, email magic link / 6-digit code, private storage bucket)
 - **AI:** Claude via the Anthropic API (`server/diagnose.mjs`)

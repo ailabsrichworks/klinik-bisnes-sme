@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from './config.mjs';
 import { admin } from './supabase.mjs';
-import { PATHWAYS, PAINS, costSummary, contentSummary, liveSummary, liveBlock, hasEvidence } from '../public/js/rules.mjs';
+import { PATHWAYS, PAINS, costSummary, contentSummary, liveSummary, liveBlock, hasEvidence, normalizeTasks, templateTasks } from '../public/js/rules.mjs';
 
 export { PATHWAYS };
 
@@ -53,7 +53,28 @@ Medan output:
 - observations: 1–3 perkara yang benar-benar ada dalam bukti
 - unknowns: 1–4 fakta yang belum diketahui atau perlu disahkan
 - strength: "Bukti terhad" atau "Ada input peserta, perlu pengesahan"
-- quickFix: Quick Win di atas, dengan placeholder [ ... ] untuk fakta yang tidak diketahui`;
+- quickFix: Quick Win di atas, dengan placeholder [ ... ] untuk fakta yang tidak diketahui
+- tasks: TEPAT 7 tugasan tracker, satu untuk setiap hari (lihat di bawah)
+
+Tracker 7 hari (tasks):
+- Satu ujian kecil sahaja sepanjang 7 hari, menguji Quick Win di atas. Susun ikut aliran: baseline → semak → bertindak → perhati → review.
+- Setiap title ialah tindakan kecil yang boleh siap dalam sehari, dan MESTI menyebut perkara khusus peserta: nama produk, kos tertentu yang belum diketahui, soalan sebenar pelanggan, atau sesi LIVE dan angka claims / paid yang diberi. Jangan tulis tugasan umum yang sesuai untuk sesiapa sahaja.
+- Setiap proof menyatakan apa yang direkod hari itu: satu angka, screenshot tanpa data customer, pautan, atau nota ringkas. Ringkas (≤ 80 aksara).
+- Title ringkas (≤ 110 aksara). Jangan tulis "Hari 1" dalam title; nombor hari ditambah oleh sistem.
+- Bukan kandungan kelas berbayar: tiada kalendar content 30 hari, tiada senarai 30 idea, tiada worksheet harga penuh, harga minimum atau tiga senario harga, tiada rundown / skrip / SOP LIVE.
+- Jangan reka fakta, fee, kadar atau penanda aras. Fakta yang belum diketahui → tugasan untuk mencarinya.
+- Tiada nama, nombor telefon atau data peribadi customer.
+- Untuk missing: SEMUA tugasan ialah mencari dan mengesahkan fakta sahaja — tiada tindakan jualan, posting atau LIVE.
+- Bahasa Melayu Malaysia biasa, seperti pemilik bisnes kecil bercakap.
+
+Contoh gaya (cost; nugget sejuk beku, harga RM25, supplier RM12, fee Shopee tidak diketahui):
+1. Buka penyata seller Shopee untuk 3 order nugget terakhir — proof: screenshot tanpa nama customer
+2. Catat komisen dan transaction fee setiap order — proof: 3 jumlah RM
+3. Kira purata fee bagi satu pek nugget — proof: satu angka RM
+4. Tanya supplier sama ada RM12 sudah termasuk delivery — proof: jawapan supplier (nota)
+5. Kemas kini Cost Gap Snapshot dengan fee sebenar — proof: baki sementara baharu
+6. Senaraikan kos yang masih belum diketahui — proof: senarai ringkas
+7. Catat jurang yang tinggal dan langkah seterusnya — proof: nota 2–3 ayat`;
 
 const OUTPUT_SCHEMA = {
   type: 'object',
@@ -65,8 +86,17 @@ const OUTPUT_SCHEMA = {
     unknowns: { type: 'array', items: { type: 'string' } },
     strength: { type: 'string', enum: STRENGTHS },
     quickFix: { type: 'string' },
+    tasks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { title: { type: 'string' }, proof: { type: 'string' } },
+        required: ['title', 'proof'],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ['pathway', 'title', 'reason', 'observations', 'unknowns', 'strength', 'quickFix'],
+  required: ['pathway', 'title', 'reason', 'observations', 'unknowns', 'strength', 'quickFix', 'tasks'],
   additionalProperties: false,
 };
 
@@ -176,6 +206,11 @@ export async function diagnose({ userId, body }) {
     strength: STRENGTHS.includes(out.strength) ? out.strength : 'Bukti terhad',
     quickFix: clip(out.quickFix, 6000),
   };
+  // AI-written tracker (departs from spec §4 by design); the template keeps the tracker working if it is unusable.
+  const tasks = normalizeTasks(out.tasks);
+  result.tasks = tasks || templateTasks(result.pathway);
+  result.tasksSource = tasks ? 'ai' : 'template';
+  if (!tasks) console.warn('[diagnose] AI tasks unusable, using template', Array.isArray(out.tasks) ? out.tasks.length : typeof out.tasks);
 
   // Hard rule (spec §5.3, T06–T08): never `live` without LIVE experience, real LIVE evidence and consistent numbers.
   const blocked = result.pathway === 'live' && liveBlock({ live, evidenceText, hasFile });
@@ -192,6 +227,8 @@ function liveFallback(result, why) {
     unknowns: [why, ...result.unknowns].slice(0, 5),
     strength: 'Bukti terhad',
     quickFix: 'FACT-FINDING ACTION\nFakta penting untuk dicari: [contoh: jumlah claims dan paid orders bagi SATU sesi LIVE, dengan cutoff yang sama].\nDi mana mendapatkan fakta: [log LIVE / rekod order / seller centre].\nSiapa akan semak: [nama / peranan].\nTarikh: [dalam 7 hari].\nJangan buat keputusan tentang punca sales sebelum bukti mencukupi.',
+    tasks: templateTasks('missing'),
+    tasksSource: 'template',
     guard: 'live_blocked',
   };
 }

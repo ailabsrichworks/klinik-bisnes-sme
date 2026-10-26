@@ -163,6 +163,11 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 650; letter-spacing:
 .day { font: 650 13px/1.3 var(--font-display); color: var(--teal); padding-top: 3px; }
 .task-head { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .task-head strong { font-size: 14px; color: var(--navy); font-weight: 600; flex: 1 1 180px; }
+.task .task-title { flex: 1 1 180px; min-height: 0; resize: none; font: 600 14px/1.45 var(--font-body); color: var(--navy); border: 1px solid transparent; border-radius: 8px; padding: 4px 6px; margin: -4px 0 0 -6px; background: transparent; field-sizing: content; }
+.task .proof { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.task .task-proof { flex: 1 1 160px; font: inherit; color: inherit; border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; background: transparent; min-height: 0; }
+.task .task-title:hover, .task .task-proof:hover { border-color: var(--line); }
+.task .task-title:focus-visible, .task .task-proof:focus-visible { border-color: #c9d7db; background: #fcfdfd; }
 .task .proof { grid-column: 2; font-size: 12px; color: var(--muted); }
 .task .track-note { grid-column: 2; min-height: 42px; padding: 8px 10px; font-size: 13px; border: 1px solid #c9d7db; border-radius: 9px; }
 .task select { border: 1px solid #c9d7db; border-radius: 8px; background: #fff; padding: 6px 8px; font-size: 12.5px; min-height: 36px; }

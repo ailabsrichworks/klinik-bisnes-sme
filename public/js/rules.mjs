@@ -137,3 +137,35 @@ export function programmeFit({ profile = {}, live = {}, pathway, diagnosedPathwa
   }
   return { ...base, status: 'ready', detail: `Cadangan bersyarat, pilihan sahaja: ${prog.title} (RM198) — ${prog.desc}. Hanya jika anda berminat dan perlukan pelaksanaan yang lebih mendalam.` };
 }
+
+// ─────────────── 7-day tracker tasks ───────────────
+// Fallback checklists (v3 prototype). Used when AI is off, when AI tasks fail validation,
+// and whenever the pathway differs from the one the AI wrote tasks for.
+export const TASK_TEMPLATES = {
+  cost: [['Catat harga jual dan kos yang benar-benar diketahui', 'Rekod ringkas satu produk'], ['Pilih SATU kategori kos yang belum jelas', 'Nama kos untuk disemak'], ['Dapatkan dokumen asal kos itu', 'Resit / seller statement'], ['Catat nilai, unit dan tarikh kos', 'Bukti kos yang disahkan'], ['Semak sama ada kos itu berubah', 'Perbezaan / status semakan'], ['Kemas kini Cost Gap Snapshot', 'Snapshot baharu'], ['Catat jurang selebihnya & pilihan langkah seterusnya', 'Ringkasan tujuh hari']],
+  content: [['Catat jumlah post dan masa content minggu lepas', 'Baseline seminggu'], ['Senaraikan tiga soalan pelanggan yang pernah diterima', 'Senarai soalan sebenar'], ['Pilih SATU soalan untuk satu post', 'Topik & sasaran post'], ['Sediakan rangka ringkas tanpa mereka fakta', 'Draf ringkas'], ['Terbitkan satu post apabila siap dan sesuai', 'Pautan / tarikh post'], ['Catat reach / saves / enquiry jika tersedia', 'Data dari platform'], ['Semak sama ada tindakan boleh diulang', 'Ulasan tujuh hari']],
+  live: [['Pilih satu LIVE terakhir yang ada rekod', 'Tarikh & platform LIVE'], ['Semak jumlah claim untuk sesi itu', 'Claim log tanpa data customer'], ['Padankan paid orders kepada cohort yang sama', 'Jumlah paid disahkan'], ['Catat bila invoice / link bayaran dihantar', 'Timestamp invoice'], ['Kira jurang claim → paid yang sah', 'Bilangan dan kadar sebenar'], ['Pilih SATU proses untuk diperiksa lagi', 'Jurang dan tindakan pilihan'], ['Catat keputusan awal & data yang masih hilang', 'Ringkasan tujuh hari']],
+  missing: [['Nyatakan satu soalan yang paling penting', 'Soalan spesifik'], ['Kenal pasti rekod / sumber asal', 'Senarai sumber'], ['Tentukan siapa akan menyemak', 'Pemilik tindakan'], ['Cari dokumen berkaitan', 'Bukti sumber'], ['Tentukan sama ada data lengkap / belum lengkap', 'Status data'], ['Kemaskan profil / bukti yang diperoleh', 'Ringkasan bukti'], ['Tentukan sama ada sesuai untuk diagnosis semula', 'Keputusan berdasarkan fakta']],
+};
+export const TASK_TITLE_MAX = 120;
+export const TASK_PROOF_MAX = 100;
+
+export function templateTasks(pathway) {
+  return (TASK_TEMPLATES[pathway] || TASK_TEMPLATES.missing).map(([title, proof]) => ({ title, proof }));
+}
+
+// Shortens at a word boundary instead of rejecting slightly long text.
+export function clipWords(value, max) {
+  const s = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
+// AI tasks → exactly 7 {title, proof}, or null (caller falls back to templateTasks).
+export function normalizeTasks(tasks) {
+  if (!Array.isArray(tasks) || tasks.length !== 7) return null;
+  const out = tasks.map((t) => ({ title: clipWords(t?.title, TASK_TITLE_MAX), proof: clipWords(t?.proof, TASK_PROOF_MAX) }));
+  return out.every((t) => t.title && t.proof) ? out : null;
+}

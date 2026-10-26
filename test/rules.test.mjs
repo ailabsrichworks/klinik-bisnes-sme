@@ -88,3 +88,22 @@ test('programme fit: pending when eligibility unknown; withheld when inactive / 
   assert.equal(programmeFit({ profile: { ...owner, ownerAuthority: 'no' }, pathway: 'cost', diagnosedPathway: 'cost' }).status, 'withheld');
   assert.equal(programmeFit({ profile: owner, pathway: 'cost', diagnosedPathway: 'content' }).status, 'none');
 });
+
+import { normalizeTasks, templateTasks, clipWords, TASK_TITLE_MAX, TASK_PROOF_MAX } from '../public/js/rules.mjs';
+
+test('AI tasks: exactly 7 non-empty items, long text shortened not rejected', () => {
+  const seven = Array.from({ length: 7 }, (_, i) => ({ title: `Hari ${i + 1}: semak penyata Shopee untuk 3 order nugget`, proof: 'Screenshot tanpa nama customer' }));
+  assert.equal(normalizeTasks(seven).length, 7);
+  assert.equal(normalizeTasks(seven.slice(0, 6)), null);
+  assert.equal(normalizeTasks([...seven, seven[0]]), null);
+  assert.equal(normalizeTasks(seven.map((t, i) => (i === 3 ? { ...t, proof: '  ' } : t))), null);
+  assert.equal(normalizeTasks('not a list'), null);
+  const long = normalizeTasks(seven.map((t) => ({ title: 'kata '.repeat(60), proof: 'bukti '.repeat(40) })));
+  assert.ok(long.every((t) => t.title.length <= TASK_TITLE_MAX && t.proof.length <= TASK_PROOF_MAX && t.title.endsWith('…')));
+  assert.equal(clipWords('pendek', 10), 'pendek');
+});
+
+test('templates exist for every pathway and unknown pathways fall back to missing', () => {
+  for (const p of ['cost', 'content', 'live', 'missing']) assert.equal(templateTasks(p).length, 7);
+  assert.deepEqual(templateTasks('attraction'), templateTasks('missing'));
+});
