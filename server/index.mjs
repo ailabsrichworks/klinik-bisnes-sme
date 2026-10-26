@@ -13,7 +13,7 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
 const missing = missingConfig();
-if (missing.length) console.warn(`[config] missing: ${missing.join(', ')} — sign-in and AI will not work until these are set.`);
+if (missing.length) console.warn(`[config] missing: ${missing.join(', ')} — ${missing.includes('anthropicKey') && missing.length === 1 ? 'AI diagnosis falls back to the rule-based demo' : 'sign-in and AI will not work'} until set.`);
 
 // ─── security headers ───
 const supabaseOrigin = config.supabaseUrl ? new URL(config.supabaseUrl).origin : '';
