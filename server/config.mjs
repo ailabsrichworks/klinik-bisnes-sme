@@ -21,8 +21,8 @@ export const config = {
   dailyAiLimitPerUser: int(env.DAILY_AI_LIMIT_PER_USER, 3),
   dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 400),
 
-  // Optional Cloudflare Turnstile. The secret key goes in Supabase Auth (captcha protection), not here.
-  turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
+  resendKey: env.RESEND_API_KEY || '',
+  emailFrom: env.EMAIL_FROM || '',
 
   // Bump when the privacy notice text changes; consents are recorded against it.
   noticeVersion: env.NOTICE_VERSION || '2026-10-v2',

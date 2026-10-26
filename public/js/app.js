@@ -1,7 +1,6 @@
 // Participant app: five steps, saved to the participant's Supabase journey row.
 // No login: participants join a session anonymously with its code (?c=CODE).
 import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit, templateTasks, TASK_TITLE_MAX, TASK_PROOF_MAX } from './rules.mjs';
-import { downloadPlanPdf } from './plan-pdf.mjs';
 
 (async () => {
   'use strict';
@@ -12,16 +11,16 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
   const CACHE_KEY = 'kbsme_quick_fix_cache_v3';
   const COHORT_KEY = 'kbsme_cohort_code';
 
-  const stepNames = ['Kenali bisnes', 'Tunjukkan bukti', 'Diagnosis awal', 'Bina Quick Fix', 'Pelan 7 hari'];
+  const stepNames = ['Kenali bisnes', 'Tunjukkan bukti', 'Diagnosis awal', 'Bina Quick Fix', 'Pelaksanaan 7 hari'];
   const blank = () => ({
     profile: { business: '', product: '', customer: '', channel: '', revenue: '', participant: '', businessActive: '', ownerAuthority: '', pain: '' },
     evidenceText: '', costs: {}, content: {}, live: {}, evidenceFile: null, programme: null, diagnosis: null, pathway: '', confirmed: false, quickFix: '',
-    quality: [false, false, false], tasks: [],
-    nextStep: 'Bertindak sendiri dahulu', marketingConsent: false, pdfDownloadedAt: null,
+    quality: [false, false, false], tasks: [], metrics: ['', '', ''], reviewNotes: '',
+    nextStep: 'Bertindak sendiri dahulu', marketingConsent: false, trackerStartedAt: null,
   });
 
   let state = blank(), step = 0, file = null, fileUrl = null;
-  let user = null, journey = null, cohort = null, booted = false;
+  let user = null, journey = null, cohort = null;
 
   // ─────────────── boot: session code → anonymous session ───────────────
   const params = new URLSearchParams(location.search);
@@ -42,6 +41,7 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     document.body.classList.toggle('in-app', id === 'app');
   }
 
+  // Participants can look up one code; they cannot list sessions.
   async function lookupCohort(code) {
     if (!code) return null;
     const { data, error } = await sb.rpc('cohort_by_code', { p_code: code });
@@ -54,7 +54,6 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     showOnly('codeGate');
     $('codeInput').value = cohortCode();
     msg('codeMessage', text, isError);
-    if (KB.cfg.turnstileSiteKey) KB.renderCaptcha('captchaBox');
   }
 
   async function boot() {
@@ -66,45 +65,28 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
       $('loadingGate').innerHTML = '<p>Data gagal dimuatkan. Semak sambungan internet dan muat semula halaman.</p>';
       return;
     }
-    if (!cohort) return askForCode(cohortCode() ? 'Kod sesi ini tidak sah atau sudah tamat. Dapatkan pautan baharu daripada fasilitator.' : '', !!cohortCode());
+    if (!cohort) return askForCode(cohortCode() ? 'Kod sesi ini tidak sah. Dapatkan pautan daripada fasilitator anda.' : '', !!cohortCode());
     const s = await KB.session();
     if (s?.user) return start(s.user);
-    if (KB.cfg.turnstileSiteKey) return askForCode('Sahkan anda bukan robot, kemudian tekan “Masuk sesi”.');
-    await joinAnonymously();
-  }
-
-  async function joinAnonymously(captchaToken) {
-    const { data, error } = await sb.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
+    const { data, error } = await sb.auth.signInAnonymously();
     if (error) {
       console.error(error);
-      KB.resetCaptcha();
       return askForCode(error.status === 429 ? 'Terlalu ramai cuba masuk serentak. Tunggu seminit dan cuba lagi.' : 'Tidak dapat memulakan sesi. Cuba lagi.', true);
     }
-    return start(data.user);
+    start(data.user);
   }
 
   $('codeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = normCode($('codeInput').value);
     if (!code) return msg('codeMessage', 'Masukkan kod sesi daripada fasilitator.', true);
-    $('codeBtn').disabled = true;
-    try {
-      const found = await lookupCohort(code);
-      if (!found) return msg('codeMessage', 'Kod sesi ini tidak sah atau sudah tamat.', true);
-      try { localStorage.setItem(COHORT_KEY, code); } catch {}
-      cohort = found;
-      const s = await KB.session();
-      if (s?.user) return start(s.user);
-      const token = KB.captchaToken();
-      if (KB.cfg.turnstileSiteKey && !token) return msg('codeMessage', 'Sahkan anda bukan robot dahulu.', true);
-      await joinAnonymously(token);
-    } finally { $('codeBtn').disabled = false; }
+    try { localStorage.setItem(COHORT_KEY, code); } catch {}
+    boot();
   });
 
   async function start(u) {
     user = u;
     showOnly('loadingGate');
-    $('cohortLabel').textContent = `${cohort.name}${cohort.session_date ? ' · ' + new Date(cohort.session_date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
     const { data: notice } = await sb.from('consents').select('id').eq('user_id', u.id)
       .eq('kind', 'privacy_notice').eq('notice_version', KB.cfg.noticeVersion).eq('granted', true).limit(1);
     if (!notice?.length) {
@@ -136,6 +118,7 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
   }
 
   async function loadJourney() {
+    $('cohortLabel').textContent = `${cohort.name}${cohort.session_date ? ' · ' + new Date(cohort.session_date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
     const { data: rows, error } = await sb.from('journeys').select('*').eq('user_id', user.id).eq('cohort_id', cohort.id).limit(1);
     if (error) throw error;
     if (rows.length) {
@@ -174,7 +157,8 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
       state,
       pathway: state.diagnosis ? currentPath() : null,
       step,
-      pdf_downloaded_at: state.pdfDownloadedAt,
+      tasks_done: (state.tasks || []).filter((t) => t.status === 'selesai').length,
+      tracker_started_at: state.trackerStartedAt,
     };
     saving = saving.then(async () => {
       const { error } = await sb.from('journeys').update(payload).eq('id', journey.id);
@@ -206,6 +190,8 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     state.confirmed = $('confirmDiagnosis').checked;
     state.quickFix = $('quickFixEditor').value;
     state.quality = ['quality1', 'quality2', 'quality3'].map((k) => $(k).checked);
+    state.metrics = [0, 1, 2].map((i) => $('metric' + i)?.value ?? state.metrics[i]);
+    state.reviewNotes = $('reviewNotes').value;
     state.nextStep = $('nextStep').value;
     state.marketingConsent = $('marketingConsent').checked;
     safeSave();
@@ -221,10 +207,11 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     $('confirmDiagnosis').checked = !!state.confirmed;
     $('quickFixEditor').value = state.quickFix || '';
     ['quality1', 'quality2', 'quality3'].forEach((k, i) => { $(k).checked = !!state.quality[i]; });
+    $('reviewNotes').value = state.reviewNotes || '';
     $('nextStep').value = state.nextStep || 'Bertindak sendiri dahulu';
     $('marketingConsent').checked = !!state.marketingConsent;
     $('fileStatus').textContent = state.evidenceFile ? `Disimpan: ${state.evidenceFile.name}. Pilih fail lain untuk menggantikan.` : 'Belum ada fail dipilih.';
-    drawCosts(); drawLiveSnapshot(); drawDiagnosis(); drawBuild(); drawPlan();
+    drawCosts(); drawLiveSnapshot(); drawDiagnosis(); drawBuild(); drawTracker(); drawReport();
   }
 
   function go(n) {
@@ -240,7 +227,10 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     $('nextBtn').style.display = step === 4 ? 'none' : 'inline-flex';
     $('nextBtn').textContent = step === 2 ? 'Bina Quick Fix →' : 'Seterusnya →';
     if (step === 3) drawBuild();
-    if (step === 4) drawPlan();
+    if (step === 4) {
+      if (!state.trackerStartedAt) state.trackerStartedAt = new Date().toISOString();
+      drawTracker(); drawReport();
+    }
     clearMessage();
     safeSave();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -335,7 +325,7 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     }
     return 'FACT-FINDING ACTION\nFakta penting untuk dicari: [satu maklumat yang hilang].\nDi mana mendapatkan fakta: [seller statement / insight platform / log LIVE / rekod content].\nSiapa akan semak: [nama / peranan].\nTarikh: [dalam 7 hari].\nJangan buat keputusan tentang punca sales sebelum bukti mencukupi.';
   }
-  const toTracker = (list) => list.map(({ title, proof }, i) => ({ day: i + 1, title, proof }));
+  const toTracker = (list) => list.map(({ title, proof }, i) => ({ day: i + 1, title, proof, status: 'belum', note: '' }));
   function generateTasks(p) { return toTracker(templateTasks(p)); }
   // AI tasks only for the pathway the AI diagnosed; any other pathway gets that pathway's template.
   function tasksFor(p) {
@@ -387,7 +377,7 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
         result = demoDiagnose();
       }
       state.diagnosis = result; state.pathway = result.pathway; state.confirmed = false; state.quickFix = result.quickFix;
-      state.quality = [false, false, false]; state.tasks = tasksFor(result.pathway); state.pdfDownloadedAt = null;
+      state.quality = [false, false, false]; state.tasks = tasksFor(result.pathway); state.metrics = ['', '', ''];
       $('confirmDiagnosis').checked = false;
       drawDiagnosis(); drawBuild(); go(2);
     } catch (err) {
@@ -421,32 +411,65 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
     $('quickFixEditor').value = state.quickFix || (state.diagnosis ? defaultFix(p) : '');
   }
 
-  // ─────────────── 7-day plan & PDF ───────────────
-  function drawPlan() {
+  // ─────────────── tracker & report ───────────────
+  function drawTracker() {
     if (!state.diagnosis) return;
     if (!state.tasks || state.tasks.length !== 7) state.tasks = tasksFor(currentPath());
-    $('plan').innerHTML = state.tasks.map((t, i) => `<li class="plan-day"><span class="day">Hari ${i + 1}</span><div class="plan-body"><textarea class="task-title" rows="2" maxlength="${TASK_TITLE_MAX}" data-title="${i}" aria-label="Tugasan Hari ${i + 1} (boleh diedit)"></textarea><label class="proof">Bukti untuk dicatat: <input class="task-proof" maxlength="${TASK_PROOF_MAX}" data-proof="${i}" aria-label="Bukti Hari ${i + 1} (boleh diedit)"></label></div></li>`).join('');
-    state.tasks.forEach((t, i) => { $('plan').querySelector(`[data-title="${i}"]`).value = t.title || ''; $('plan').querySelector(`[data-proof="${i}"]`).value = t.proof || ''; });
-    $$('#plan [data-title]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.title].title = el.value; safeSave(); }; });
-    $$('#plan [data-proof]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.proof].proof = el.value; safeSave(); }; });
-    drawProgramme();
-    $('pdfStatus').textContent = state.pdfDownloadedAt
-      ? `PDF dimuat turun ${new Date(state.pdfDownloadedAt).toLocaleString('ms-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Anda boleh muat turun semula selepas mengedit.`
-      : 'PDF mengandungi ringkasan bisnes, diagnosis awal, Quick Fix dan senarai semak 7 hari.';
+    const root = $('tracker'); root.innerHTML = '';
+    state.tasks.forEach((item, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'task' + (item.status === 'selesai' ? ' done' : '');
+      wrap.innerHTML = `<div class="day">Hari ${i + 1}</div><div class="task-head"><textarea class="task-title" rows="2" maxlength="${TASK_TITLE_MAX}" data-title="${i}" aria-label="Tugasan Hari ${i + 1} (boleh diedit)"></textarea><select aria-label="Status Hari ${i + 1}" data-status="${i}"><option value="belum">Belum mula</option><option value="sedang">Sedang buat</option><option value="selesai">Selesai ✓</option></select></div><label class="proof">Bukti cadangan: <input class="task-proof" maxlength="${TASK_PROOF_MAX}" data-proof="${i}" aria-label="Bukti cadangan Hari ${i + 1} (boleh diedit)"></label><input class="track-note" maxlength="450" data-note="${i}" aria-label="Bukti atau nota Hari ${i + 1}" placeholder="Catat bukti / pautan / angka sebenar (tanpa data customer)">`;
+      root.appendChild(wrap);
+      wrap.querySelector('[data-status]').value = item.status;
+      wrap.querySelector('[data-title]').value = item.title || '';
+      wrap.querySelector('[data-proof]').value = item.proof || '';
+      wrap.querySelector('[data-note]').value = item.note || '';
+    });
+    $$('#tracker [data-status]').forEach((el) => { el.onchange = () => { state.tasks[+el.dataset.status].status = el.value; safeSave(); drawTracker(); drawReport(); }; });
+    $$('#tracker [data-note]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.note].note = el.value; safeSave(); drawReport(); }; });
+    $$('#tracker [data-title]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.title].title = el.value; safeSave(); drawReport(); }; });
+    $$('#tracker [data-proof]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.proof].proof = el.value; safeSave(); }; });
+    const done = state.tasks.filter((t) => t.status === 'selesai').length;
+    $('completionText').textContent = `${done} daripada 7 selesai`;
+    $('completionBar').style.width = `${(100 * done) / 7}%`;
+    drawMetrics();
   }
-  async function downloadPdf() {
-    dataFromForm();
-    if (state.tasks.some((t) => !txt(t.title))) { message('Setiap hari perlukan satu tugasan sebelum muat turun.', true); return; }
-    const btn = $('pdfBtn'); btn.disabled = true; btn.textContent = 'Menyediakan PDF…';
-    try {
-      const fit = currentFit();
-      await downloadPlanPdf({ state, pathLabel: pathLabels[currentPath()], programme: fit, cohortName: cohort?.name });
-      state.pdfDownloadedAt = new Date().toISOString();
-      safeSave(); drawPlan();
-    } catch (err) {
-      console.error(err);
-      message('PDF gagal disediakan. Semak sambungan internet dan cuba lagi.', true);
-    } finally { btn.disabled = false; btn.textContent = 'Muat turun PDF'; }
+  function metricLabels() {
+    const p = currentPath();
+    return p === 'content' ? ['Post diterbitkan', 'Masa content (minit)', 'Enquiry yang jelas berkaitan']
+      : p === 'live' ? ['Claims disahkan', 'Paid orders disahkan', 'Invoice timestamp direkod']
+      : p === 'cost' ? ['Kos belum jelas yang disahkan', 'Dokumen kos diperiksa', 'Jurang kos yang masih belum jelas']
+      : ['Fakta berjaya diperoleh', 'Dokumen sumber disahkan', 'Keputusan selepas semakan'];
+  }
+  function drawMetrics() {
+    $('metricsArea').innerHTML = metricLabels().map((t, i) => `<div class="field"><label for="metric${i}">${scrub(t)}</label><input type="number" inputmode="numeric" id="metric${i}" min="0" step="1" placeholder="Jika tahu"></div>`).join('');
+    state.metrics.forEach((v, i) => { $('metric' + i).value = v ?? ''; });
+    $$('#metricsArea input').forEach((el, i) => { el.oninput = () => { state.metrics[i] = el.value; safeSave(); drawReport(); }; });
+  }
+  function reportText() {
+    const p = state.profile, d = state.diagnosis, done = state.tasks.filter((t) => t.status === 'selesai').length;
+    return `KLINIK BISNES SME — BUSINESS QUICK FIX\nBisnes: ${p.business || '-'}\nProduk / Servis: ${p.product || '-'}\nCustomer: ${p.customer || '-'}\nPathway: ${pathLabels[currentPath()] || '-'}\nLangkah seterusnya (pilihan): ${currentFit().detail}\nDiagnosis awal: ${d?.reason || 'Belum dijana'}\nBukti diperhatikan: ${(d?.observations || []).join('; ') || '-'}\nBelum pasti: ${(d?.unknowns || []).join('; ') || '-'}\n\nQUICK FIX\n${state.quickFix || '-'}\n\nTRACKER 7 HARI (${done}/7 selesai)\n${state.tasks.map((t) => `Hari ${t.day} [${t.status}] ${t.title}\nBukti: ${t.note || '-'}`).join('\n')}\n\nHASIL HARI 7\n${metricLabels().map((l, i) => `${l}: ${state.metrics[i] || 'Belum direkod'}`).join('\n')}\nReview: ${state.reviewNotes || '-'}\n\nNota: Nota kerja peserta, bukan diagnosis muktamad atau jaminan jualan.`;
+  }
+  function drawReport() {
+    const r = $('report'); if (!r) return;
+    const p = state.profile, d = state.diagnosis, tasks = state.tasks || [];
+    const done = tasks.filter((t) => t.status === 'selesai').length;
+    const blocks = [
+      ['Bisnes / Produk', `${p.business || '-'} · ${p.product || '-'}`],
+      ['Keutamaan & diagnosis awal', `${pathLabels[currentPath()] || '-'}\n${d?.reason || 'Belum dijana'}`],
+      ['Quick Fix yang disediakan', state.quickFix || 'Belum diisi'],
+      ['Langkah seterusnya (pilihan)', currentFit().detail],
+      ['Kemajuan 7 hari', `${done}/7 selesai · ${tasks.filter((t) => t.status === 'sedang').length} sedang dibuat`],
+      ['Hasil yang direkod', metricLabels().map((l, i) => `${l}: ${state.metrics[i] || 'Belum direkod'}`).join('\n')],
+    ];
+    r.innerHTML = blocks.map(([title, value]) => `<div class="report-row"><b>${scrub(title)}</b><p>${scrub(value)}</p></div>`).join('');
+  }
+  function printReport() {
+    dataFromForm(); drawReport();
+    const p = state.profile, d = state.diagnosis;
+    $('print-area').innerHTML = `<h1>Klinik Bisnes SME — Business Quick Fix</h1><div class="pr-sub">Laporan kerja peserta · ${new Date().toLocaleDateString('ms-MY')} · ${d?.origin === 'ai' ? 'Dibantu AI, disemak peserta' : 'Simulasi rule-based, bukan AI'}</div><div class="pr-item"><b>Bisnes:</b> ${scrub(p.business)}<br><b>Produk:</b> ${scrub(p.product)}<br><b>Sasaran customer:</b> ${scrub(p.customer || '-')}<br><b>Keutamaan:</b> ${scrub(pathLabels[currentPath()])}</div><h2>Diagnosis Awal</h2><div class="pr-item"><b>Langkah seterusnya (pilihan):</b> ${scrub(currentFit().detail)}</div><div class="pr-item">${scrub(d?.reason || '-')}<br><br><b>Bukti:</b> ${scrub((d?.observations || []).join(' / '))}<br><b>Belum tahu:</b> ${scrub((d?.unknowns || []).join(' / '))}</div><h2>Quick Fix</h2><div class="pr-quick">${scrub(state.quickFix || '-')}</div><h2>Tracker 7 Hari</h2><table><tr><th>Hari</th><th>Tindakan</th><th>Status</th><th>Bukti sebenar</th></tr>${state.tasks.map((t) => `<tr><td>${t.day}</td><td>${scrub(t.title)}</td><td>${scrub(t.status)}</td><td>${scrub(t.note || '-')}</td></tr>`).join('')}</table><h2>Hasil & Review</h2><div class="pr-item">${metricLabels().map((l, i) => `${scrub(l)}: ${scrub(state.metrics[i] || 'Belum direkod')}`).join('<br>')}<br><b>Review:</b> ${scrub(state.reviewNotes || '-')}</div><p class="pr-sub">Bukan diagnosis muktamad; bukan pengiraan untung penuh atau jaminan peningkatan jualan.</p>`;
+    window.print();
   }
 
   // ─────────────── uploads ───────────────
@@ -467,30 +490,42 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
   }
 
   // ─────────────── account actions ───────────────
+  async function exportData() {
+    dataFromForm();
+    const [{ data: consents }, { data: files }] = await Promise.all([
+      sb.from('consents').select('kind, granted, notice_version, created_at').eq('user_id', user.id),
+      sb.from('evidence_files').select('file_name, mime_type, size_bytes, created_at').eq('user_id', user.id),
+    ]);
+    const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), email: user.email, cohort: cohort?.code || null, journey: state, consents, evidence_files: files }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'KBSME_Quick_Fix_data_saya.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
   async function restart() {
     if (!confirm('Kosongkan borang, diagnosis dan tracker untuk sesi ini? Akaun anda kekal.')) return;
     state = blank(); file = null; $('fileUpload').value = ''; $('privacyConfirm').checked = false;
     if (fileUrl) URL.revokeObjectURL(fileUrl); fileUrl = null; $('filePreview').style.display = 'none';
     initFields(); toggleCosts(); go(0);
   }
-  async function deleteSession() {
-    if (!confirm('Padam semua jawapan, diagnosis, pelan dan fail yang dimuat naik untuk sesi ini? Tindakan ini tidak boleh dibatalkan.')) return;
+  async function deleteAccount() {
+    if (!confirm('Padam akaun, semua jawapan, tracker dan fail yang dimuat naik? Tindakan ini tidak boleh dibatalkan.')) return;
     try {
       await KB.api('/api/me', { method: 'DELETE' });
-      try { localStorage.removeItem(CACHE_KEY); } catch {}
+      try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(COHORT_KEY); } catch {}
       await sb.auth.signOut();
-      state = blank(); journey = null; user = null;
-      askForCode('Data sesi ini telah dipadam.');
+      alert('Data anda telah dipadam.');
+      location.href = '/';
     } catch (err) { message(err.message, true); }
   }
 
   // ─────────────── wiring ───────────────
-  ['business', 'product', 'customer', 'channel', 'revenue', 'participant', 'businessActive', 'ownerAuthority', 'evidenceText', ...costKeys, ...CONTENT_KEYS, ...LIVE_KEYS, 'quickFixEditor', 'nextStep', 'confirmDiagnosis', 'quality1', 'quality2', 'quality3']
+  ['business', 'product', 'customer', 'channel', 'revenue', 'participant', 'businessActive', 'ownerAuthority', 'evidenceText', ...costKeys, ...CONTENT_KEYS, ...LIVE_KEYS, 'quickFixEditor', 'reviewNotes', 'nextStep', 'confirmDiagnosis', 'quality1', 'quality2', 'quality3']
     .forEach((k) => $(k).addEventListener('input', () => {
       dataFromForm();
       if (costKeys.includes(k)) drawCosts();
       if (LIVE_KEYS.includes(k)) drawLiveSnapshot();
       if (['revenue', 'businessActive', 'ownerAuthority', 'liveExperience'].includes(k)) drawProgramme();
+      if (['quickFixEditor', 'reviewNotes'].includes(k)) drawReport();
     }));
   $('marketingConsent').addEventListener('change', (e) => { dataFromForm(); recordConsent('marketing', e.target.checked); });
   $$('[name="pain"]').forEach((el) => el.addEventListener('change', () => { dataFromForm(); toggleCosts(); }));
@@ -511,9 +546,12 @@ import { downloadPlanPdf } from './plan-pdf.mjs';
       else message('Lengkapkan langkah sebelumnya dahulu.', true);
     };
   });
-  $('pdfBtn').onclick = downloadPdf;
+  $('printBtn').onclick = printReport;
+  $('copyBtn').onclick = async () => { dataFromForm(); try { await navigator.clipboard.writeText(reportText()); message('Ringkasan disalin ke clipboard.'); } catch { message('Clipboard tidak tersedia; gunakan Print / Save PDF.', true); } };
+  $('exportBtn').onclick = exportData;
   $('restartBtn').onclick = restart;
-  $('deleteBtn').onclick = deleteSession;
+  $('deleteBtn').onclick = deleteAccount;
 
+  // If there's no session after Supabase has read the URL, show sign-in.
   boot();
 })();

@@ -22,7 +22,7 @@
       <div>
         <div class="eyebrow" id="cohortLabel">Dah Promote. Mana Sales? · Sesi kerja 2 jam</div>
         <h1 id="heroTitle">Satu masalah. Satu Quick Fix. Tujuh hari.</h1>
-        <p>Tunjukkan contoh sebenar bisnes anda, semak diagnosis awal, siapkan satu pembetulan kecil, kemudian bawa pulang pelan tujuh hari untuk mengujinya.</p>
+        <p>Tunjukkan contoh sebenar bisnes anda, semak diagnosis awal, siapkan satu pembetulan kecil, kemudian rekod apa yang betul-betul berlaku.</p>
         <p class="fine">Ini bukan diagnosis bisnes penuh dan bukan jaminan sales naik. Buang data customer sebelum berkongsi.</p>
       </div>
       <div class="formula" aria-label="Formula sesi">
@@ -32,14 +32,13 @@
       </div>
     </section>
 
-    <!-- ─── session code (no login) ─── -->
+    <!-- ─── session code (participants have no login) ─── -->
     <section class="gate" id="codeGate" hidden aria-labelledby="codeTitle">
       <div class="kicker">Masuk sesi</div>
       <h2 id="codeTitle">Dapatkan pautan daripada fasilitator anda.</h2>
       <p>Alat ini dibuka melalui pautan atau kod sesi Klinik Bisnes SME. Tiada emel atau password diperlukan.</p>
       <form id="codeForm" novalidate>
         <div class="field"><label for="codeInput">Kod sesi</label><input id="codeInput" autocomplete="off" autocapitalize="characters" maxlength="24" placeholder="Contoh: KL-NOV26"></div>
-        <div id="captchaBox"></div>
         <button type="submit" class="btn primary" id="codeBtn">Masuk sesi</button>
       </form>
       <div id="codeMessage" class="message" role="status" aria-live="polite"></div>
@@ -53,11 +52,11 @@
       <div class="notice-box">
         <p><b>Ringkasan notis privasi</b></p>
         <ul>
-          <li>Tiada emel, nombor telefon atau password diperlukan. Sesi anda disimpan secara tanpa nama dalam browser ini.</li>
-          <li>Kami simpan maklumat bisnes, bukti dan pelan yang anda isi untuk sesi ini.</li>
+          <li>Tiada emel, nombor telefon atau password diperlukan. Sesi anda disimpan tanpa nama dalam browser ini.</li>
+          <li>Kami simpan maklumat bisnes, bukti dan tracker yang anda isi, untuk sesi ini dan semakan Hari 7.</li>
           <li>Apabila anda tekan “Jana Diagnosis”, bukti dihantar kepada penyedia AI (Anthropic) untuk dianalisis.</li>
           <li>Fasilitator sesi boleh melihat kemajuan anda untuk membantu semasa sesi.</li>
-          <li>Anda boleh padam data sesi ini pada bila-bila masa.</li>
+          <li>Anda boleh muat turun atau padam semua data anda pada bila-bila masa.</li>
         </ul>
         <p><a href="/privacy" target="_blank" rel="noopener">Baca notis privasi penuh</a></p>
       </div>
@@ -76,7 +75,7 @@
         <button type="button" class="step-tab" data-go="1"><span class="n">2</span><b>Bukti Sebenar</b></button>
         <button type="button" class="step-tab" data-go="2"><span class="n">3</span><b>Diagnosis</b></button>
         <button type="button" class="step-tab" data-go="3"><span class="n">4</span><b>Quick Fix</b></button>
-        <button type="button" class="step-tab" data-go="4"><span class="n">5</span><b>Pelan 7 Hari</b></button>
+        <button type="button" class="step-tab" data-go="4"><span class="n">5</span><b>Tracker 7 Hari</b></button>
         <div class="side-bottom"><p id="saveState">Disimpan ke akaun anda.</p></div>
       </nav>
       <main class="workspace">
@@ -178,28 +177,34 @@
           </section>
 
           <section class="panel" id="panel4">
-            <div class="kicker">Langkah 05 · Bawa pulang</div><h2>Pelan tindakan tujuh hari.</h2><p class="intro">Satu langkah kecil setiap hari untuk menguji <b>satu</b> Quick Fix, bukan tujuh projek baharu. Semak dan edit ayat mana-mana tugasan supaya sesuai dengan bisnes anda, kemudian muat turun PDF untuk dicetak atau disimpan di telefon.</p>
-            <ol class="plan" id="plan"></ol>
-            <div class="surface programme" id="programmeDetails" hidden></div>
-            <div class="download-row">
-              <button type="button" class="btn primary" id="pdfBtn">Muat turun PDF</button>
-              <span class="subtle" id="pdfStatus">PDF mengandungi ringkasan bisnes, diagnosis awal, Quick Fix dan senarai semak 7 hari.</span>
-            </div>
+            <div class="kicker">Langkah 05 · Laksana</div><h2>Tracker tindakan tujuh hari.</h2><p class="intro">Tujuh langkah kecil untuk menguji <b>satu</b> Quick Fix, bukan tujuh projek baharu. Edit mana-mana tugasan atau bukti supaya sesuai dengan bisnes anda. Buka semula pautan sesi dalam browser yang sama pada Hari 7 untuk isi hasil.</p>
+            <div class="track-meta"><span>Progress pelaksanaan</span><span id="completionText">0 daripada 7 selesai</span></div><div class="track-progress"><div id="completionBar" style="width:0%"></div></div>
+            <div class="tracker" id="tracker" style="margin-top:16px"></div>
+            <h3>Hasil sebenar selepas 7 hari</h3><p class="lesson">Isi hanya apabila ada angka atau rekod. Jangan kaitkan semua jualan kepada Quick Fix tanpa bukti.</p>
+            <div class="metrics-grid" id="metricsArea"></div>
+            <div class="field" style="margin-top:14px"><label for="reviewNotes">Apa yang berlaku? Apa langkah seterusnya?</label><textarea id="reviewNotes" placeholder="Contoh: 3 daripada 5 pelanggan reply. Masih perlu uji mesej dengan sample lain."></textarea></div>
+            <hr class="divider">
+            <h3>Ringkasan untuk dibawa pulang</h3>
+            <div class="report" id="report"></div>
+            <div class="row wrap" style="margin-top:14px"><button type="button" class="btn primary" id="printBtn">Print / Save PDF</button><button type="button" class="btn outline" id="copyBtn">Copy ringkasan</button></div>
             <h3>Selepas sesi ini</h3>
+            <div class="surface programme" id="programmeDetails" hidden></div>
             <div class="field"><label for="nextStep">Pilihan anda</label><select id="nextStep"><option value="Bertindak sendiri dahulu">Cuba Quick Fix sendiri dahulu</option><option value="Maklumat programme berkaitan">Mahukan maklumat programme yang relevan</option><option value="Waitlist">Masuk waitlist</option><option value="Belum pasti">Belum pasti</option></select></div>
-            <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju dihubungi tentang programme Klinik Bisnes SME melalui fasilitator sesi ini. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
+            <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju menerima maklumat programme Klinik Bisnes SME melalui emel. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
           </section>
           <div id="globalMessage" class="message" role="status" aria-live="polite"></div>
           <nav class="footer-actions" aria-label="Navigasi langkah"><button type="button" class="btn secondary" id="prevBtn">← Sebelumnya</button><span class="spacer"></span><button type="button" class="btn primary" id="nextBtn">Seterusnya →</button></nav>
         </div>
         <div class="row wrap" style="margin-top:14px">
+          <button type="button" class="link-btn" id="exportBtn">Muat turun semua data saya (JSON)</button>
           <button type="button" class="link-btn" id="restartBtn">Mula semula</button>
-          <button type="button" class="link-btn danger" id="deleteBtn">Padam data sesi ini</button>
+          <button type="button" class="link-btn danger" id="deleteBtn">Padam akaun & data saya</button>
           <span class="spacer"></span><a class="link-btn" href="/privacy">Notis privasi</a>
         </div>
       </main>
     </div>
   </div>
+  <div id="print-area"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="/js/common.js"></script>
   <script type="module" src="/js/app.js"></script>

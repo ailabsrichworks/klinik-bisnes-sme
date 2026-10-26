@@ -244,12 +244,13 @@ async function logCall(userId, status, message) {
   if (error) console.error('[diagnose] could not log call', error.message);
 }
 
-// True when the caller has a journey in a session whose code has not expired.
+// True when the caller has a journey in a session (cohort) whose code is still valid.
 export async function activeSession(userId) {
   const { data, error } = await admin.from('journeys')
-    .select('id, cohorts!inner(active_until)').eq('user_id', userId).gt('cohorts.active_until', new Date().toISOString()).limit(1);
+    .select('id, cohorts!inner(active_until)').eq('user_id', userId);
   if (error) console.error('[diagnose] session check failed', error.message);
-  return !!data?.length;
+  const now = Date.now();
+  return (data || []).some((j) => !j.cohorts.active_until || new Date(j.cohorts.active_until).getTime() > now);
 }
 
 // Returns a message if the caller (or the whole site) has hit today's limit, else null.

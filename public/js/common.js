@@ -43,34 +43,9 @@ window.KB = (() => {
     return data;
   }
 
-  // Optional Cloudflare Turnstile. Supabase Auth checks the token when captcha protection is on there,
-  // and that setting covers every sign-in (participants' anonymous join and trainers' email login).
-  let captcha = { id: null, token: '' };
-  function loadTurnstile() {
-    if (window.turnstile) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      s.async = true; s.onload = resolve; s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-  async function renderCaptcha(containerId) {
-    if (!cfg?.turnstileSiteKey || captcha.id !== null) return;
-    await loadTurnstile();
-    captcha.id = window.turnstile.render(`#${containerId}`, {
-      sitekey: cfg.turnstileSiteKey,
-      language: 'ms',
-      callback: (t) => { captcha.token = t; },
-      'expired-callback': () => { captcha.token = ''; },
-    });
-  }
-  const captchaToken = () => captcha.token;
-  function resetCaptcha() { if (captcha.id !== null && window.turnstile) { window.turnstile.reset(captcha.id); captcha.token = ''; } }
-
-  // Trainer email sign-in: magic link, plus a 6-digit code for phones whose mail app opens links elsewhere.
+  // Trainer email sign-in (participants have no login): magic link, plus a 6-digit code for phones
+  // whose mail app opens links elsewhere. Never creates accounts; see scripts/add-trainer.mjs.
   function wireLogin({ redirectTo }) {
-    renderCaptcha('captchaBox');
     const form = $('loginForm');
     let sentTo = '';
     form.addEventListener('submit', async (e) => {
@@ -88,9 +63,7 @@ window.KB = (() => {
       const email = $('loginEmail').value.trim();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return message('loginMessage', 'Masukkan emel yang sah.', true);
       btn.disabled = true; btn.textContent = 'Menghantar…';
-      if (cfg.turnstileSiteKey && !captcha.token) { btn.disabled = false; btn.textContent = 'Hantar pautan log masuk'; return message('loginMessage', 'Sahkan anda bukan robot dahulu.', true); }
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo(), shouldCreateUser: false, ...(captcha.token ? { captchaToken: captcha.token } : {}) } });
-      resetCaptcha();
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo(), shouldCreateUser: false } });
       btn.disabled = false;
       if (error) {
         btn.textContent = 'Hantar pautan log masuk';
@@ -109,5 +82,5 @@ window.KB = (() => {
     });
   }
 
-  return { $, esc, message, show, init, session, api, wireLogin, renderCaptcha, captchaToken, resetCaptcha, get sb() { return sb; }, get cfg() { return cfg; } };
+  return { $, esc, message, show, init, session, api, wireLogin, get sb() { return sb; }, get cfg() { return cfg; } };
 })();
