@@ -555,6 +555,28 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   $('restartBtn').onclick = restart;
   $('deleteBtn').onclick = deleteAccount;
 
+  // Test data (localhost or ?demo): fills steps 1–2 with one case per issue; matches test/fixtures/sample-responses.json.
+  const owner = { businessActive: 'yes', ownerAuthority: 'yes', revenue: 'RM3,000 – bawah RM10,000', participant: 'Peserta Ujian' };
+  const DEMO = {
+    cost: { profile: { ...owner, business: 'Ain Tudung', product: 'Tudung bawal', customer: 'Wanita bekerja 25–40', channel: 'Shopee / Marketplace' }, evidenceText: 'Supplier RM12 sehelai, fee Shopee tak pasti.', costs: { sellingPrice: '25', materialCost: '12' } },
+    content: { profile: { ...owner, business: 'Kuih Siti', product: 'Kuih lapis', customer: 'Ibu sekitar Bangi', channel: 'Facebook / Instagram' }, evidenceText: 'Post sekali seminggu bila sempat. Satu post makan masa lama, tak pernah tengok insight.', content: { postsWeek: '1', hoursWeek: '6', hasContentPlan: 'no', tracksContent: 'no' } },
+    live: { profile: { ...owner, business: 'Butik Ain', product: 'Baju kurung moden', customer: 'Wanita 20–45', channel: 'TikTok / LIVE' }, evidenceText: 'LIVE Sabtu lepas, cutoff 48 jam. Invoice dihantar esoknya.', live: { liveExperience: 'yes', liveViewers: '180', liveClaims: '12', livePaid: '8', invoiceTiming: 'next_day' } },
+    unknown: { profile: { ...owner, business: 'Kek Mak Long', product: 'Kek pisang loaf', customer: 'Pejabat sekitar Shah Alam', channel: 'WhatsApp' }, evidenceText: 'Customer: Berapa harga kek pisang?\nSaya: RM35 sis.\nCustomer: Ok nanti saya fikir dulu.\n(tiada reply selepas itu)' },
+  };
+  if (['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo')) {
+    show('demoBar', true);
+    $$('[data-demo]').forEach((b) => {
+      b.onclick = () => {
+        const d = DEMO[b.dataset.demo];
+        state = { ...state, costs: {}, content: {}, live: {}, ...d, profile: { ...state.profile, ...d.profile, pain: b.dataset.demo } };
+        initFields(); toggleCosts();
+        $('privacyConfirm').checked = true;
+        safeSave(); go(1);
+        message('Data contoh diisi. Tekan “Jana Diagnosis Awal” untuk menguji.', false, 'evidenceMessage');
+      };
+    });
+  }
+
   // If there's no session after Supabase has read the URL, show sign-in.
   boot();
 })();
