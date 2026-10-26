@@ -26,6 +26,7 @@
       <h2 id="loginTitle">Log masuk dengan emel trainer.</h2>
       <form id="loginForm" novalidate>
         <div class="field"><label for="loginEmail">Emel</label><input id="loginEmail" type="email" autocomplete="email" required></div>
+        <div id="captchaBox"></div>
         <button type="submit" class="btn primary" id="loginBtn">Hantar pautan log masuk</button>
       </form>
       <div id="loginMessage" class="message" role="status" aria-live="polite"></div>
@@ -54,20 +55,26 @@
           <form id="cohortForm" class="row wrap" style="margin-top:10px;align-items:end">
             <div class="field"><label for="cCode">Kod (huruf besar)</label><input id="cCode" required maxlength="24" pattern="[A-Z0-9\-]{3,24}" placeholder="KL-NOV26"></div>
             <div class="field"><label for="cName">Nama sesi</label><input id="cName" required maxlength="80" placeholder="Dah Promote. Mana Sales? · KL"></div>
-            <div class="field"><label for="cDate">Tarikh</label><input id="cDate" type="date"></div>
+            <div class="field"><label for="cDate">Tarikh</label><input id="cDate" type="date" aria-describedby="cDateHint"></div>
+            <p class="hint" id="cDateHint">Kod tamat pada akhir hari selepas tarikh sesi (tanpa tarikh: 7 hari). Boleh diubah selepas dicipta.</p>
             <button type="submit" class="btn navy small">Cipta</button>
           </form>
         </details>
       </div>
       <p class="subtle">Pautan untuk peserta: <span class="join-link" id="joinLink">—</span></p>
+      <form id="expiryForm" class="row wrap expiry" hidden>
+        <span id="expiryState"></span>
+        <div class="field"><label for="activeUntil">Kod aktif sehingga</label><input id="activeUntil" type="datetime-local" required></div>
+        <button type="submit" class="btn outline small">Simpan</button>
+      </form>
       <div id="dashMessage" class="message" role="status" aria-live="polite"></div>
 
       <div class="counts" id="counts"></div>
       <p class="subtle" id="pathCounts"></p>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr><th>Peserta</th><th>Bisnes</th><th>Langkah</th><th>Pathway</th><th>Programme</th><th>Tracker</th><th>Hari 7</th><th>Kemas kini</th></tr></thead>
-          <tbody id="rows"><tr><td colspan="8">—</td></tr></tbody>
+          <thead><tr><th>Peserta</th><th>Bisnes</th><th>Langkah</th><th>Pathway</th><th>Programme</th><th>PDF</th><th>Kemas kini</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="7">—</td></tr></tbody>
         </table>
       </div>
       <section class="detail card" id="detail" hidden aria-live="polite"></section>

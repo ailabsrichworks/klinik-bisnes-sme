@@ -17,14 +17,15 @@ export const config = {
   claudeEffort: env.CLAUDE_EFFORT || 'medium',
 
   // Per participant per day, and across the whole site per day (cost guard).
-  dailyAiLimitPerUser: int(env.DAILY_AI_LIMIT_PER_USER, 8),
+  // Anonymous participants are free to create, so the per-user cap is low; the global cap is the real guard.
+  dailyAiLimitPerUser: int(env.DAILY_AI_LIMIT_PER_USER, 3),
   dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 400),
 
-  resendKey: env.RESEND_API_KEY || '',
-  emailFrom: env.EMAIL_FROM || '',
+  // Optional Cloudflare Turnstile. The secret key goes in Supabase Auth (captcha protection), not here.
+  turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
 
   // Bump when the privacy notice text changes; consents are recorded against it.
-  noticeVersion: env.NOTICE_VERSION || '2026-10-v1',
+  noticeVersion: env.NOTICE_VERSION || '2026-10-v2',
 };
 
 export function missingConfig() {

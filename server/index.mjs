@@ -3,8 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config, missingConfig } from './config.mjs';
 import { admin, userFromRequest } from './supabase.mjs';
-import { diagnose, limitReached, DiagnoseError } from './diagnose.mjs';
-import { startReminderLoop } from './reminders.mjs';
+import { diagnose, limitReached, activeSession, DiagnoseError } from './diagnose.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(here, '..', 'public');
@@ -19,7 +18,8 @@ if (missing.length) console.warn(`[config] missing: ${missing.join(', ')} — ${
 const supabaseOrigin = config.supabaseUrl ? new URL(config.supabaseUrl).origin : '';
 const csp = [
   "default-src 'self'",
-  "script-src 'self' https://cdn.jsdelivr.net",
+  "script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com",
+  "frame-src https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
@@ -82,11 +82,13 @@ app.get('/api/config', (_req, res) => {
     supabaseAnonKey: config.supabaseAnonKey,
     noticeVersion: config.noticeVersion,
     aiReady: Boolean(config.anthropicKey),
+    turnstileSiteKey: config.turnstileSiteKey || null,
   });
 });
 
 app.post('/api/diagnose', sameOrigin, ipLimit(20), express.json({ limit: '64kb' }), requireUser, async (req, res) => {
   try {
+    if (!(await activeSession(req.user.id))) return res.status(403).json({ error: 'Sesi ini sudah tamat atau pautan tidak sah. Dapatkan pautan baharu daripada fasilitator.' });
     const limit = await limitReached(req.user.id);
     if (limit) return res.status(429).json({ error: limit });
     const result = await diagnose({ userId: req.user.id, body: req.body || {} });
@@ -119,5 +121,4 @@ app.use((_req, res) => res.status(404).sendFile(path.join(publicDir, '404.html')
 
 app.listen(config.port, () => {
   console.log(`KBSME Quick Fix listening on :${config.port}`);
-  startReminderLoop();
 });

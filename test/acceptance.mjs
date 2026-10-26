@@ -1,6 +1,6 @@
 // Spec v3 §7 acceptance tests against the REAL AI backend (costs ~11 Claude calls).
 // Needs the dev server on PUBLIC_URL and .env loaded:  node --env-file=.env test/acceptance.mjs [T01 T05 ...]
-// Each test uses a throwaway @example.com user (created via the admin API, no email sent), deleted afterwards.
+// Each test uses a throwaway @example.com user (admin API, no email sent) in a throwaway session code; all deleted afterwards.
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -15,7 +15,7 @@ const owner = { business: 'Kek Pisang Mak Long', product: 'Kek pisang loaf', cha
 const PROGRAMME_WORDS = /RM\s?198|Kira Cost|Content Sebulan|Live Laris|kelas berbayar|kelas.{0,40}\bjam\b|\bjam\b.{0,40}kelas/i;
 const text = (r) => [r.title, r.reason, ...(r.observations || []), ...(r.unknowns || []), r.quickFix].join('\n');
 const taskText = (r) => (r.tasks || []).map((t) => `${t.title} | ${t.proof}`).join('\n');
-const PAID_CLASS = /30\s?(hari|idea)|kalendar (content )?(sebulan|30)|tiga senario|3 senario|harga minimum|rundown|skrip|\bSOP\b/i;
+const PAID_CLASS = /(kalendar|pelan|jadual)[^.]{0,25}30\s?hari|30\s?hari[^.]{0,15}(kalendar|content)|30\s?idea|kalendar (content )?(sebulan|30)|tiga senario|3 senario|harga minimum|rundown|skrip|\bSOP\b/i;
 const SELLING_ACTION = /terbit(kan)?\s|post(kan)?\s(satu|di)|(?<!pernah )buat LIVE|mula(kan)? LIVE|jalankan LIVE|hantar (mesej )?follow.?up|tawar(kan)?/i;
 // Tracker checks: 7 AI-written tasks, no paid-class deliverables; `own` = inputs that must appear; factFinding = no selling actions.
 const tracker = (r, { own, factFinding } = {}) => [
@@ -51,6 +51,14 @@ const TESTS = [
     expect: (r) => [r.pathway === 'content'], fit: 'ready', review: 'marketing opted out → no outreach; tracker continues' },
 ];
 
+let cohortId = null;
+async function testCohort() {
+  if (cohortId) return cohortId;
+  const { data, error } = await admin.from('cohorts').insert({ code: `TEST-${randomUUID().slice(0, 6).toUpperCase()}`, name: 'Acceptance test', active_until: new Date(Date.now() + 3600e3).toISOString() }).select('id').single();
+  if (error) throw error;
+  return (cohortId = data.id);
+}
+
 async function withUser(fn) {
   const sb = createClient(url, anon, { auth: { persistSession: false } });
   const email = `kbsme-accept-${randomUUID().slice(0, 8)}@example.com`;
@@ -60,7 +68,9 @@ async function withUser(fn) {
   const { data: sess, error } = await sb.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' });
   if (error) throw error;
   const uid = sess.user.id, token = sess.session.access_token;
-  try { return await fn({ sb, uid, token }); }
+  const { data: journey, error: jErr } = await sb.from('journeys').insert({ user_id: uid, cohort_id: await testCohort(), state: {} }).select('id').single();
+  if (jErr) throw jErr;
+  try { return await fn({ sb, uid, token, journeyId: journey.id }); }
   finally {
     // The app's own delete path first; the per-IP limit (5/min) can refuse it, so fall back to the admin API.
     const res = await fetch(BASE + '/api/me', { method: 'DELETE', headers: { authorization: `Bearer ${token}`, origin: BASE } });
@@ -73,10 +83,10 @@ async function withUser(fn) {
 }
 
 async function run(t) {
-  return withUser(async ({ sb, uid, token }) => {
+  return withUser(async ({ sb, uid, token, journeyId }) => {
     let evidence_file_id = null;
     if (t.file) {
-      const { data: j } = await sb.from('journeys').insert({ user_id: uid, state: {} }).select('id').single();
+      const j = { id: journeyId };
       const bytes = readFileSync(new URL(t.file[0], FIXTURES));
       const path = `${uid}/${randomUUID()}.${t.file[0].split('.').pop()}`;
       await sb.storage.from('evidence').upload(path, bytes, { contentType: t.file[1] });
@@ -107,5 +117,6 @@ for (const t of TESTS.filter((x) => !only.length || only.includes(x.id))) {
   console.log(`\n${pass ? 'PASS' : 'FAIL'} ${t.id} · HTTP ${r.httpStatus} · ${((Date.now() - t0) / 1000).toFixed(1)}s · checks ${r.checks.map((c) => (c ? '✓' : '✗')).join('')}${t.review ? `\n  review: ${t.review}` : ''}`);
   console.log(JSON.stringify(r.body, null, 2).split('\n').map((l) => '  ' + l).join('\n'));
 }
+if (cohortId) await admin.from('cohorts').delete().eq('id', cohortId);
 console.log('\nSUMMARY', results.map((r) => `${r.id}:${r.pass ? 'pass' : 'FAIL'}`).join(' '));
 process.exitCode = results.every((r) => r.pass) ? 0 : 1;
