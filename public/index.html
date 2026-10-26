@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#102f4a">
+  <meta name="description" content="Klinik Bisnes SME — Business Quick Fix: satu masalah, satu Quick Fix, tujuh hari tindakan.">
+  <title>Business Quick Fix · Klinik Bisnes SME</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23102f4a'/%3E%3Ctext x='16' y='21.5' font-family='Arial' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3EKB%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <a class="brand" href="/"><span class="logo" aria-hidden="true">KB</span><span><strong>Klinik Bisnes SME</strong><small>Richworks X Academy · Business Quick Fix</small></span></a>
+      <div class="account" id="accountBar" hidden>
+        <span class="who" id="whoAmI"></span>
+        <button type="button" class="btn outline small" id="signOutBtn">Log keluar</button>
+      </div>
+    </header>
+
+    <section class="hero" aria-labelledby="heroTitle">
+      <div>
+        <div class="eyebrow" id="cohortLabel">Dah Promote. Mana Sales? · Sesi kerja 2 jam</div>
+        <h1 id="heroTitle">Satu masalah. Satu Quick Fix. Tujuh hari.</h1>
+        <p>Tunjukkan contoh sebenar bisnes anda, semak diagnosis awal, siapkan satu pembetulan kecil, kemudian rekod apa yang betul-betul berlaku.</p>
+        <p class="fine">Ini bukan diagnosis bisnes penuh dan bukan jaminan sales naik. Buang data customer sebelum berkongsi.</p>
+      </div>
+      <div class="formula" aria-label="Formula sesi">
+        <div><b>1</b><span>isu yang paling dekat</span></div>
+        <div><b>1</b><span>pembetulan yang boleh diguna</span></div>
+        <div><b>7</b><span>hari untuk menguji</span></div>
+      </div>
+    </section>
+
+    <!-- ─── sign in ─── -->
+    <section class="gate" id="loginGate" hidden aria-labelledby="loginTitle">
+      <div class="kicker">Log masuk</div>
+      <h2 id="loginTitle">Masukkan emel untuk mula.</h2>
+      <p>Kami hantar pautan log masuk ke emel anda. Tiada password. Kerja anda disimpan supaya boleh disambung di telefon atau komputer lain.</p>
+      <form id="loginForm" novalidate>
+        <div class="field"><label for="loginEmail">Emel</label><input id="loginEmail" type="email" autocomplete="email" inputmode="email" required placeholder="nama@contoh.com"></div>
+        <button type="submit" class="btn primary" id="loginBtn">Hantar pautan log masuk</button>
+      </form>
+      <div id="loginMessage" class="message" role="status" aria-live="polite"></div>
+      <p class="small-print">Dengan log masuk, anda bersetuju dengan <a href="/privacy">notis privasi</a> kami.</p>
+    </section>
+
+    <!-- ─── privacy notice consent (first visit per notice version) ─── -->
+    <section class="gate" id="consentGate" hidden aria-labelledby="consentTitle">
+      <div class="kicker">Sebelum mula</div>
+      <h2 id="consentTitle">Bagaimana data anda digunakan.</h2>
+      <div class="notice-box">
+        <p><b>Ringkasan notis privasi</b></p>
+        <ul>
+          <li>Kami simpan maklumat bisnes, bukti dan tracker yang anda isi, untuk sesi ini dan susulan Hari 7.</li>
+          <li>Apabila anda tekan “Jana Diagnosis”, bukti dihantar kepada penyedia AI (Anthropic) untuk dianalisis.</li>
+          <li>Fasilitator sesi boleh melihat kemajuan anda untuk membantu semasa sesi.</li>
+          <li>Anda boleh muat turun atau padam semua data anda pada bila-bila masa.</li>
+        </ul>
+        <p><a href="/privacy" target="_blank" rel="noopener">Baca notis privasi penuh</a></p>
+      </div>
+      <label class="check-label"><input type="checkbox" id="noticeAccept"><span>Saya telah membaca notis privasi dan bersetuju data saya diproses seperti diterangkan.</span></label>
+      <button type="button" class="btn primary" id="consentBtn">Teruskan</button>
+      <div id="consentMessage" class="message" role="status" aria-live="polite"></div>
+    </section>
+
+    <div id="loadingGate" class="gate" aria-live="polite"><p>Memuatkan…</p></div>
+
+    <!-- ─── the five-step app ─── -->
+    <div class="main-layout" id="app" hidden>
+      <nav class="side" aria-label="Lima langkah">
+        <div class="side-title">5 langkah</div>
+        <button type="button" class="step-tab active" data-go="0"><span class="n">1</span><b>Bisnes Anda</b></button>
+        <button type="button" class="step-tab" data-go="1"><span class="n">2</span><b>Bukti Sebenar</b></button>
+        <button type="button" class="step-tab" data-go="2"><span class="n">3</span><b>Diagnosis</b></button>
+        <button type="button" class="step-tab" data-go="3"><span class="n">4</span><b>Quick Fix</b></button>
+        <button type="button" class="step-tab" data-go="4"><span class="n">5</span><b>Tracker 7 Hari</b></button>
+        <div class="side-bottom"><p id="saveState">Disimpan ke akaun anda.</p></div>
+      </nav>
+      <main class="workspace">
+        <div class="progress"><div><strong id="progressLabel">Langkah 1 / 5</strong><br><small id="progressDesc">Kenali bisnes</small></div><div class="bar"><div id="progressBar" class="bar-in"></div></div><strong id="progressPercent">20%</strong></div>
+        <div class="card">
+          <section class="panel active" id="panel0">
+            <div class="kicker">Langkah 01 · Ringkasan</div><h2>Bisnes anda, secara ringkas.</h2><p class="intro">Fokus pada satu produk atau servis utama sahaja. Nama customer, nombor telefon dan password tidak diperlukan.</p>
+            <div class="form-grid">
+              <div class="field"><label for="business">Nama bisnes <span class="required">*</span></label><input id="business" maxlength="100" placeholder="Contoh: Aina Frozen Food" autocomplete="organization"></div>
+              <div class="field"><label for="product">Produk / servis utama <span class="required">*</span></label><input id="product" maxlength="140" placeholder="Contoh: Frozen food ready-to-cook"></div>
+              <div class="field"><label for="customer">Customer utama</label><input id="customer" maxlength="160" placeholder="Contoh: Ibu bekerja sekitar Bangi"></div>
+              <div class="field"><label for="channel">Channel jualan utama</label><select id="channel"><option value="">Pilih channel</option><option>WhatsApp</option><option>TikTok / LIVE</option><option>Facebook / Instagram</option><option>Shopee / Marketplace</option><option>Kedai / Booth</option><option>Referral</option><option>Lain-lain</option></select></div>
+              <div class="field"><label for="revenue">Purata revenue sebulan</label><select id="revenue"><option value="">Pilih jika tahu</option><option>Pre-revenue</option><option>Bawah RM3,000</option><option>RM3,000 – bawah RM10,000</option><option>RM10,000 – bawah RM30,000</option><option>RM30,000 ke atas</option></select></div>
+              <div class="field"><label for="participant">Nama anda (untuk laporan)</label><input id="participant" maxlength="100" placeholder="Nama panggilan pun boleh" autocomplete="name"></div>
+            </div>
+            <h3>Apakah isu yang paling dekat sekarang?</h3>
+            <div class="choice-grid" id="painChoices" role="radiogroup" aria-label="Isu utama">
+              <label class="choice"><input type="radio" name="pain" value="attraction"><span class="choice-body"><strong>Content ada, enquiry kurang</strong><small>Poster, caption atau offer belum menarik tindakan.</small></span></label>
+              <label class="choice"><input type="radio" name="pain" value="follow"><span class="choice-body"><strong>Customer tanya, conversation berhenti</strong><small>WhatsApp atau follow-up tidak bergerak.</small></span></label>
+              <label class="choice"><input type="radio" name="pain" value="cost"><span class="choice-body"><strong>Sales ada, untung tidak jelas</strong><small>Harga, kos atau baki satu jualan belum pasti.</small></span></label>
+              <label class="choice"><input type="radio" name="pain" value="unknown"><span class="choice-body"><strong>Saya belum pasti</strong><small>Kita tentukan bukti apa yang perlu dilihat dahulu.</small></span></label>
+            </div>
+            <div class="tip neutral">Pilih satu isu untuk sesi ini. Jika isu sebenar berbeza, anda boleh tukar selepas membaca diagnosis.</div>
+          </section>
+
+          <section class="panel" id="panel1">
+            <div class="kicker">Langkah 02 · Bukti</div><h2>Tunjukkan satu contoh sebenar.</h2><p class="intro">Tampal caption, mesej yang sudah dipadam identiti, atau angka kos. Anda juga boleh lampirkan satu screenshot atau fail. Fokus kepada satu bukti, bukan semua masalah bisnes.</p>
+            <div class="field"><label for="evidenceText">Copy-paste bukti atau terangkan keadaan</label><textarea id="evidenceText" maxlength="9500" style="min-height:160px" placeholder="Contoh: Customer tanya ‘Berapa harga?’ Saya balas ‘RM89 sis, berminat?’ Lepas itu tiada reply."></textarea><p class="hint">Buang nama penuh, telefon, alamat, nombor akaun dan data pelanggan lain sebelum tampal.</p></div>
+            <div class="upload"><strong>Atau lampirkan bukti anda</strong><p>PNG, JPG, WEBP, TXT, CSV atau PDF · maksimum 4MB · satu fail</p><input id="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,text/plain,text/csv,application/pdf,.txt,.csv,.pdf" aria-label="Lampirkan fail bukti"><div id="fileStatus" class="subtle" style="margin-top:9px">Belum ada fail dipilih.</div><img class="preview" id="filePreview" alt="Pratonton imej yang dilampirkan"></div>
+            <div id="costInputs" hidden>
+              <hr class="divider"><h3>Maklumat harga & kos</h3><p class="subtle">Masukkan nilai yang diketahui. Biarkan kosong jika tidak tahu — kos kosong tidak dianggap RM0.</p>
+              <div class="costtable">
+                <label for="sellingPrice">Harga jualan / unit (RM)</label><input id="sellingPrice" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+                <label for="materialCost">Kos bahan / produk (RM)</label><input id="materialCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+                <label for="packagingCost">Packaging (RM)</label><input id="packagingCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+                <label for="deliveryCost">Delivery ditanggung (RM)</label><input id="deliveryCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+                <label for="platformCost">Fee / komisen (RM)</label><input id="platformCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+                <label for="promotionCost">Promotion per sale (RM)</label><input id="promotionCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+                <label for="otherCost">Kos langsung lain (RM)</label><input id="otherCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
+              </div>
+              <div class="resultbox"><div><small>Anggaran baki sementara</small><div style="font-size:12px;opacity:.85">Bukan net profit</div></div><b id="provisionalBalance">Belum boleh dikira</b></div>
+              <div class="subtle" id="missingCosts"></div>
+            </div>
+            <label class="check-label"><input type="checkbox" id="privacyConfirm"><span>Saya telah membuang maklumat customer yang boleh dikenal pasti, saya berhak menggunakan bahan ini, dan saya benarkan ia dihantar kepada AI untuk dianalisis.</span></label>
+            <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
+            <button type="button" class="btn navy" id="diagnoseBtn">Jana Diagnosis Awal →</button>
+          </section>
+
+          <section class="panel" id="panel2">
+            <div class="kicker">Langkah 03 · Diagnosis</div><h2>Ini isu yang perlu diuji dahulu.</h2><p class="intro">AI memberi diagnosis <b>awal</b> berdasarkan input anda. Anda yang sahkan sama ada ia sesuai dengan keadaan bisnes sebenar.</p>
+            <div id="diagnosticEmpty" class="tip neutral">Belum ada diagnosis. Lengkapkan bukti pada Langkah 2 dan tekan “Jana Diagnosis Awal”.</div>
+            <div id="diagnosticContent" hidden>
+              <div class="row wrap"><span id="diagMode" class="status">AI · semak semula</span><span id="diagStrength" class="status warn">Bukti terhad</span></div>
+              <div class="diagnosis"><div class="kicker">Keutamaan cadangan</div><div class="big" id="diagTitle"></div><p id="diagReason" style="font-size:14px;margin:8px 0 0"></p>
+                <div class="two-col" style="margin-top:16px"><div class="surface"><h4>Perkara yang diperhatikan</h4><ul id="diagObserved"></ul></div><div class="surface"><h4>Belum tahu / perlu disahkan</h4><ul id="diagUnknown"></ul></div></div>
+              </div>
+              <h3>Sahkan diagnosis anda</h3><div class="field"><label for="pathwaySelect">Pathway yang hendak diperbaiki</label><select id="pathwaySelect"><option value="attraction">Customer Attraction</option><option value="follow">Follow Up & Closing</option><option value="cost">Cost, Price & Profit</option><option value="missing">Missing Information</option></select></div>
+              <label class="check-label"><input type="checkbox" id="confirmDiagnosis"><span>Saya faham ini diagnosis awal. Saya pilih satu keutamaan berdasarkan bukti saya, bukan jaminan bahawa inilah punca tunggal sales perlahan.</span></label>
+              <div class="tip good">Seterusnya: satu pembetulan kecil yang boleh disemak dan digunakan dalam bisnes sebenar.</div>
+            </div>
+          </section>
+
+          <section class="panel" id="panel3">
+            <div class="kicker">Langkah 04 · Bina</div><h2>Siapkan satu Quick Fix.</h2><p class="intro">Semak dan edit hasil supaya sesuai dengan pelanggan, offer, harga dan bukti bisnes sendiri.</p>
+            <div class="row wrap"><span class="status" id="fixPath">Pathway</span><span class="subtle">Hasil ini boleh diedit.</span></div>
+            <div class="two-col" style="margin-top:14px">
+              <div class="surface"><h4>Bukti asal</h4><p id="originalEvidence"></p></div>
+              <div class="surface"><h4>Apa yang perlu diperbaiki</h4><p id="fixExplanation"></p></div>
+            </div>
+            <div class="field" style="margin-top:18px"><label for="quickFixEditor">Quick Fix anda <span class="required">*</span></label><textarea id="quickFixEditor" class="editor" maxlength="6000" placeholder="Versi akhir yang siap digunakan"></textarea><div class="hint">Semua placeholder [ ... ] mesti diisi sendiri. AI tidak patut mereka manfaat atau fakta bisnes.</div></div>
+            <h3>Semakan kualiti sebelum guna</h3>
+            <label class="check-label"><input type="checkbox" id="quality1"><span>Saya telah semak fakta, angka dan kesesuaian Quick Fix.</span></label>
+            <label class="check-label"><input type="checkbox" id="quality2"><span>Saya tahu kepada siapa / untuk produk mana Quick Fix ini digunakan.</span></label>
+            <label class="check-label"><input type="checkbox" id="quality3"><span>Saya tahu bukti apa yang hendak direkod selepas digunakan.</span></label>
+            <div class="tip neutral">Quick Fix yang siap bukan bukti sales sudah naik. Kita semak hasil selepas tindakan sebenar.</div>
+          </section>
+
+          <section class="panel" id="panel4">
+            <div class="kicker">Langkah 05 · Laksana</div><h2>Tracker tindakan tujuh hari.</h2><p class="intro">Tujuh langkah kecil untuk menguji <b>satu</b> Quick Fix, bukan tujuh projek baharu. Kami akan emel anda pada Hari 7 untuk isi hasil.</p>
+            <div class="track-meta"><span>Progress pelaksanaan</span><span id="completionText">0 daripada 7 selesai</span></div><div class="track-progress"><div id="completionBar" style="width:0%"></div></div>
+            <div class="tracker" id="tracker" style="margin-top:16px"></div>
+            <h3>Hasil sebenar selepas 7 hari</h3><p class="lesson">Isi hanya apabila ada angka atau rekod. Jangan kaitkan semua jualan kepada Quick Fix tanpa bukti.</p>
+            <div class="metrics-grid" id="metricsArea"></div>
+            <div class="field" style="margin-top:14px"><label for="reviewNotes">Apa yang berlaku? Apa langkah seterusnya?</label><textarea id="reviewNotes" placeholder="Contoh: 3 daripada 5 pelanggan reply. Masih perlu uji mesej dengan sample lain."></textarea></div>
+            <hr class="divider">
+            <h3>Ringkasan untuk dibawa pulang</h3>
+            <div class="report" id="report"></div>
+            <div class="row wrap" style="margin-top:14px"><button type="button" class="btn primary" id="printBtn">Print / Save PDF</button><button type="button" class="btn outline" id="copyBtn">Copy ringkasan</button></div>
+            <h3>Selepas sesi ini</h3>
+            <div class="field"><label for="nextStep">Pilihan anda</label><select id="nextStep"><option value="Bertindak sendiri dahulu">Cuba Quick Fix sendiri dahulu</option><option value="Maklumat programme berkaitan">Mahukan maklumat programme yang relevan</option><option value="Waitlist">Masuk waitlist</option><option value="Belum pasti">Belum pasti</option></select></div>
+            <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju menerima maklumat programme Klinik Bisnes SME melalui emel. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
+          </section>
+          <div id="globalMessage" class="message" role="status" aria-live="polite"></div>
+          <nav class="footer-actions" aria-label="Navigasi langkah"><button type="button" class="btn secondary" id="prevBtn">← Sebelumnya</button><span class="spacer"></span><button type="button" class="btn primary" id="nextBtn">Seterusnya →</button></nav>
+        </div>
+        <div class="row wrap" style="margin-top:14px">
+          <button type="button" class="link-btn" id="exportBtn">Muat turun semua data saya (JSON)</button>
+          <button type="button" class="link-btn" id="restartBtn">Mula semula</button>
+          <button type="button" class="link-btn danger" id="deleteBtn">Padam akaun & data saya</button>
+          <span class="spacer"></span><a class="link-btn" href="/privacy">Notis privasi</a>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div id="print-area"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
