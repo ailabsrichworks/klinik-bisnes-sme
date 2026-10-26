@@ -93,12 +93,14 @@
               <div class="field"><label for="channel">Channel jualan utama</label><select id="channel"><option value="">Pilih channel</option><option>WhatsApp</option><option>TikTok / LIVE</option><option>Facebook / Instagram</option><option>Shopee / Marketplace</option><option>Kedai / Booth</option><option>Referral</option><option>Lain-lain</option></select></div>
               <div class="field"><label for="revenue">Purata revenue sebulan</label><select id="revenue"><option value="">Pilih jika tahu</option><option>Pre-revenue</option><option>Bawah RM3,000</option><option>RM3,000 – bawah RM10,000</option><option>RM10,000 – bawah RM30,000</option><option>RM30,000 ke atas</option></select></div>
               <div class="field"><label for="participant">Nama anda (untuk laporan)</label><input id="participant" maxlength="100" placeholder="Nama panggilan pun boleh" autocomplete="name"></div>
+              <div class="field"><label for="businessActive">Bisnes aktif sekarang?</label><select id="businessActive"><option value="">Belum dipilih</option><option value="yes">Ya, sedang berniaga</option><option value="no">Belum / tidak aktif</option></select></div>
+              <div class="field"><label for="ownerAuthority">Anda boleh buat keputusan bisnes?</label><select id="ownerAuthority"><option value="">Belum dipilih</option><option value="yes">Ya, owner / decision-maker</option><option value="no">Bukan decision-maker</option></select></div>
             </div>
             <h3>Apakah isu yang paling dekat sekarang?</h3>
             <div class="choice-grid" id="painChoices" role="radiogroup" aria-label="Isu utama">
-              <label class="choice"><input type="radio" name="pain" value="attraction"><span class="choice-body"><strong>Content ada, enquiry kurang</strong><small>Poster, caption atau offer belum menarik tindakan.</small></span></label>
-              <label class="choice"><input type="radio" name="pain" value="follow"><span class="choice-body"><strong>Customer tanya, conversation berhenti</strong><small>WhatsApp atau follow-up tidak bergerak.</small></span></label>
-              <label class="choice"><input type="radio" name="pain" value="cost"><span class="choice-body"><strong>Sales ada, untung tidak jelas</strong><small>Harga, kos atau baki satu jualan belum pasti.</small></span></label>
+              <label class="choice"><input type="radio" name="pain" value="cost"><span class="choice-body"><strong>Sales ada, untung tidak jelas</strong><small>Harga, kos, fee atau baki satu jualan belum pasti.</small></span></label>
+              <label class="choice"><input type="radio" name="pain" value="content"><span class="choice-body"><strong>Content tak konsisten atau makan masa</strong><small>Tiada rutin, tiada jadual, atau tak pernah semak hasil post.</small></span></label>
+              <label class="choice"><input type="radio" name="pain" value="live"><span class="choice-body"><strong>Saya dah LIVE, tapi claim tak jadi bayar</strong><small>Untuk yang sudah menjual melalui LIVE sahaja.</small></span></label>
               <label class="choice"><input type="radio" name="pain" value="unknown"><span class="choice-body"><strong>Saya belum pasti</strong><small>Kita tentukan bukti apa yang perlu dilihat dahulu.</small></span></label>
             </div>
             <div class="tip neutral">Pilih satu isu untuk sesi ini. Jika isu sebenar berbeza, anda boleh tukar selepas membaca diagnosis.</div>
@@ -122,6 +124,26 @@
               <div class="resultbox"><div><small>Anggaran baki sementara</small><div style="font-size:12px;opacity:.85">Bukan net profit</div></div><b id="provisionalBalance">Belum boleh dikira</b></div>
               <div class="subtle" id="missingCosts"></div>
             </div>
+            <div id="contentInputs" hidden>
+              <hr class="divider"><h3>Rutin content anda</h3><p class="subtle">Isi apa yang anda tahu tentang tujuh hari lepas. Biarkan kosong jika tidak pasti.</p>
+              <div class="form-grid">
+                <div class="field"><label for="postsWeek">Post diterbitkan (7 hari lepas)</label><input id="postsWeek" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
+                <div class="field"><label for="hoursWeek">Jam untuk content seminggu</label><input id="hoursWeek" type="number" inputmode="decimal" min="0" step="0.5" placeholder="Belum tahu"></div>
+                <div class="field"><label for="hasContentPlan">Ada kalendar / jadual content?</label><select id="hasContentPlan"><option value="">Belum tahu</option><option value="yes">Ya</option><option value="no">Tiada</option></select></div>
+                <div class="field"><label for="tracksContent">Semak reach / save / enquiry?</label><select id="tracksContent"><option value="">Belum tahu</option><option value="yes">Ya</option><option value="no">Tidak</option></select></div>
+              </div>
+            </div>
+            <div id="liveInputs" hidden>
+              <hr class="divider"><h3>Rekod LIVE anda</h3><p class="subtle">Claims dan paid orders mesti dari sesi LIVE dan tempoh pemantauan yang sama.</p>
+              <div class="form-grid">
+                <div class="field"><label for="liveExperience">Pernah menjual melalui LIVE?</label><select id="liveExperience"><option value="">Pilih jawapan</option><option value="yes">Ya, saya sudah LIVE menjual</option><option value="no">Belum pernah LIVE menjual</option></select></div>
+                <div class="field"><label for="invoiceTiming">Bila invoice / payment link dihantar?</label><select id="invoiceTiming"><option value="">Belum direkod</option><option value="during">Semasa LIVE / segera</option><option value="same_day">Pada hari yang sama</option><option value="next_day">Hari berikutnya / lewat</option></select></div>
+                <div class="field"><label for="liveViewers">Unique viewers (satu sesi)</label><input id="liveViewers" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
+                <div class="field"><label for="liveClaims">Claims (sesi yang sama)</label><input id="liveClaims" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
+                <div class="field"><label for="livePaid">Paid orders (cohort yang sama)</label><input id="livePaid" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
+              </div>
+              <div class="tip neutral" id="liveSnapshot">Data belum mencukupi.</div>
+            </div>
             <label class="check-label"><input type="checkbox" id="privacyConfirm"><span>Saya telah membuang maklumat customer yang boleh dikenal pasti, saya berhak menggunakan bahan ini, dan saya benarkan ia dihantar kepada AI untuk dianalisis.</span></label>
             <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
             <button type="button" class="btn navy" id="diagnoseBtn">Jana Diagnosis Awal →</button>
@@ -135,9 +157,10 @@
               <div class="diagnosis"><div class="kicker">Keutamaan cadangan</div><div class="big" id="diagTitle"></div><p id="diagReason" style="font-size:14px;margin:8px 0 0"></p>
                 <div class="two-col" style="margin-top:16px"><div class="surface"><h4>Perkara yang diperhatikan</h4><ul id="diagObserved"></ul></div><div class="surface"><h4>Belum tahu / perlu disahkan</h4><ul id="diagUnknown"></ul></div></div>
               </div>
-              <h3>Sahkan diagnosis anda</h3><div class="field"><label for="pathwaySelect">Pathway yang hendak diperbaiki</label><select id="pathwaySelect"><option value="attraction">Customer Attraction</option><option value="follow">Follow Up & Closing</option><option value="cost">Cost, Price & Profit</option><option value="missing">Missing Information</option></select></div>
+              <h3>Sahkan diagnosis anda</h3><div class="field"><label for="pathwaySelect">Pathway yang hendak diperbaiki</label><select id="pathwaySelect"><option value="cost">Cash Flow / Profit · Kos &amp; Harga</option><option value="content">Marketing · Sistem Content</option><option value="live">Sales · LIVE</option><option value="missing">Missing Information</option></select></div>
               <label class="check-label"><input type="checkbox" id="confirmDiagnosis"><span>Saya faham ini diagnosis awal. Saya pilih satu keutamaan berdasarkan bukti saya, bukan jaminan bahawa inilah punca tunggal sales perlahan.</span></label>
-              <div class="tip good">Seterusnya: satu pembetulan kecil yang boleh disemak dan digunakan dalam bisnes sebenar.</div>
+              <div class="tip good">Seterusnya: satu Quick Win kecil yang boleh disemak dan digunakan dalam bisnes sebenar.</div>
+              <div class="surface programme" id="programmePreview" hidden></div>
             </div>
           </section>
 
@@ -168,6 +191,7 @@
             <div class="report" id="report"></div>
             <div class="row wrap" style="margin-top:14px"><button type="button" class="btn primary" id="printBtn">Print / Save PDF</button><button type="button" class="btn outline" id="copyBtn">Copy ringkasan</button></div>
             <h3>Selepas sesi ini</h3>
+            <div class="surface programme" id="programmeDetails" hidden></div>
             <div class="field"><label for="nextStep">Pilihan anda</label><select id="nextStep"><option value="Bertindak sendiri dahulu">Cuba Quick Fix sendiri dahulu</option><option value="Maklumat programme berkaitan">Mahukan maklumat programme yang relevan</option><option value="Waitlist">Masuk waitlist</option><option value="Belum pasti">Belum pasti</option></select></div>
             <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju menerima maklumat programme Klinik Bisnes SME melalui emel. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
           </section>
@@ -186,6 +210,6 @@
   <div id="print-area"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="/js/common.js"></script>
-  <script src="/js/app.js"></script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>

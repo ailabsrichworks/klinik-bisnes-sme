@@ -113,7 +113,8 @@ app.delete('/api/me', sameOrigin, ipLimit(5), requireUser, async (req, res) => {
   }
 });
 
-app.use(express.static(publicDir, { extensions: ['html'], maxAge: '1h' }));
+// Revalidate every load (ETag → 304) so a deploy never mixes old scripts with new pages.
+app.use(express.static(publicDir, { extensions: ['html'], maxAge: 0 }));
 app.use((_req, res) => res.status(404).sendFile(path.join(publicDir, '404.html')));
 
 app.listen(config.port, () => {

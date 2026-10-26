@@ -2,7 +2,10 @@
 (async () => {
   'use strict';
   const { $, esc, message, show } = KB;
-  const pathLabels = { attraction: 'Attraction', follow: 'Follow Up', cost: 'Cost & Price', missing: 'Missing Info' };
+  const pathLabels = { cost: 'Kos & Harga', content: 'Content', live: 'LIVE', missing: 'Missing Info' };
+  const fitLabels = { ready: ['Layak, bersyarat', 'teal'], pending: ['Perlu sahkan', ''], withheld: ['Tidak ditawarkan', 'brick'] };
+  const progLabels = { cost: 'Kira Cost', content: 'Content Sebulan', live: 'Live Laris' };
+  const interested = (r) => r.course_interest === 'Maklumat programme berkaitan' || r.course_interest === 'Waitlist';
   const stepNames = ['Bisnes', 'Bukti', 'Diagnosis', 'Quick Fix', 'Tracker'];
   let rows = [], cohorts = [], booted = false;
 
@@ -42,7 +45,7 @@
     const c = cohorts.find((x) => x.id === cohortId);
     $('dashTitle').textContent = c ? c.name : 'Peserta tanpa sesi';
     $('joinLink').textContent = c ? `${location.origin}/?c=${c.code}` : '—';
-    let q = sb.from('journeys').select('id, state, business_name, pathway, step, tasks_done, tracker_started_at, day7_reminder_sent_at, updated_at, profiles(email, full_name)').order('updated_at', { ascending: false });
+    let q = sb.from('journeys').select('id, state, business_name, pathway, programme, programme_status, course_interest, marketing_opt_in, step, tasks_done, tracker_started_at, day7_reminder_sent_at, updated_at, profiles(email, full_name)').order('updated_at', { ascending: false });
     q = cohortId ? q.eq('cohort_id', cohortId) : q.is('cohort_id', null);
     const { data, error } = await q;
     if (error) return message('dashMessage', 'Data peserta gagal dimuatkan.', true);
@@ -59,17 +62,22 @@
     const fix = rows.filter((r) => r.step >= 4).length;
     const tracking = rows.filter((r) => r.tasks_done > 0).length;
     const day7 = rows.filter(hasDay7).length;
-    $('counts').innerHTML = [[n, 'peserta'], [diag, 'ada diagnosis'], [fix, 'Quick Fix siap'], [tracking, 'mula tracker'], [day7, 'isi hasil Hari 7']]
+    const byPath = ['cost', 'content', 'live', 'missing'].map((p) => `${pathLabels[p]} ${rows.filter((r) => r.pathway === p).length}`).join(' · ');
+    const ready = rows.filter((r) => r.programme_status === 'ready').length;
+    const qualifiedInterest = rows.filter((r) => r.programme_status === 'ready' && interested(r)).length;
+    $('counts').innerHTML = [[n, 'peserta'], [diag, 'ada diagnosis'], [fix, 'Quick Fix siap'], [tracking, 'mula tracker'], [day7, 'isi hasil Hari 7'], [ready, 'layak programme (bersyarat)'], [qualifiedInterest, 'layak + berminat']]
       .map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+    $('pathCounts').textContent = diag ? `Pathway: ${byPath}` : '';
   }
 
   function drawRows() {
-    if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="7">Belum ada peserta. Kongsi pautan sesi di atas.</td></tr>'; return; }
+    if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="8">Belum ada peserta. Kongsi pautan sesi di atas.</td></tr>'; return; }
     $('rows').innerHTML = rows.map((r, i) => `<tr data-i="${i}" tabindex="0">
       <td>${esc(r.profiles?.full_name || r.state?.profile?.participant || '—')}<br><span class="subtle">${esc(r.profiles?.email || '')}</span></td>
       <td>${esc(r.business_name || '—')}<br><span class="subtle">${esc(r.state?.profile?.product || '')}</span></td>
       <td>${r.step + 1}. ${stepNames[r.step]}</td>
       <td>${r.pathway ? `<span class="pill teal">${esc(pathLabels[r.pathway] || r.pathway)}</span>` : '—'}</td>
+      <td>${fitCell(r)}</td>
       <td>${r.tasks_done}/7</td>
       <td>${hasDay7(r) ? '<span class="pill teal">Diisi</span>' : r.day7_reminder_sent_at ? '<span class="pill">Emel dihantar</span>' : '—'}</td>
       <td class="subtle">${new Date(r.updated_at).toLocaleString('ms-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td></tr>`).join('');
@@ -78,6 +86,13 @@
       tr.onclick = open;
       tr.onkeydown = (e) => { if (e.key === 'Enter') open(); };
     });
+  }
+
+  function fitCell(r) {
+    const f = fitLabels[r.programme_status];
+    if (!f) return '—';
+    const interest = interested(r) ? '<br><span class="subtle">Berminat</span>' : '';
+    return `<span class="pill ${f[1]}">${esc(f[0])}</span>${r.programme ? `<br><span class="subtle">${esc(progLabels[r.programme] || r.programme)}</span>` : ''}${interest}`;
   }
 
   function drawDetail(r) {
@@ -89,6 +104,8 @@
         <div class="surface"><h4>Bukti</h4><p>${esc((s.evidenceText || '').slice(0, 1200) || (s.evidenceFile ? 'Lampiran: ' + s.evidenceFile.name : '—'))}</p></div>
         <div class="surface"><h4>Diagnosis ${d?.origin === 'ai' ? '(AI)' : ''}</h4><p>${d ? esc(`${d.title}\n${d.reason}`) : '—'}</p></div>
       </div>
+      <p class="subtle">Bisnes aktif: ${esc(s.profile?.businessActive || '—')} · Owner: ${esc(s.profile?.ownerAuthority || '—')} · Revenue: ${esc(s.profile?.revenue || '—')} · LIVE: ${esc(s.live?.liveExperience || '—')}</p>
+      <p class="subtle">Pilihan selepas sesi: ${esc(r.course_interest || '—')} · Consent marketing: ${r.marketing_opt_in ? 'Ya' : 'Tidak'}</p>
       <h3>Quick Fix</h3><div class="surface"><p>${esc(s.quickFix || '—')}</p></div>
       <h3>Tracker</h3><ul class="subtle">${tasks || '<li>Belum mula</li>'}</ul>
       <h3>Hasil Hari 7</h3><p>${(s.metrics || []).map((m) => esc(m || '—')).join(' · ')}</p><p>${esc(s.reviewNotes || '')}</p>`;
@@ -97,11 +114,11 @@
   }
 
   function csv() {
-    const head = ['email', 'nama', 'bisnes', 'produk', 'isu', 'pathway', 'langkah', 'tracker_selesai', 'metrik1', 'metrik2', 'metrik3', 'pilihan_seterusnya', 'kemas_kini'];
+    const head = ['email', 'nama', 'bisnes', 'produk', 'isu', 'pathway', 'programme', 'status_programme', 'bisnes_aktif', 'owner', 'revenue', 'pengalaman_live', 'langkah', 'tracker_selesai', 'metrik1', 'metrik2', 'metrik3', 'pilihan_seterusnya', 'consent_marketing', 'kemas_kini'];
     const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = rows.map((r) => {
       const s = r.state || {};
-      return [r.profiles?.email, r.profiles?.full_name || s.profile?.participant, r.business_name, s.profile?.product, s.profile?.pain, r.pathway, r.step + 1, r.tasks_done, ...(s.metrics || ['', '', '']), s.nextStep, r.updated_at].map(cell).join(',');
+      return [r.profiles?.email, r.profiles?.full_name || s.profile?.participant, r.business_name, s.profile?.product, s.profile?.pain, r.pathway, r.programme, r.programme_status, s.profile?.businessActive, s.profile?.ownerAuthority, s.profile?.revenue, s.live?.liveExperience, r.step + 1, r.tasks_done, ...(s.metrics || ['', '', '']), r.course_interest, r.marketing_opt_in ? 'ya' : 'tidak', r.updated_at].map(cell).join(',');
     });
     const blob = new Blob(['﻿' + [head.join(','), ...lines].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `kbsme_${$('cohortSelect').selectedOptions[0]?.text || 'peserta'}.csv`; a.click();

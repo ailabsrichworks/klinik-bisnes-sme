@@ -1,4 +1,6 @@
 // Participant app: five steps, saved to the participant's Supabase journey row.
+import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit } from './rules.mjs';
+
 (async () => {
   'use strict';
   const { $, esc: scrub, message: msg, show } = KB;
@@ -8,13 +10,10 @@
   const CACHE_KEY = 'kbsme_quick_fix_cache_v3';
   const COHORT_KEY = 'kbsme_cohort_code';
 
-  const costKeys = ['sellingPrice', 'materialCost', 'packagingCost', 'deliveryCost', 'platformCost', 'promotionCost', 'otherCost'];
-  const costLabels = ['Harga jualan', 'Kos bahan / produk', 'Packaging', 'Delivery ditanggung', 'Platform fee / komisen', 'Promotion per sale', 'Kos langsung lain'];
   const stepNames = ['Kenali bisnes', 'Tunjukkan bukti', 'Diagnosis awal', 'Bina Quick Fix', 'Pelaksanaan 7 hari'];
-  const pathLabels = { attraction: 'Customer Attraction', follow: 'Follow Up & Closing', cost: 'Cost, Price & Profit', missing: 'Missing Information' };
   const blank = () => ({
-    profile: { business: '', product: '', customer: '', channel: '', revenue: '', participant: '', pain: '' },
-    evidenceText: '', costs: {}, evidenceFile: null, diagnosis: null, pathway: '', confirmed: false, quickFix: '',
+    profile: { business: '', product: '', customer: '', channel: '', revenue: '', participant: '', businessActive: '', ownerAuthority: '', pain: '' },
+    evidenceText: '', costs: {}, content: {}, live: {}, evidenceFile: null, programme: null, diagnosis: null, pathway: '', confirmed: false, quickFix: '',
     quality: [false, false, false], tasks: [], metrics: ['', '', ''], reviewNotes: '',
     nextStep: 'Bertindak sendiri dahulu', marketingConsent: false, trackerStartedAt: null,
   });
@@ -105,7 +104,7 @@
       journey = data;
     }
     const obj = journey.state || {};
-    state = { ...blank(), ...obj, profile: { ...blank().profile, ...(obj.profile || {}) }, costs: obj.costs || {} };
+    state = { ...blank(), ...obj, profile: { ...blank().profile, ...(obj.profile || {}) }, costs: obj.costs || {}, content: obj.content || {}, live: obj.live || {} };
   }
 
   function guessStep() {
@@ -127,6 +126,8 @@
   }
   function pushRemote() {
     if (!journey) return;
+    const fit = currentFit();
+    state.programme = state.diagnosis ? { status: fit.status, key: fit.key } : null;
     const payload = {
       state,
       pathway: state.diagnosis ? currentPath() : null,
@@ -155,10 +156,12 @@
   const currentPath = () => state.pathway || state.diagnosis?.pathway || 'missing';
 
   function dataFromForm() {
-    ['business', 'product', 'customer', 'channel', 'revenue', 'participant'].forEach((k) => { state.profile[k] = $(k).value.trim(); });
+    ['business', 'product', 'customer', 'channel', 'revenue', 'participant', 'businessActive', 'ownerAuthority'].forEach((k) => { state.profile[k] = $(k).value.trim(); });
     state.profile.pain = document.querySelector('[name="pain"]:checked')?.value || '';
     state.evidenceText = $('evidenceText').value;
     costKeys.forEach((k) => { state.costs[k] = $(k).value; });
+    CONTENT_KEYS.forEach((k) => { state.content[k] = $(k).value; });
+    LIVE_KEYS.forEach((k) => { state.live[k] = $(k).value; });
     state.confirmed = $('confirmDiagnosis').checked;
     state.quickFix = $('quickFixEditor').value;
     state.quality = ['quality1', 'quality2', 'quality3'].map((k) => $(k).checked);
@@ -170,10 +173,12 @@
   }
 
   function initFields() {
-    ['business', 'product', 'customer', 'channel', 'revenue', 'participant'].forEach((k) => { $(k).value = state.profile[k] || ''; });
+    ['business', 'product', 'customer', 'channel', 'revenue', 'participant', 'businessActive', 'ownerAuthority'].forEach((k) => { $(k).value = state.profile[k] || ''; });
     $$('input[name="pain"]').forEach((r) => { r.checked = r.value === state.profile.pain; });
     $('evidenceText').value = state.evidenceText || '';
     costKeys.forEach((k) => { $(k).value = state.costs[k] ?? ''; });
+    CONTENT_KEYS.forEach((k) => { $(k).value = state.content[k] ?? ''; });
+    LIVE_KEYS.forEach((k) => { $(k).value = state.live[k] ?? ''; });
     $('confirmDiagnosis').checked = !!state.confirmed;
     $('quickFixEditor').value = state.quickFix || '';
     ['quality1', 'quality2', 'quality3'].forEach((k, i) => { $(k).checked = !!state.quality[i]; });
@@ -181,7 +186,7 @@
     $('nextStep').value = state.nextStep || 'Bertindak sendiri dahulu';
     $('marketingConsent').checked = !!state.marketingConsent;
     $('fileStatus').textContent = state.evidenceFile ? `Disimpan: ${state.evidenceFile.name}. Pilih fail lain untuk menggantikan.` : 'Belum ada fail dipilih.';
-    drawCosts(); drawDiagnosis(); drawBuild(); drawTracker(); drawReport();
+    drawCosts(); drawLiveSnapshot(); drawDiagnosis(); drawBuild(); drawTracker(); drawReport();
   }
 
   function go(n) {
@@ -221,6 +226,7 @@
       if (!state.diagnosis) { message('Diagnosis belum dijana.', true); return false; }
       if (!$('confirmDiagnosis').checked) { message('Sahkan bahawa diagnosis ini bersifat awal sebelum membina Quick Fix.', true); return false; }
       const chosen = $('pathwaySelect').value;
+      if (chosen === 'live' && state.live.liveExperience !== 'yes') { message('LIVE Sales hanya untuk peserta yang sudah menjual melalui LIVE. Pilih laluan lain, atau sahkan pengalaman LIVE di Langkah 2 dan jana diagnosis semula.', true); return false; }
       const changed = chosen !== state.pathway || !state.tasks?.length;
       state.pathway = chosen; state.confirmed = true;
       if (changed) {
@@ -237,59 +243,83 @@
     return true;
   }
 
-  // ─────────────── costs ───────────────
-  function toggleCosts() { $('costInputs').hidden = getPain() !== 'cost'; drawCosts(); }
-  function calcCosts() {
-    const priceRaw = txt(state.costs.sellingPrice);
-    const costs = costKeys.slice(1).filter((k) => txt(state.costs[k]) !== '');
-    const unknown = costKeys.slice(1).filter((k) => txt(state.costs[k]) === '');
-    const invalid = costKeys.some((k) => txt(state.costs[k]) !== '' && (!Number.isFinite(Number(state.costs[k])) || Number(state.costs[k]) < 0));
-    if (!priceRaw || !costs.length || invalid) return { valid: false, unknown, reason: !priceRaw ? 'Harga jualan belum diketahui.' : !costs.length ? 'Tiada direct cost yang disahkan.' : 'Ada nombor kos yang tidak sah.' };
-    const balance = Number(priceRaw) - costs.reduce((a, k) => a + Number(state.costs[k]), 0);
-    return { valid: true, balance, unknown, known: costs.length };
+  // ─────────────── structured inputs ───────────────
+  function toggleCosts() {
+    const p = getPain();
+    $('costInputs').hidden = p !== 'cost'; $('contentInputs').hidden = p !== 'content'; $('liveInputs').hidden = p !== 'live';
+    drawCosts(); drawLiveSnapshot();
   }
+  const unknownCosts = (c) => c.unknown_cost_categories.join(', ');
   function drawCosts() {
-    const x = calcCosts();
-    $('provisionalBalance').textContent = x.valid ? money(x.balance) : 'Belum boleh dikira';
-    $('missingCosts').textContent = x.valid
-      ? (x.unknown.length ? `Belum diketahui: ${x.unknown.map((k) => costLabels[costKeys.indexOf(k)]).join(', ')}. Baki sementara bukan net profit.` : 'Semua kategori direct cost diisi; semak bahawa tiada kos lain tertinggal.')
-      : (x.reason || 'Belum boleh dikira.');
+    const c = costSummary(state.costs);
+    $('provisionalBalance').textContent = c.provisional_balance !== null ? money(c.provisional_balance) : 'Belum boleh dikira';
+    const zero = c.reported_zero_to_verify.length ? ` RM0 dilaporkan untuk ${c.reported_zero_to_verify.join(', ')} — sahkan.` : '';
+    $('missingCosts').textContent = c.provisional_balance !== null
+      ? (c.unknown_cost_categories.length ? `Belum diketahui: ${unknownCosts(c)}. Baki sementara bukan net profit.${zero}` : `Semua kategori diisi; semak bahawa tiada kos lain tertinggal.${zero}`)
+      : c.reason;
+  }
+  function drawLiveSnapshot() {
+    const l = state.live, m = liveMath(l);
+    $('liveSnapshot').textContent = m.valid
+      ? `Daripada ${m.claims} claims, ${m.unpaid} belum dibayar (${m.rate.toFixed(1)}%) — sah hanya jika kedua-dua angka dari sesi dan cutoff yang sama. Sebab belum dibayar masih belum diketahui.`
+      : m.contradictory ? m.reason : 'Pastikan claims dan paid orders merujuk sesi dan tempoh pemantauan yang sama. Data belum mencukupi.';
+  }
+
+  // ─────────────── programme fit (rules only, never the AI) ───────────────
+  function currentFit() {
+    return programmeFit({ profile: state.profile, live: state.live, pathway: currentPath(), diagnosedPathway: state.diagnosis?.pathway });
+  }
+  function drawProgramme() {
+    const f = currentFit();
+    const show = !!state.diagnosis && f.status !== 'none';
+    ['programmePreview', 'programmeDetails'].forEach((id) => {
+      const el = $(id); el.hidden = !show && id === 'programmePreview'; el.dataset.status = f.status;
+      el.innerHTML = `<h4>Langkah seterusnya (pilihan)</h4><p>${scrub(f.detail)}</p>${f.status === 'ready' || f.status === 'pending' ? '<p class="opt">Tiada kewajipan. Anda boleh teruskan Quick Fix dan tracker sendiri. Pilihan selepas sesi (Langkah 5) tidak menghantar apa-apa secara automatik.</p>' : ''}`;
+    });
   }
 
   // ─────────────── offline rule-based fallback (only when the server has no AI key) ───────────────
   function inferPath() {
-    const t = (state.evidenceText + ' ' + state.profile.pain).toLowerCase();
-    if (['attraction', 'follow', 'cost'].includes(getPain())) return getPain();
-    if (/kos|margin|modal|untung|profit|harga jual|komisen|cost/i.test(t)) return 'cost';
-    if (/whatsapp|follow.?up|reply|chat|perbualan|tanya harga|conversation|mesej/i.test(t)) return 'follow';
-    if (/content|caption|poster|post|view|offer|iklan|promote/i.test(t)) return 'attraction';
-    return 'missing';
+    const p = getPain();
+    if (p === 'live') return liveBlock({ live: state.live, evidenceText: state.evidenceText, hasFile: !!(file || state.evidenceFile) }) ? 'missing' : 'live';
+    return ['cost', 'content'].includes(p) ? p : 'missing';
   }
   function defaultFix(p) {
-    const b = state.profile; const product = b.product || '[produk / servis]'; const customer = b.customer || '[sasaran customer]';
-    if (p === 'attraction') return `Untuk ${customer} yang [keperluan sebenar], ${product} membantu [manfaat yang boleh dibuktikan].\n\n[Terangkan offer / harga / pilihan dengan tepat].\n\nNak tahu sama ada sesuai? WhatsApp kami untuk [next step yang mudah dijawab].`;
-    if (p === 'follow') return `Terima kasih kerana bertanya tentang ${product}.\n\nUntuk saya cadangkan pilihan yang sesuai, boleh saya tahu [satu soalan relevan tentang keperluan anda]?\n\nSaya boleh semak [pilihan / tarikh / stok sebenar] selepas itu.`;
-    if (p === 'cost') { const x = calcCosts(); return `${product}\nHarga jualan: ${txt(state.costs.sellingPrice) ? money(state.costs.sellingPrice) : 'Belum diketahui'}\nBaki sementara selepas direct cost yang diketahui: ${x.valid ? money(x.balance) : 'Belum boleh dikira'}\nKos yang belum disahkan: ${x.unknown.map((k) => costLabels[costKeys.indexOf(k)]).join(', ') || 'Semak kos lain yang mungkin tertinggal'}\nKeputusan: Sahkan semua kos relevan sebelum membuat keputusan harga. Baki ini BUKAN net profit.`; }
-    return 'Maklumat kritikal yang perlu dicari: [nyatakan satu fakta yang hilang].\nSumber fakta: [rekod asal / akaun platform / resit / laporan].\nPemilik tindakan: [nama / peranan].\nTarikh semak: [dalam 7 hari].\nKeputusan ditangguhkan sehingga maklumat yang diperlukan tersedia.';
+    const product = state.profile.product || '[produk / servis]';
+    if (p === 'cost') {
+      const c = costSummary(state.costs);
+      return `COST GAP SNAPSHOT — ${product}\nHarga jualan: ${c.selling_price !== null ? money(c.selling_price) : 'Belum diketahui'}\nBaki selepas kos langsung DIKETAHUI SAHAJA: ${c.provisional_balance !== null ? money(c.provisional_balance) : 'Tidak boleh dikira'} (BUKAN net profit)\nKos yang perlu disahkan: ${unknownCosts(c) || '[semak kategori kos lain]'}\nQUICK WIN: Pilih SATU kos yang belum diketahui. Semak resit / penyata seller sebenar dan catat jumlah per unit atau per pesanan serta tarikhnya.`;
+    }
+    if (p === 'content') {
+      const c = state.content;
+      return `CONTENT SYSTEM SNAPSHOT — ${product}\nPost 7 hari lepas: ${txt(c.postsWeek) || '[belum dicatat]'}\nMasa content seminggu: ${txt(c.hoursWeek) ? c.hoursWeek + ' jam' : '[belum dicatat]'}\nAda jadual: ${c.hasContentPlan === 'yes' ? 'Ya' : c.hasContentPlan === 'no' ? 'Tidak' : 'Belum diketahui'}\nQUICK WIN: Pilih SATU soalan sebenar pelanggan: [soalan]. Jawab melalui SATU post ringkas minggu ini. Catat tarikh terbit dan respons sebenar (reach / save / enquiry).`;
+    }
+    if (p === 'live') {
+      const m = liveMath(state.live);
+      return `LIVE SALES LEAKAGE SNAPSHOT — ${product}\nClaims: ${txt(state.live.liveClaims) || '[belum dicatat]'}\nPaid orders: ${txt(state.live.livePaid) || '[belum dicatat]'}\nClaims belum dibayar: ${m.valid ? `${m.unpaid} (${m.rate.toFixed(1)}%)` : 'Belum dapat dikira dengan sah'}\nQUICK WIN: Semak SATU sesi LIVE sebenar. Padankan claims vs paid orders untuk cohort / cutoff yang sama dan catat masa invoice / payment link dihantar. Jangan anggap invoice lewat sebagai punca tanpa rekod.`;
+    }
+    return 'FACT-FINDING ACTION\nFakta penting untuk dicari: [satu maklumat yang hilang].\nDi mana mendapatkan fakta: [seller statement / insight platform / log LIVE / rekod content].\nSiapa akan semak: [nama / peranan].\nTarikh: [dalam 7 hari].\nJangan buat keputusan tentang punca sales sebelum bukti mencukupi.';
   }
   function generateTasks(p) {
     const lists = {
-      attraction: [['Semak dan sahkan revised offer / CTA', 'Simpan versi final'], ['Gunakan caption pada satu post yang relevan', 'Link / screenshot post'], ['Catat jumlah reach atau viewers jika tersedia', 'Metrik platform'], ['Semak enquiry sebenar selepas post', 'Bilangan enquiry'], ['Perbaiki satu ayat jika customer masih keliru', 'Versi dikemas kini'], ['Uji offer / CTA sekali lagi apabila sesuai', 'Contoh post kedua'], ['Rumusan respons dan langkah seterusnya', 'Nota review 7 hari']],
-      follow: [['Semak dan simpan mesej follow-up', 'Mesej final'], ['Hantar kepada satu enquiry yang masih relevan', 'Log mesej dihantar'], ['Rekod sama ada customer reply', 'Respons / tiada respons'], ['Perbaiki satu soalan jika perlu', 'Mesej versi 2'], ['Uji kepada enquiry relevan lain (tanpa spam)', 'Log penggunaan'], ['Kira reply dan next step yang disahkan', 'Bilangan sebenar'], ['Semak keberkesanan dan pilih tindakan seterusnya', 'Nota review']],
-      cost: [['Semak harga jualan dan kos yang sudah diketahui', 'Rekod harga dan kos'], ['Cari satu kos yang belum diketahui', 'Resit / seller statement'], ['Semak fee, delivery, packaging atau promo', 'Rekod direct cost'], ['Kemas kini kos per unit yang sudah disahkan', 'Worksheet ringkas'], ['Kira semula baki selepas direct cost', 'Pengiraan bertarikh'], ['Banding harga dengan semua kos relevan', 'Nota keputusan harga'], ['Rekod keputusan dan maklumat yang masih kurang', 'Review kos 7 hari']],
-      missing: [['Senaraikan satu maklumat paling kritikal', 'Soalan fakta'], ['Kenal pasti rekod atau sumber asal', 'Nama sumber'], ['Tentukan siapa yang bertanggungjawab', 'Pemilik tindakan'], ['Dapatkan rekod / data yang dibenarkan', 'Bukti sumber'], ['Semak ketepatan dan tarikh data', 'Nota pengesahan'], ['Lengkapkan jurang maklumat atau tandakan masih belum tahu', 'Status fakta'], ['Tentukan langkah seterusnya berdasarkan fakta', 'Rumusan keputusan']],
+      cost: [['Catat harga jual dan kos yang benar-benar diketahui', 'Rekod ringkas satu produk'], ['Pilih SATU kategori kos yang belum jelas', 'Nama kos untuk disemak'], ['Dapatkan dokumen asal kos itu', 'Resit / seller statement'], ['Catat nilai, unit dan tarikh kos', 'Bukti kos yang disahkan'], ['Semak sama ada kos itu berubah', 'Perbezaan / status semakan'], ['Kemas kini Cost Gap Snapshot', 'Snapshot baharu'], ['Catat jurang selebihnya & pilihan langkah seterusnya', 'Ringkasan tujuh hari']],
+      content: [['Catat jumlah post dan masa content minggu lepas', 'Baseline seminggu'], ['Senaraikan tiga soalan pelanggan yang pernah diterima', 'Senarai soalan sebenar'], ['Pilih SATU soalan untuk satu post', 'Topik & sasaran post'], ['Sediakan rangka ringkas tanpa mereka fakta', 'Draf ringkas'], ['Terbitkan satu post apabila siap dan sesuai', 'Pautan / tarikh post'], ['Catat reach / saves / enquiry jika tersedia', 'Data dari platform'], ['Semak sama ada tindakan boleh diulang', 'Ulasan tujuh hari']],
+      live: [['Pilih satu LIVE terakhir yang ada rekod', 'Tarikh & platform LIVE'], ['Semak jumlah claim untuk sesi itu', 'Claim log tanpa data customer'], ['Padankan paid orders kepada cohort yang sama', 'Jumlah paid disahkan'], ['Catat bila invoice / link bayaran dihantar', 'Timestamp invoice'], ['Kira jurang claim → paid yang sah', 'Bilangan dan kadar sebenar'], ['Pilih SATU proses untuk diperiksa lagi', 'Jurang dan tindakan pilihan'], ['Catat keputusan awal & data yang masih hilang', 'Ringkasan tujuh hari']],
+      missing: [['Nyatakan satu soalan yang paling penting', 'Soalan spesifik'], ['Kenal pasti rekod / sumber asal', 'Senarai sumber'], ['Tentukan siapa akan menyemak', 'Pemilik tindakan'], ['Cari dokumen berkaitan', 'Bukti sumber'], ['Tentukan sama ada data lengkap / belum lengkap', 'Status data'], ['Kemaskan profil / bukti yang diperoleh', 'Ringkasan bukti'], ['Tentukan sama ada sesuai untuk diagnosis semula', 'Keputusan berdasarkan fakta']],
     };
-    return lists[p].map(([title, proof], i) => ({ day: i + 1, title, proof, status: 'belum', note: '' }));
+    return (lists[p] || lists.missing).map(([title, proof], i) => ({ day: i + 1, title, proof, status: 'belum', note: '' }));
   }
   function demoDiagnose() {
     const p = inferPath(); const ev = txt(state.evidenceText);
-    const observations = []; let unknowns = []; let reason = ''; let strength = 'Bukti terhad';
-    if (p === 'attraction') { reason = 'Contoh promosi menunjukkan perkara yang wajar disemak: siapa customer, manfaat, offer dan tindakan seterusnya.'; if (ev) observations.push('Anda menyediakan contoh content / offer untuk disemak.'); else unknowns.push('Teks poster / caption sebenar belum tersedia.'); observations.push('Semak sama ada pelanggan tahu tindakan yang patut dibuat selepas membaca offer.'); unknowns.push('Respons pelanggan sebenar dan jumlah enquiry masih belum dibuktikan.'); }
-    if (p === 'follow') { reason = 'Perbualan yang terhenti mungkin memerlukan konteks, satu soalan relevan dan next step yang mudah dijawab.'; observations.push(ev ? 'Anda berkongsi contoh customer conversation.' : 'Tiada perbualan spesifik untuk diperiksa.'); if (/berminat\??/i.test(ev)) observations.push('Terdapat soalan umum “berminat?” yang mungkin terlalu mudah ditamatkan.'); unknowns.push('Sebab pelanggan tidak membalas tidak boleh disahkan melalui satu chat.'); }
-    if (p === 'cost') { const c = calcCosts(); reason = c.valid ? `Berdasarkan hanya direct cost yang dimasukkan, baki sementara ialah ${money(c.balance)}. Ini bukan untung bersih.` : 'Maklumat harga dan kos belum cukup untuk mengira baki satu jualan dengan bertanggungjawab.'; observations.push(c.valid ? `Harga dan ${c.known} kategori kos diketahui telah dimasukkan.` : 'Harga atau direct cost belum lengkap.'); unknowns = c.unknown.map((k) => `${costLabels[costKeys.indexOf(k)]}: belum diketahui`); if (!unknowns.length) unknowns.push('Kos lain, pemulangan, pembaziran atau overhead mungkin belum disenaraikan.'); }
-    if (p === 'missing') { reason = 'Bukti yang tersedia belum cukup untuk memilih pembetulan yang berasas. Hasil terbaik ialah pelan mencari satu fakta penting.'; unknowns.push('Contoh promosi, conversation atau rekod kos yang boleh diperiksa.'); observations.push('Isu utama masih belum dapat ditentukan daripada input semasa.'); }
-    if (ev.length > 35 && p !== 'cost') strength = 'Ada input, perlu disahkan';
-    return { pathway: p, title: pathLabels[p], reason, observations, unknowns, strength, quickFix: defaultFix(p), origin: 'demo' };
+    const observations = [], unknowns = []; let reason = '';
+    const fileNote = file || state.evidenceFile ? 'Lampiran tidak dianalisis dalam mod tanpa AI; terangkan isinya dalam teks.' : null;
+    if (p === 'cost') { const c = costSummary(state.costs); reason = c.provisional_balance !== null ? `Berdasarkan kos langsung yang diketahui sahaja, baki sementara ialah ${money(c.provisional_balance)}. Ini bukan untung bersih.` : 'Maklumat harga dan kos belum cukup untuk mengira baki sementara.'; observations.push(c.provisional_balance !== null ? `Harga dan ${Object.keys(c.known_direct_cost).length} kategori kos diketahui dimasukkan.` : 'Harga atau kos langsung belum lengkap.'); unknowns.push(...c.unknown_cost_categories.map((k) => `${k}: belum diketahui`)); }
+    if (p === 'content') { const c = state.content; reason = 'Rutin content perlu dilihat sebagai sistem: berapa kerap, berapa lama, ada jadual, dan sama ada hasil disemak.'; observations.push(`Post 7 hari lepas: ${txt(c.postsWeek) || 'tidak dinyatakan'}; jam seminggu: ${txt(c.hoursWeek) || 'tidak dinyatakan'}.`); unknowns.push('Respons sebenar pelanggan terhadap post belum direkod.'); }
+    if (p === 'live') { const m = liveMath(state.live); reason = m.valid ? `${m.unpaid} daripada ${m.claims} claims belum dibayar (${m.rate.toFixed(1)}%). Sebabnya belum diketahui.` : 'Rekod claims dan paid orders belum cukup untuk dikira.'; observations.push('Peserta melaporkan pengalaman LIVE selling.'); unknowns.push('Sama ada claims dan paid orders dari cutoff yang sama.'); }
+    if (p === 'missing') { reason = 'Bukti yang ada belum cukup untuk memilih pembetulan yang berasas. Mulakan dengan mencari satu fakta penting.'; observations.push('Isu utama belum dapat ditentukan daripada input semasa.'); if (getPain() === 'live') unknowns.push(liveBlock({ live: state.live, evidenceText: ev, hasFile: !!(file || state.evidenceFile) })); }
+    if (fileNote) unknowns.push(fileNote);
+    const strength = ev.length > 35 || hasCostValues() ? 'Ada input peserta, perlu pengesahan' : 'Bukti terhad';
+    return { pathway: p, title: pathLabels[p], reason, observations, unknowns: unknowns.filter(Boolean), strength, quickFix: defaultFix(p), origin: 'demo' };
   }
 
   // ─────────────── diagnosis ───────────────
@@ -310,7 +340,7 @@
   async function createDiagnosis() {
     dataFromForm(); clearMessage('evidenceMessage');
     if (!validProfile()) { go(0); return; }
-    if (!txt(state.evidenceText) && !hasCostValues() && !file && !state.evidenceFile) { message('Tampal sekurang-kurangnya satu bukti, isi angka kos, atau lampirkan fail terlebih dahulu.', true, 'evidenceMessage'); return; }
+    if (!hasEvidence({ evidenceText: state.evidenceText, costs: state.costs, content: state.content, live: state.live, hasFile: !!(file || state.evidenceFile) })) { message('Tampal sekurang-kurangnya satu bukti, isi angka, atau lampirkan fail terlebih dahulu. Memilih isu sahaja belum cukup.', true, 'evidenceMessage'); return; }
     if (!$('privacyConfirm').checked) { message('Sahkan privasi dan kebenaran menggunakan bahan sebelum menjana diagnosis.', true, 'evidenceMessage'); return; }
     const btn = $('diagnoseBtn'); btn.disabled = true; btn.textContent = 'Menyemak bukti… (sehingga 1 minit)';
     try {
@@ -318,7 +348,7 @@
       if (KB.cfg.aiReady) {
         await recordConsent('ai_processing', true);
         const fileId = await uploadEvidence();
-        const r = await KB.api('/api/diagnose', { method: 'POST', body: { business: state.profile, pain: state.profile.pain, evidence_text: state.evidenceText, costs: state.costs, evidence_file_id: fileId } });
+        const r = await KB.api('/api/diagnose', { method: 'POST', body: { business: state.profile, pain: state.profile.pain, evidence_text: state.evidenceText, costs: state.costs, content: state.content, live: state.live, evidence_file_id: fileId } });
         result = { ...r, origin: 'ai' };
       } else {
         result = demoDiagnose();
@@ -346,14 +376,15 @@
     $('diagObserved').innerHTML = (d.observations.length ? d.observations : ['Tiada dapatan spesifik.']).map((x) => `<li>${scrub(x)}</li>`).join('');
     $('diagUnknown').innerHTML = (d.unknowns.length ? d.unknowns : ['Semak andaian yang belum dibuktikan.']).map((x) => `<li>${scrub(x)}</li>`).join('');
     $('pathwaySelect').value = state.pathway || d.pathway;
+    drawProgramme();
   }
 
   function drawBuild() {
     const p = currentPath();
     $('fixPath').textContent = pathLabels[p] || 'Quick Fix';
-    const explanation = { attraction: 'Offer perlu jelas tentang customer, keperluan, tawaran dan next step yang boleh dijawab.', follow: 'Sambung konteks perbualan, tanya satu soalan berkaitan dan beri langkah yang tidak mendesak.', cost: 'Gunakan hanya angka yang diketahui. Senaraikan kos yang belum diketahui. Baki sementara bukan net profit.', missing: 'Dapatkan fakta kritikal sebelum membuat keputusan atau menjanjikan hasil.' };
+    const explanation = { cost: 'Cari SATU kos yang tiada dalam rekod. Jangan buat keputusan harga penuh daripada baki sementara.', content: 'Lihat rutin, masa dan data content. Ambil SATU tindakan kecil — bukan kalendar sebulan.', live: 'Hanya untuk yang sudah LIVE. Semak satu jurang claim → paid; jangan bina rundown penuh.', missing: 'Kumpul satu fakta kritikal dahulu sebelum diagnosis atau sebarang cadangan.' };
     $('fixExplanation').textContent = explanation[p];
-    $('originalEvidence').textContent = state.evidenceText ? state.evidenceText.slice(0, 750) : (hasCostValues() ? 'Maklumat harga / kos telah dimasukkan pada Langkah 2.' : (state.evidenceFile ? `Lampiran: ${state.evidenceFile.name}` : 'Bukti belum diterangkan.'));
+    $('originalEvidence').textContent = state.evidenceText ? state.evidenceText.slice(0, 750) : (hasCostValues() ? 'Maklumat harga / kos telah dimasukkan pada Langkah 2.' : (state.evidenceFile ? `Lampiran: ${state.evidenceFile.name}` : 'Maklumat berstruktur telah direkod pada Langkah 2.'));
     $('quickFixEditor').value = state.quickFix || (state.diagnosis ? defaultFix(p) : '');
   }
 
@@ -379,10 +410,10 @@
   }
   function metricLabels() {
     const p = currentPath();
-    return p === 'attraction' ? ['Posting / tindakan dibuat', 'Enquiry sebenar direkod', 'Order berkaitan (jika disahkan)']
-      : p === 'follow' ? ['Follow-up dihantar', 'Customer reply', 'Next step dipersetujui']
-      : p === 'cost' ? ['Kategori kos disahkan', 'Keputusan harga direkod', 'Keputusan dilaksanakan']
-      : ['Fakta berjaya diperoleh', 'Sumber disahkan', 'Keputusan direkod'];
+    return p === 'content' ? ['Post diterbitkan', 'Masa content (minit)', 'Enquiry yang jelas berkaitan']
+      : p === 'live' ? ['Claims disahkan', 'Paid orders disahkan', 'Invoice timestamp direkod']
+      : p === 'cost' ? ['Kos belum jelas yang disahkan', 'Dokumen kos diperiksa', 'Jurang kos yang masih belum jelas']
+      : ['Fakta berjaya diperoleh', 'Dokumen sumber disahkan', 'Keputusan selepas semakan'];
   }
   function drawMetrics() {
     $('metricsArea').innerHTML = metricLabels().map((t, i) => `<div class="field"><label for="metric${i}">${scrub(t)}</label><input type="number" inputmode="numeric" id="metric${i}" min="0" step="1" placeholder="Jika tahu"></div>`).join('');
@@ -391,7 +422,7 @@
   }
   function reportText() {
     const p = state.profile, d = state.diagnosis, done = state.tasks.filter((t) => t.status === 'selesai').length;
-    return `KLINIK BISNES SME — BUSINESS QUICK FIX\nBisnes: ${p.business || '-'}\nProduk / Servis: ${p.product || '-'}\nCustomer: ${p.customer || '-'}\nPathway: ${pathLabels[currentPath()] || '-'}\nDiagnosis awal: ${d?.reason || 'Belum dijana'}\nBukti diperhatikan: ${(d?.observations || []).join('; ') || '-'}\nBelum pasti: ${(d?.unknowns || []).join('; ') || '-'}\n\nQUICK FIX\n${state.quickFix || '-'}\n\nTRACKER 7 HARI (${done}/7 selesai)\n${state.tasks.map((t) => `Hari ${t.day} [${t.status}] ${t.title}\nBukti: ${t.note || '-'}`).join('\n')}\n\nHASIL HARI 7\n${metricLabels().map((l, i) => `${l}: ${state.metrics[i] || 'Belum direkod'}`).join('\n')}\nReview: ${state.reviewNotes || '-'}\n\nNota: Nota kerja peserta, bukan diagnosis muktamad atau jaminan jualan.`;
+    return `KLINIK BISNES SME — BUSINESS QUICK FIX\nBisnes: ${p.business || '-'}\nProduk / Servis: ${p.product || '-'}\nCustomer: ${p.customer || '-'}\nPathway: ${pathLabels[currentPath()] || '-'}\nLangkah seterusnya (pilihan): ${currentFit().detail}\nDiagnosis awal: ${d?.reason || 'Belum dijana'}\nBukti diperhatikan: ${(d?.observations || []).join('; ') || '-'}\nBelum pasti: ${(d?.unknowns || []).join('; ') || '-'}\n\nQUICK FIX\n${state.quickFix || '-'}\n\nTRACKER 7 HARI (${done}/7 selesai)\n${state.tasks.map((t) => `Hari ${t.day} [${t.status}] ${t.title}\nBukti: ${t.note || '-'}`).join('\n')}\n\nHASIL HARI 7\n${metricLabels().map((l, i) => `${l}: ${state.metrics[i] || 'Belum direkod'}`).join('\n')}\nReview: ${state.reviewNotes || '-'}\n\nNota: Nota kerja peserta, bukan diagnosis muktamad atau jaminan jualan.`;
   }
   function drawReport() {
     const r = $('report'); if (!r) return;
@@ -401,6 +432,7 @@
       ['Bisnes / Produk', `${p.business || '-'} · ${p.product || '-'}`],
       ['Keutamaan & diagnosis awal', `${pathLabels[currentPath()] || '-'}\n${d?.reason || 'Belum dijana'}`],
       ['Quick Fix yang disediakan', state.quickFix || 'Belum diisi'],
+      ['Langkah seterusnya (pilihan)', currentFit().detail],
       ['Kemajuan 7 hari', `${done}/7 selesai · ${tasks.filter((t) => t.status === 'sedang').length} sedang dibuat`],
       ['Hasil yang direkod', metricLabels().map((l, i) => `${l}: ${state.metrics[i] || 'Belum direkod'}`).join('\n')],
     ];
@@ -409,7 +441,7 @@
   function printReport() {
     dataFromForm(); drawReport();
     const p = state.profile, d = state.diagnosis;
-    $('print-area').innerHTML = `<h1>Klinik Bisnes SME — Business Quick Fix</h1><div class="pr-sub">Laporan kerja peserta · ${new Date().toLocaleDateString('ms-MY')} · ${d?.origin === 'ai' ? 'Dibantu AI, disemak peserta' : 'Simulasi rule-based, bukan AI'}</div><div class="pr-item"><b>Bisnes:</b> ${scrub(p.business)}<br><b>Produk:</b> ${scrub(p.product)}<br><b>Sasaran customer:</b> ${scrub(p.customer || '-')}<br><b>Keutamaan:</b> ${scrub(pathLabels[currentPath()])}</div><h2>Diagnosis Awal</h2><div class="pr-item">${scrub(d?.reason || '-')}<br><br><b>Bukti:</b> ${scrub((d?.observations || []).join(' / '))}<br><b>Belum tahu:</b> ${scrub((d?.unknowns || []).join(' / '))}</div><h2>Quick Fix</h2><div class="pr-quick">${scrub(state.quickFix || '-')}</div><h2>Tracker 7 Hari</h2><table><tr><th>Hari</th><th>Tindakan</th><th>Status</th><th>Bukti sebenar</th></tr>${state.tasks.map((t) => `<tr><td>${t.day}</td><td>${scrub(t.title)}</td><td>${scrub(t.status)}</td><td>${scrub(t.note || '-')}</td></tr>`).join('')}</table><h2>Hasil & Review</h2><div class="pr-item">${metricLabels().map((l, i) => `${scrub(l)}: ${scrub(state.metrics[i] || 'Belum direkod')}`).join('<br>')}<br><b>Review:</b> ${scrub(state.reviewNotes || '-')}</div><p class="pr-sub">Bukan diagnosis muktamad; bukan pengiraan untung penuh atau jaminan peningkatan jualan.</p>`;
+    $('print-area').innerHTML = `<h1>Klinik Bisnes SME — Business Quick Fix</h1><div class="pr-sub">Laporan kerja peserta · ${new Date().toLocaleDateString('ms-MY')} · ${d?.origin === 'ai' ? 'Dibantu AI, disemak peserta' : 'Simulasi rule-based, bukan AI'}</div><div class="pr-item"><b>Bisnes:</b> ${scrub(p.business)}<br><b>Produk:</b> ${scrub(p.product)}<br><b>Sasaran customer:</b> ${scrub(p.customer || '-')}<br><b>Keutamaan:</b> ${scrub(pathLabels[currentPath()])}</div><h2>Diagnosis Awal</h2><div class="pr-item"><b>Langkah seterusnya (pilihan):</b> ${scrub(currentFit().detail)}</div><div class="pr-item">${scrub(d?.reason || '-')}<br><br><b>Bukti:</b> ${scrub((d?.observations || []).join(' / '))}<br><b>Belum tahu:</b> ${scrub((d?.unknowns || []).join(' / '))}</div><h2>Quick Fix</h2><div class="pr-quick">${scrub(state.quickFix || '-')}</div><h2>Tracker 7 Hari</h2><table><tr><th>Hari</th><th>Tindakan</th><th>Status</th><th>Bukti sebenar</th></tr>${state.tasks.map((t) => `<tr><td>${t.day}</td><td>${scrub(t.title)}</td><td>${scrub(t.status)}</td><td>${scrub(t.note || '-')}</td></tr>`).join('')}</table><h2>Hasil & Review</h2><div class="pr-item">${metricLabels().map((l, i) => `${scrub(l)}: ${scrub(state.metrics[i] || 'Belum direkod')}`).join('<br>')}<br><b>Review:</b> ${scrub(state.reviewNotes || '-')}</div><p class="pr-sub">Bukan diagnosis muktamad; bukan pengiraan untung penuh atau jaminan peningkatan jualan.</p>`;
     window.print();
   }
 
@@ -460,8 +492,14 @@
   }
 
   // ─────────────── wiring ───────────────
-  ['business', 'product', 'customer', 'channel', 'revenue', 'participant', 'evidenceText', ...costKeys, 'quickFixEditor', 'reviewNotes', 'nextStep', 'confirmDiagnosis', 'quality1', 'quality2', 'quality3']
-    .forEach((k) => $(k).addEventListener('input', () => { dataFromForm(); if (costKeys.includes(k)) drawCosts(); if (['quickFixEditor', 'reviewNotes'].includes(k)) drawReport(); }));
+  ['business', 'product', 'customer', 'channel', 'revenue', 'participant', 'businessActive', 'ownerAuthority', 'evidenceText', ...costKeys, ...CONTENT_KEYS, ...LIVE_KEYS, 'quickFixEditor', 'reviewNotes', 'nextStep', 'confirmDiagnosis', 'quality1', 'quality2', 'quality3']
+    .forEach((k) => $(k).addEventListener('input', () => {
+      dataFromForm();
+      if (costKeys.includes(k)) drawCosts();
+      if (LIVE_KEYS.includes(k)) drawLiveSnapshot();
+      if (['revenue', 'businessActive', 'ownerAuthority', 'liveExperience'].includes(k)) drawProgramme();
+      if (['quickFixEditor', 'reviewNotes'].includes(k)) drawReport();
+    }));
   $('marketingConsent').addEventListener('change', (e) => { dataFromForm(); recordConsent('marketing', e.target.checked); });
   $$('[name="pain"]').forEach((el) => el.addEventListener('change', () => { dataFromForm(); toggleCosts(); }));
   $('fileUpload').addEventListener('change', handleUpload);
@@ -470,7 +508,7 @@
     state.pathway = $('pathwaySelect').value;
     state.quickFix = state.pathway === state.diagnosis?.pathway ? state.diagnosis.quickFix : defaultFix(state.pathway);
     state.tasks = generateTasks(state.pathway); state.quality = [false, false, false];
-    safeSave();
+    drawProgramme(); safeSave();
   };
   $('prevBtn').onclick = () => go(step - 1);
   $('nextBtn').onclick = () => { if (validateStep()) go(step + 1); };

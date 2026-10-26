@@ -2,6 +2,8 @@
 
 Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: business profile → evidence → AI diagnosis → one Quick Fix → 7-day tracker. Plus a trainer dashboard.
 
+The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_Gap_AI_v3_Developer_Spec.md`): pathways `cost` (Cash Flow / Profit), `content` (Marketing), `live` (Sales) and the `missing` fallback. Deterministic rules live in `public/js/rules.mjs` and are shared by the browser and the server: cost and LIVE maths, the evidence check, the LIVE guard (never `live` without LIVE experience and real LIVE evidence) and RM198 programme fit. Programme fit is decided by these rules only, never by the model; for RM30K+ participants it shows a neutral line, and no class duration is shown anywhere.
+
 - **App:** Node 20+ / Express (`server/`) serving static pages (`public/`)
 - **Data & login:** Supabase (Postgres + RLS, email magic link / 6-digit code, private storage bucket)
 - **AI:** Claude via the Anthropic API (`server/diagnose.mjs`)
@@ -30,7 +32,7 @@ Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: busines
 ## One-time setup
 
 ### 1. Supabase
-1. Run `supabase/migrations/20261026000000_init.sql` in the SQL editor.
+1. Apply `supabase/migrations/` in order (`npx supabase db push`, or paste each file into the SQL editor).
 2. **Authentication → URL configuration:** Site URL = your public URL; add `https://klinik.richworks.com/**` and `http://localhost:3000/**` to redirect URLs.
 3. **Authentication → Emails → SMTP:** use Resend's SMTP (`smtp.resend.com`, port 465, user `resend`, password = Resend API key). The built-in sender is rate-limited and not for production.
 4. **Email templates → Magic link:** include the code so phone users can type it:
@@ -53,6 +55,16 @@ New service from this repo → set the variables from `.env.example` → health 
 ## Cost guard
 
 Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort; Sonnet would otherwise default to `high`). `DAILY_AI_LIMIT_PER_USER` and `DAILY_AI_LIMIT_GLOBAL` cap calls per rolling 24 h. Also set a spend limit in the Anthropic console. Usage per call is in the `ai_calls` table.
+
+## Tests
+
+```bash
+npm test                                         # deterministic rules (no network)
+node --env-file=.env test/acceptance.mjs         # spec §7 T01–T12 against the real AI backend (~11 Claude calls; dev server must be running)
+node --env-file=.env test/acceptance.mjs T05 T08 # a subset
+```
+
+The acceptance runner creates throwaway `@example.com` users through the admin API (no email sent) and deletes them afterwards.
 
 ## Before the first real cohort
 - Privacy notice approved, placeholders filled, retention periods decided.

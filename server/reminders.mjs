@@ -19,7 +19,7 @@ function reminderEmail({ name, business, link }) {
 
 Sudah tujuh hari sejak anda mula menguji Quick Fix untuk ${business || 'bisnes anda'}.
 
-Luangkan 5 minit untuk rekod apa yang berlaku — berapa follow-up dihantar, berapa enquiry atau reply, dan apa langkah seterusnya. Angka kecil pun berguna.
+Luangkan 5 minit untuk rekod apa yang benar-benar berlaku — tindakan yang dibuat, angka atau dokumen yang disemak, dan apa langkah seterusnya. Angka kecil atau "belum buat" pun berguna.
 
 Isi hasil Hari 7: ${link}
 
@@ -27,7 +27,7 @@ Klinik Bisnes SME`;
   const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#172b3a;max-width:520px">
 <p>${escape(hello)}</p>
 <p>Sudah tujuh hari sejak anda mula menguji Quick Fix untuk <b>${escape(business || 'bisnes anda')}</b>.</p>
-<p>Luangkan 5 minit untuk rekod apa yang berlaku — berapa follow-up dihantar, berapa enquiry atau reply, dan apa langkah seterusnya. Angka kecil pun berguna.</p>
+<p>Luangkan 5 minit untuk rekod apa yang benar-benar berlaku — tindakan yang dibuat, angka atau dokumen yang disemak, dan apa langkah seterusnya. Angka kecil atau "belum buat" pun berguna.</p>
 <p><a href="${escape(link)}" style="display:inline-block;background:#c8553d;color:#fff;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Isi hasil Hari 7</a></p>
 <p style="color:#637581;font-size:13px">Klinik Bisnes SME</p></div>`;
   return { subject: 'Hari 7: apa yang berlaku selepas Quick Fix anda?', html, text };
