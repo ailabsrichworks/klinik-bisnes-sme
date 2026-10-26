@@ -79,6 +79,13 @@
         <div class="side-bottom"><p id="saveState">Disimpan ke akaun anda.</p></div>
       </nav>
       <main class="workspace">
+        <div class="row wrap demo-bar" id="demoBar" hidden>
+          <span class="subtle">Isi data contoh (ujian):</span>
+          <button type="button" class="link-btn" data-demo="cost">Kos</button>
+          <button type="button" class="link-btn" data-demo="content">Content</button>
+          <button type="button" class="link-btn" data-demo="live">LIVE</button>
+          <button type="button" class="link-btn" data-demo="unknown">Belum pasti</button>
+        </div>
         <div class="progress"><div><strong id="progressLabel">Langkah 1 / 5</strong><br><small id="progressDesc">Kenali bisnes</small></div><div class="bar"><div id="progressBar" class="bar-in"></div></div><strong id="progressPercent">20%</strong></div>
         <div class="card">
           <section class="panel active" id="panel0">
@@ -200,13 +207,6 @@
           <button type="button" class="link-btn" id="restartBtn">Mula semula</button>
           <button type="button" class="link-btn danger" id="deleteBtn">Padam akaun & data saya</button>
           <span class="spacer"></span><a class="link-btn" href="/privacy">Notis privasi</a>
-        </div>
-        <div class="row wrap" id="demoBar" hidden>
-          <span class="subtle">Isi data contoh (ujian):</span>
-          <button type="button" class="link-btn" data-demo="cost">Kos</button>
-          <button type="button" class="link-btn" data-demo="content">Content</button>
-          <button type="button" class="link-btn" data-demo="live">LIVE</button>
-          <button type="button" class="link-btn" data-demo="unknown">Belum pasti</button>
         </div>
       </main>
     </div>

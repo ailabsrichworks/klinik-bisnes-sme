@@ -26,6 +26,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   const params = new URLSearchParams(location.search);
   const normCode = (c) => String(c || '').trim().toUpperCase();
   if (params.get('c')) { try { localStorage.setItem(COHORT_KEY, normCode(params.get('c'))); } catch {} }
+  const demoMode = ['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo');
   const cohortCode = () => { try { return localStorage.getItem(COHORT_KEY) || ''; } catch { return ''; } };
 
   try {
@@ -120,6 +121,8 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     }
     showOnly('app');
     initFields(); toggleCosts();
+    // Test mode: an empty form opens already filled (?demo=content|live|unknown picks the case; default cost).
+    if (demoMode && !state.profile.business && !state.diagnosis) return fillDemo(DEMO[params.get('demo')] ? params.get('demo') : 'cost');
     const want = Number(params.get('step'));
     go(want >= 1 && want <= 5 ? want - 1 : guessStep());
   }
@@ -569,18 +572,17 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     live: { profile: { ...owner, business: 'Butik Ain', product: 'Baju kurung moden', customer: 'Wanita 20–45', channel: 'TikTok / LIVE' }, evidenceText: 'LIVE Sabtu lepas, cutoff 48 jam. Invoice dihantar esoknya.', live: { liveExperience: 'yes', liveViewers: '180', liveClaims: '12', livePaid: '8', invoiceTiming: 'next_day' } },
     unknown: { profile: { ...owner, business: 'Kek Mak Long', product: 'Kek pisang loaf', customer: 'Pejabat sekitar Shah Alam', channel: 'WhatsApp' }, evidenceText: 'Customer: Berapa harga kek pisang?\nSaya: RM35 sis.\nCustomer: Ok nanti saya fikir dulu.\n(tiada reply selepas itu)' },
   };
-  if (['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo')) {
+  function fillDemo(kind) {
+    const d = DEMO[kind];
+    state = { ...state, costs: {}, content: {}, live: {}, ...d, profile: { ...state.profile, ...d.profile, pain: kind } };
+    initFields(); toggleCosts();
+    $('privacyConfirm').checked = true;
+    safeSave(); go(1);
+    message('Data contoh diisi. Tekan “Jana Diagnosis Awal” untuk menguji.', false, 'evidenceMessage');
+  }
+  if (demoMode) {
     show('demoBar', true);
-    $$('[data-demo]').forEach((b) => {
-      b.onclick = () => {
-        const d = DEMO[b.dataset.demo];
-        state = { ...state, costs: {}, content: {}, live: {}, ...d, profile: { ...state.profile, ...d.profile, pain: b.dataset.demo } };
-        initFields(); toggleCosts();
-        $('privacyConfirm').checked = true;
-        safeSave(); go(1);
-        message('Data contoh diisi. Tekan “Jana Diagnosis Awal” untuk menguji.', false, 'evidenceMessage');
-      };
-    });
+    $$('[data-demo]').forEach((b) => { b.onclick = () => fillDemo(b.dataset.demo); });
   }
 
   // If there's no session after Supabase has read the URL, show sign-in.

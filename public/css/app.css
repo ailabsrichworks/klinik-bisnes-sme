@@ -194,6 +194,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 650; letter-spacing:
 .btn:hover:not(:disabled) { filter: brightness(.95); }
 .link-btn { background: none; border: 0; padding: 6px 2px; color: var(--muted); text-decoration: underline; font-size: 13px; min-height: 36px; }
 .link-btn.danger { color: #a3412c; }
+.demo-bar { margin-bottom: 12px; padding: 4px 12px; border: 1px dashed var(--line, #c9c2b4); border-radius: 8px; }
 .spacer { flex: 1; }
 .message { border-radius: 10px; padding: 11px 14px; font-size: 13.5px; background: #eef5f9; color: #2e5468; margin: 12px 0; display: none; }
 .message.show { display: block; }
