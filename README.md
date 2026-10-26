@@ -30,8 +30,8 @@ Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: busines
 ## One-time setup
 
 ### 1. Supabase
-1. Run `supabase/migrations/0001_init.sql` in the SQL editor.
-2. **Authentication → URL configuration:** Site URL = your public URL; add `https://YOUR-DOMAIN/**` and `http://localhost:3000/**` to redirect URLs.
+1. Run `supabase/migrations/20261026000000_init.sql` in the SQL editor.
+2. **Authentication → URL configuration:** Site URL = your public URL; add `https://klinik.richworks.com/**` and `http://localhost:3000/**` to redirect URLs.
 3. **Authentication → Emails → SMTP:** use Resend's SMTP (`smtp.resend.com`, port 465, user `resend`, password = Resend API key). The built-in sender is rate-limited and not for production.
 4. **Email templates → Magic link:** include the code so phone users can type it:
    `<p>Kod log masuk anda: <b>{{ .Token }}</b></p><p><a href="{{ .ConfirmationURL }}">Atau klik untuk log masuk</a></p>`
@@ -52,7 +52,7 @@ New service from this repo → set the variables from `.env.example` → health 
 
 ## Cost guard
 
-Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-opus-5-5` at `medium` effort). `DAILY_AI_LIMIT_PER_USER` and `DAILY_AI_LIMIT_GLOBAL` cap calls per rolling 24 h. Also set a spend limit in the Anthropic console. Usage per call is in the `ai_calls` table.
+Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort; Sonnet would otherwise default to `high`). `DAILY_AI_LIMIT_PER_USER` and `DAILY_AI_LIMIT_GLOBAL` cap calls per rolling 24 h. Also set a spend limit in the Anthropic console. Usage per call is in the `ai_calls` table.
 
 ## Before the first real cohort
 - Privacy notice approved, placeholders filled, retention periods decided.

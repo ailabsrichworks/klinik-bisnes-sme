@@ -13,7 +13,7 @@ export const config = {
   supabaseServiceKey: env.SUPABASE_SERVICE_ROLE_KEY || '',
 
   anthropicKey: env.ANTHROPIC_API_KEY || '',
-  claudeModel: env.CLAUDE_MODEL || 'claude-opus-5-5',
+  claudeModel: env.CLAUDE_MODEL || 'claude-sonnet-5-5',
   claudeEffort: env.CLAUDE_EFFORT || 'medium',
 
   // Per participant per day, and across the whole site per day (cost guard).
