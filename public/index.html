@@ -135,7 +135,7 @@
           <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag" id="sourceTag">DIAGNOSIS AI</div></div>
           <div class="stale" id="staleNotice" hidden><span>Angka berubah sejak diagnosis ini dijana.</span><button class="ghost small" type="button" data-regenerate>Jana semula</button></div>
           <div class="resulttop page" data-step="1"><div class="eyebrow" id="diagEyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
-          <!-- The report is 7 pages, one shown at a time (Kembali / Seterusnya); the diagnosis summary is on page 1. -->
+          <!-- The report is 8 pages, one shown at a time (Kembali / Seterusnya); the diagnosis summary is on page 1. -->
           <section class="resultcard page" data-step="1" aria-labelledby="symTitle">
             <div class="label">01 · Simptom</div><h4 id="symTitle">Apa yang sedang berlaku?</h4>
             <div class="issuetable" role="table" aria-label="Situasi yang dipilih dan analisis">
@@ -188,8 +188,9 @@
               <div class="resultcard"><h4>Apa yang masih perlu disahkan</h4><p id="reflValidate"></p></div>
               <div class="resultcard"><h4>Apa yang mungkin perlukan bimbingan lanjut</h4><p id="reflGuidance"></p></div>
             </div>
-            <div class="nextclass" aria-labelledby="nextTitle">
-              <div class="label">Langkah seterusnya</div>
+          </section>
+          <section class="nextclass page" data-step="8" aria-labelledby="nextTitle">
+              <div class="label">08 · Langkah seterusnya</div>
               <h3 id="nextTitle"></h3>
               <p id="nextLead"></p>
               <p id="nextText"></p>
@@ -199,11 +200,10 @@
                 <p class="classmeta" id="classMeta"></p>
                 <a class="primary ctabtn" id="classLink" href="#" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#i-external"/></svg><span id="classCtaText"></span></a>
               </div>
-            </div>
-          </section>
+            </section>
           <div class="revealnav" id="revealNav">
             <div class="revealtop">
-              <span class="revealcount" id="revealCount">1 / 7</span>
+              <span class="revealcount" id="revealCount">1 / 8</span>
               <div class="revealbtns"><button class="ghost" type="button" id="revealPrevBtn">← Kembali</button><button class="primary" type="button" id="revealNextBtn">Seterusnya →</button><span class="donepill" id="revealDone" hidden>✓ Selesai</span></div>
             </div>
             <div class="progress" aria-hidden="true"><div id="revealFill"></div></div>

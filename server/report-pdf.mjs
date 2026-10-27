@@ -166,8 +166,10 @@ export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
   field('Apa yang mungkin perlukan bimbingan lanjut', R.reflection.further_guidance);
   // the recommended class for this challenge, as on the last page of the app
   const N = NEXT_CLASS[pillar], classUrl = N.url || config.classUrl;
-  box([N.lead, N.text, '', `Klinik disyorkan: ${N.name} · ${N.price} · ${N.meta}`, classUrl && `Daftar: ${classUrl}`].filter((x) => x != null && x !== false).join('\n'),
-    { title: `Langkah seterusnya: ${N.title}`, fill: C.nude, size: 9.5 });
+  section('08 · Langkah seterusnya', N.title);
+  text(N.lead, { gap: 4 });
+  text(N.text, { gap: 8 });
+  box([`${N.name} · ${N.price}`, N.meta, classUrl && `Daftar: ${classUrl}`].filter(Boolean).join('\n'), { title: 'Klinik disyorkan', fill: C.nude, size: 9.5 });
 
   doc.y += 4;
   text(ai.source === 'ai' ? AI_NOTE : REPORT_NOTE, { size: 8, color: C.muted });

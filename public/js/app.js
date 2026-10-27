@@ -398,7 +398,7 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
   }
 
   // ─────────────── the report, one page at a time ───────────────
-  const PAGES = 7;
+  const PAGES = 8;
   const page = () => Math.min(PAGES, Math.max(1, answers().page || answers().revealed || 1));
   function drawPage() {
     const n = page();
