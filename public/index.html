@@ -134,31 +134,36 @@
           <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag" id="sourceTag">DIAGNOSIS AI</div></div>
           <div class="stale" id="staleNotice" hidden><span>Angka atau tarikh mula berubah sejak diagnosis ini dijana.</span><button class="ghost small" type="button" data-regenerate>Jana semula</button></div>
           <div class="resulttop"><div class="eyebrow" id="diagEyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
-          <div class="cards">
-            <div class="resultcard wide"><div class="label">01 · Simptom</div><h4>Apa yang sedang berlaku?</h4><ol class="symptoms" id="symptomList"></ol><div id="priorityBlock"></div></div>
-            <div class="resultcard"><div class="label">02 · Punca berkemungkinan</div><h4>Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></div>
-            <div class="resultcard"><div class="label">03 · Impak kepada bisnes</div><h4>Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><div id="evidenceToCheck"></div></div>
-          </div>
-          <section class="workshop" aria-labelledby="calcSummaryTitle">
+          <!-- The 7 sections are revealed one at a time (Seterusnya), or all at once (Tunjuk semua). -->
+          <section class="resultcard reveal" data-step="1" aria-labelledby="symTitle">
+            <div class="label">01 · Simptom</div><h4 id="symTitle">Apa yang sedang berlaku?</h4>
+            <div class="issuetable" role="table" aria-label="Situasi yang dipilih dan analisis">
+              <div class="issuehead" role="row"><span role="columnheader">Situasi yang anda pilih</span><span role="columnheader">Analisis</span></div>
+              <div id="symptomList"></div>
+            </div>
+          </section>
+          <section class="resultcard reveal" data-step="2" aria-labelledby="causeTitle"><div class="label">02 · Punca berkemungkinan</div><h4 id="causeTitle">Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></section>
+          <section class="resultcard reveal" data-step="3" aria-labelledby="impactTitle"><div class="label">03 · Impak kepada bisnes</div><h4 id="impactTitle">Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><div id="evidenceToCheck"></div></section>
+          <section class="workshop reveal" data-step="4" aria-labelledby="calcSummaryTitle">
             <div class="label">04 · Kira / semak impak</div><h3 id="calcSummaryTitle"></h3>
             <ul class="calclist" id="calcSummary"></ul>
             <div class="calcresult" id="calcSummaryResult"></div>
             <div class="bottomrow"><span class="counter">Angka dikira oleh sistem, bukan AI.</span><button class="ghost small" type="button" id="editNumbersBtn">Ubah angka</button></div>
           </section>
-          <section class="workshop" aria-labelledby="exerciseTitle">
+          <section class="workshop reveal" data-step="5" aria-labelledby="exerciseTitle">
             <div class="label">05 · Quick Fix workshop</div><h3 id="exerciseTitle"></h3><p id="exerciseBrief"></p>
             <ol class="steplist promptbox" id="exerciseSteps"></ol>
             <label class="fieldlabel" for="workOutput" id="workOutputLabel">Hasil latihan anda</label><textarea id="workOutput" class="grow" rows="5" maxlength="4000" placeholder="Tulis hasil latihan anda di sini..."></textarea>
             <div class="bottomrow"><span class="counter">Hasil latihan disimpan dalam laporan anda</span><button class="ghost" type="button" id="exampleBtn" aria-expanded="false" aria-controls="exampleBox">Lihat contoh</button></div>
             <div class="example" id="exampleBox" hidden><div class="label">Contoh</div><p id="exampleText"></p></div>
           </section>
-          <section class="workshop" aria-labelledby="planTitle">
+          <section class="workshop reveal" data-step="6" aria-labelledby="planTitle">
             <div class="label">06 · Pelan tindakan 7 hari</div><h3 id="planTitle">Jangan berhenti setakat faham. Uji dalam bisnes.</h3>
             <div class="field datefield"><label for="actionDate">Bila anda akan mula?</label><input id="actionDate" type="date" data-startdate></div>
             <p class="sub">Setiap item: <b>A</b> tindakan, <b>B</b> ukuran kejayaan, <b>C</b> bukti yang akan disemak. Tandakan apabila selesai.</p>
             <ol class="checklist" id="planList"></ol>
           </section>
-          <section class="workshop nextstep" aria-labelledby="reflectionTitle">
+          <section class="workshop nextstep reveal" data-step="7" aria-labelledby="reflectionTitle">
             <div class="label">07 · Reflection</div><h3 id="reflectionTitle">Di mana execution gap anda?</h3>
             <div class="cards three">
               <div class="resultcard"><h4>Apa yang sudah anda faham / sediakan</h4><p id="reflPrepared"></p></div>
@@ -167,12 +172,25 @@
             </div>
             <div class="closing"><h4 id="closingTitle"></h4><p id="closingText"></p></div>
           </section>
+          <div class="revealnav" id="revealNav">
+            <div class="revealprogress"><span id="revealCount">1 / 7</span><div class="progress" aria-hidden="true"><div id="revealFill"></div></div></div>
+            <div class="revealbtns"><button class="linkbtn" type="button" id="revealAllBtn">Tunjuk semua</button><button class="primary" type="button" id="revealNextBtn">Seterusnya →</button></div>
+          </div>
           <p class="fineprint" id="reportNote"></p>
           <div id="reportMessage" class="message" role="status" aria-live="polite"></div>
-          <div class="bottomrow"><button class="ghost" type="button" id="backToQuestionsBtn">← Kembali edit pilihan</button><button class="ghost" type="button" data-regenerate>Jana semula</button><button class="primary" type="button" id="downloadBtn"><svg aria-hidden="true"><use href="#i-download"/></svg>Cetak / Simpan laporan (PDF)</button></div>
+          <div class="bottomrow" id="reportActions"><button class="ghost" type="button" id="backToQuestionsBtn">← Kembali edit pilihan</button><button class="ghost" type="button" data-regenerate>Jana semula</button><button class="primary" type="button" id="downloadBtn"><svg aria-hidden="true"><use href="#i-download"/></svg>Cetak / Simpan laporan (PDF)</button></div>
         </div>
       </main>
     </div>
+
+    <dialog class="dialog" id="switchDialog" aria-labelledby="switchTitle">
+      <form method="dialog">
+        <h2 id="switchTitle">Tukar cabaran utama?</h2>
+        <p>Anda sudah ada analisis untuk <b id="switchFrom"></b>. Untuk menukar kepada <b id="switchTo"></b>, semua data cabaran perlu ditetapkan semula: situasi yang ditanda, angka, tarikh mula, analisis AI, hasil latihan dan pelan 7 hari.</p>
+        <p class="sub">Maklumat bisnes anda (Langkah 1) kekal. Tindakan ini tidak boleh dibatalkan.</p>
+        <div class="bottomrow"><button class="ghost" value="cancel" type="submit">Kekal dengan cabaran ini</button><button class="primary danger" value="reset" type="submit" id="switchConfirmBtn">Tetapkan semula &amp; tukar</button></div>
+      </form>
+    </dialog>
 
     <div class="account-links" id="accountLinks" hidden>
       <button type="button" class="linkbtn" id="exportBtn">Muat turun semua data saya (JSON)</button>

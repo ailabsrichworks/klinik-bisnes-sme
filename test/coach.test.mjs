@@ -56,6 +56,16 @@ test('a good answer passes; the plan is kept to 5 matched items in day order', (
   assert.equal(normalize({ ...sample, plan: [{ ...sample.plan[0], day: 12 }, ...sample.plan.slice(1)] }).plan.at(-1).day, 7, 'days clamped to 1–7');
 });
 
+test('every ticked situation gets its own reason; the main one also fills the Sheet columns', () => {
+  const r = normalize({ ...sample, issue_analysis: [...sample.issue_analysis].reverse() });
+  assert.deepEqual(r.issue_analysis.map((x) => x.number), [1, 2, 3], 'kept in input order');
+  const main = r.issue_analysis.find((x) => x.number === r.primary_issue);
+  assert.equal(r.priority_reason, main.reason);
+  const others = r.issue_analysis.filter((x) => x.number !== r.primary_issue);
+  assert.equal(r.other_issues, others.map((x) => `Situasi ${x.number}: ${x.reason}`).join('\n'));
+  assert.ok(OUTPUT_SCHEMA.required.includes('issue_analysis'));
+});
+
 test('unusable answers are refused', () => {
   assert.equal(normalize({ ...sample, plan: sample.plan.slice(0, 4) }), null, 'not 5 items');
   assert.equal(normalize({ ...sample, plan: [...sample.plan, sample.plan[0]] }), null, '6 items');
@@ -63,6 +73,9 @@ test('unusable answers are refused', () => {
   assert.equal(normalize({ ...sample, primary_issue: 4 }), null, 'primary issue not 1–3');
   assert.equal(normalize({ ...sample, workshop: { ...sample.workshop, steps: ['satu'] } }), null, 'workshop without steps');
   assert.equal(normalize(null), null);
+  assert.equal(normalize({ ...sample, issue_analysis: sample.issue_analysis.slice(0, 2) }), null, 'a reason missing');
+  assert.equal(normalize({ ...sample, issue_analysis: [sample.issue_analysis[0], sample.issue_analysis[0], sample.issue_analysis[2]] }), null, 'a number twice');
+  assert.equal(normalize({ ...sample, issue_analysis: [{ ...sample.issue_analysis[0], reason: '' }, ...sample.issue_analysis.slice(1)] }), null, 'an empty reason');
 });
 
 test('coach(): calls Claude with the prompt and JSON schema, logs the call, returns the result', async () => {

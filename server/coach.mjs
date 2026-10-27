@@ -16,8 +16,7 @@ Return one JSON object; every text value in Bahasa Melayu Malaysia.
 - diagnosis_title: diagnosis title, at most 12 words.
 - diagnosis_summary: short diagnosis summary, 2–3 sentences.
 - primary_issue: the number (1, 2 or 3) of the ONE selected issue to address first, as numbered in the input.
-- priority_reason: why that issue comes first (1–3 sentences).
-- other_issues: how the other two selected issues shape the diagnosis, causes or next steps (1–3 sentences).
+- issue_analysis: exactly 3 items, one for EACH selected issue in input order (number 1, 2, 3). reason: 1–2 sentences. For the primary issue, why it should come first; for each of the other two, what it likely means for this business and how it shapes the diagnosis, causes or next steps.
 - likely_cause: the likely underlying cause, stated as possible, not confirmed.
 - impact: the potential business impact.
 - evidence_to_check: 2–4 short items of evidence to check.
@@ -37,8 +36,15 @@ export const OUTPUT_SCHEMA = {
     diagnosis_title: str,
     diagnosis_summary: str,
     primary_issue: { type: 'integer', enum: [1, 2, 3] },
-    priority_reason: str,
-    other_issues: str,
+    issue_analysis: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { number: { type: 'integer', enum: [1, 2, 3] }, reason: str },
+        required: ['number', 'reason'],
+        additionalProperties: false,
+      },
+    },
     likely_cause: str,
     impact: str,
     evidence_to_check: { type: 'array', items: str },
@@ -64,7 +70,7 @@ export const OUTPUT_SCHEMA = {
       additionalProperties: false,
     },
   },
-  required: ['diagnosis_title', 'diagnosis_summary', 'primary_issue', 'priority_reason', 'other_issues', 'likely_cause', 'impact', 'evidence_to_check', 'workshop', 'plan', 'reflection'],
+  required: ['diagnosis_title', 'diagnosis_summary', 'primary_issue', 'issue_analysis', 'likely_cause', 'impact', 'evidence_to_check', 'workshop', 'plan', 'reflection'],
   additionalProperties: false,
 };
 
@@ -88,13 +94,20 @@ export function normalize(out) {
   })) : [];
   if (plan.length !== 5 || plan.some((x) => !x.action || !x.measure || !x.evidence)) return null;
   plan.sort((a, b) => a.day - b.day);
+  // one reason per selected issue, numbers 1–3 each exactly once
+  const analysis = Array.isArray(out.issue_analysis) ? out.issue_analysis.map((x) => ({ number: x?.number, reason: clip(x?.reason, 500) })) : [];
+  if (analysis.length !== 3 || [1, 2, 3].some((n) => analysis.filter((x) => x.number === n && x.reason).length !== 1)) return null;
+  analysis.sort((a, b) => a.number - b.number);
+  const primary = [1, 2, 3].includes(out.primary_issue) ? out.primary_issue : null;
   const w = out.workshop || {}, r = out.reflection || {};
   const result = {
     diagnosis_title: clip(out.diagnosis_title, 140),
     diagnosis_summary: clip(out.diagnosis_summary, 700),
-    primary_issue: [1, 2, 3].includes(out.primary_issue) ? out.primary_issue : null,
-    priority_reason: clip(out.priority_reason, 700),
-    other_issues: clip(out.other_issues, 700),
+    primary_issue: primary,
+    issue_analysis: analysis,
+    // the same reasons, as the Sheet's two columns show them
+    priority_reason: analysis.find((x) => x.number === primary)?.reason || '',
+    other_issues: analysis.filter((x) => x.number !== primary).map((x) => `Situasi ${x.number}: ${x.reason}`).join('\n'),
     likely_cause: clip(out.likely_cause, 900),
     impact: clip(out.impact, 900),
     evidence_to_check: list(out.evidence_to_check, 4),
@@ -110,7 +123,7 @@ export function normalize(out) {
 export function fixedReport(pillar) {
   const P = PILLARS[pillar];
   return {
-    diagnosis_title: P.titleOut, diagnosis_summary: P.introOut, primary_issue: null, priority_reason: '', other_issues: '',
+    diagnosis_title: P.titleOut, diagnosis_summary: P.introOut, primary_issue: null, issue_analysis: [], priority_reason: '', other_issues: '',
     likely_cause: P.cause, impact: `${P.impact} ${P.impactPrompt}`, evidence_to_check: [P.evidence],
     workshop: { title: P.exerciseTitle, purpose: P.exerciseBrief, steps: [P.exercisePrompt], example: P.example, output: 'Hasil latihan anda' },
     plan: [{ day: 1, action: P.defaultAction, measure: P.defaultMeasure, evidence: P.defaultProof }],

@@ -137,7 +137,8 @@ export function createApp({ store, reports }) {
     // replaces it with an older or missing one (e.g. a save that was in flight during the call).
     for (const [p, saved] of Object.entries(req.journey.state?.byPillar || {})) {
       const mine = state.byPillar?.[p];
-      if (saved?.ai && mine && (!mine.ai || String(mine.ai.at || '') < String(saved.ai.at || ''))) mine.ai = saved.ai;
+      const wipedAfter = state.resetAt && String(state.resetAt) > String(saved?.ai?.at || ''); // reset on purpose (switching challenge)
+      if (saved?.ai && mine && !wipedAfter && (!mine.ai || String(mine.ai.at || '') < String(saved.ai.at || ''))) mine.ai = saved.ai;
     }
     store.update(req.journey, { state, step: Number.isInteger(step) && step >= 0 && step <= 3 ? step : req.journey.step });
     if (reports && req.journey.step === 3) reports.schedule(req.journey); // the report step: keep a copy of the report in Drive

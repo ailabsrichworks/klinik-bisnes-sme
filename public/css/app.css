@@ -219,12 +219,7 @@ textarea.grow { resize: none; overflow: hidden; }
 
 .stale { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-top: 14px; padding: 10px 14px; border-radius: 12px; background: #fff9ed; border: 1px solid #f0dfbd; color: #5e5139; font-size: 14px; }
 
-.symptoms { padding-left: 20px; margin: 6px 0 10px; }
-.symptoms li { font-size: 15px; color: #45524b; }
-.symptoms li + li { margin-top: 6px; }
-.symptoms li.primary { color: var(--green); font-weight: 700; }
 .badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: var(--lime); color: var(--green); border-radius: 999px; padding: 2px 8px; vertical-align: 1px; }
-#priorityBlock p { margin: 8px 0 0; }
 .mini { font-size: 12px !important; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #66746c !important; margin: 12px 0 4px !important; }
 .resultcard ul { margin-top: 4px; }
 
@@ -247,3 +242,48 @@ textarea.grow { resize: none; overflow: hidden; }
 @media (min-width: 761px) { .cards.three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 #resultView .bottomrow { justify-content: flex-end; }
 #resultView .bottomrow #backToQuestionsBtn { margin-right: auto; }
+
+/* 01 Simptom: each ticked situation beside the AI's reason for it */
+.issuetable { margin-top: 6px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.issuehead { display: none; }
+.issuerow { display: grid; grid-template-columns: 1fr; border-top: 1px solid var(--line); }
+.issuerow:first-child { border-top: 0; }
+.issuerow.primary { background: #f3f8ea; box-shadow: inset 4px 0 0 var(--green); }
+.issuecell, .reasoncell { padding: 12px 14px; }
+.issuecell { display: flex; gap: 10px; align-items: flex-start; }
+.issuecell p, .reasoncell p { margin: 0; font-size: 15px; color: #34413a; }
+.issuerow.primary .issuecell p { color: var(--green); font-weight: 700; }
+.issuecell .badge { margin-bottom: 4px; }
+.issuenum { width: 26px; height: 26px; border-radius: 50%; background: #eef2ea; color: var(--green); display: grid; place-items: center; font: 800 13px/1 var(--font-body); flex-shrink: 0; }
+.issuerow.primary .issuenum { background: var(--green); color: var(--lime); }
+.reasoncell { padding-top: 0; padding-left: 50px; }
+.reasonlabel { display: block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #66746c; margin-bottom: 2px; }
+.issuenote { margin: 0; padding: 12px 14px; border-top: 1px solid var(--line); font-size: 14px; }
+@media (min-width: 761px) {
+  .issuehead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); background: #f8f8f3; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #66746c; }
+  .issuehead span { padding: 10px 14px; }
+  .issuerow { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+  .reasoncell { padding: 12px 14px; border-left: 1px solid var(--line); }
+  .issuerow.primary .reasoncell { border-left-color: #d5e3c4; }
+}
+
+/* The report, one section at a time */
+#resultView .reveal { margin-top: 16px; }
+.reveal.appear { animation: appear .35s ease-out; }
+@keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .reveal.appear { animation: none; } }
+.revealnav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--field); border-radius: 16px; background: #fbfcf8; }
+.revealprogress { display: flex; align-items: center; gap: 12px; flex: 1 1 180px; font-size: 14px; font-weight: 700; color: var(--green); }
+.revealprogress .progress { flex: 1; margin: 0; }
+.revealbtns { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+@media (max-width: 760px) { .revealbtns { width: 100%; } .revealbtns .primary { flex: 1; } }
+
+/* Warning before switching challenge */
+.dialog { border: 0; border-radius: 20px; padding: 24px; max-width: 460px; width: calc(100% - 32px); color: var(--ink); box-shadow: 0 20px 60px rgba(23, 33, 29, .25); }
+.dialog::backdrop { background: rgba(23, 33, 29, .45); }
+.dialog h2 { margin: 0 0 10px; font-size: 22px; }
+.dialog p { margin: 0 0 10px; font-size: 15px; }
+.dialog .bottomrow { margin-top: 18px; }
+@media (max-width: 430px) { .dialog .bottomrow > * { flex: 1 1 100%; } }
+button.primary.danger { background: #a3412c; }
+button.primary.danger:hover:not(:disabled) { background: #8a3423; }

@@ -102,12 +102,15 @@ export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
   }
 
   section('01 · Simptom', 'Apa yang sedang berlaku?');
-  selected.forEach((i, n) => {
-    const primary = R.primary_issue === n + 1;
-    text(`${primary ? 'ISU UTAMA  ·  ' : ''}${n + 1}. ${P.issues[i]}`, { indent: 2, gap: 3, font: primary ? 'Bold' : 'Body', color: primary ? C.green : C.ink });
+  // each ticked situation with the AI's reason for it; the main issue highlighted
+  const reasonOf = (n) => R.issue_analysis?.find((x) => x.number === n)?.reason || (n === R.primary_issue ? R.priority_reason : '');
+  selected.forEach((i, k) => {
+    const n = k + 1, primary = R.primary_issue === n, why = reasonOf(n);
+    room(60);
+    text(`${primary ? 'ISU UTAMA  ·  ' : ''}${n}. ${P.issues[i]}`, { gap: 2, font: 'Bold', color: primary ? C.green : C.ink });
+    if (why) text(`${primary ? 'Kenapa didahulukan: ' : ''}${why}`, { indent: 14, gap: 8, size: 9.5, color: primary ? C.ink : C.muted });
   });
-  if (R.priority_reason) field('Kenapa isu ini didahulukan', R.priority_reason);
-  if (R.other_issues) field('Kaitan dua isu lain', R.other_issues);
+  if (!R.issue_analysis?.length && R.other_issues) field('Kaitan dua isu lain', R.other_issues);
 
   section('02 · Punca berkemungkinan', 'Apa yang mungkin menjadi punca?');
   text(R.likely_cause);

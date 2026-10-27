@@ -93,6 +93,16 @@ test('a save from the browser never replaces the AI result with an older one', a
   assert.equal(back.workOutput, 'ditulis semasa AI berjalan');
 });
 
+test('switching challenge after an analysis: a deliberate reset really clears it', async () => {
+  const k = await start();
+  await diagnose(k);
+  const wiped = { profile, pillar: 'marketing', byPillar: { marketing: { selected: [] } }, resetAt: new Date(Date.now() + 1000).toISOString() };
+  await call('/api/journey', { method: 'PUT', key: k, body: { state: wiped, step: 1 } });
+  const back = (await call('/api/journey', { key: k })).body.state.byPillar.marketing;
+  assert.equal(back.ai, undefined, 'the old analysis is not restored');
+  assert.equal((await call('/api/report.pdf', { key: k })).status, 409);
+});
+
 test('the optional daily cap per participant is enforced', async () => {
   const k = await start();
   config.dailyAiLimitPerUser = 1;

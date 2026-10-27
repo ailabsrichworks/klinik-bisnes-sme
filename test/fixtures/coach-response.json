@@ -1,65 +1,80 @@
 {
-  "diagnosis_title": "CTA Tidak Jelas Menyebabkan Peminat Harga Tidak Membeli",
-  "diagnosis_summary": "Anda menjual produk kecantikan secara online dan LIVE, tetapi viewers cepat keluar, ramai bertanya harga tanpa membeli, dan CTA tidak disebut dengan jelas. Kemungkinan besar penonton tidak tahu apa nilai produk, mengapa perlu beli sekarang dan bagaimana hendak order. Ini masih andaian yang perlu disahkan melalui rakaman LIVE dan chat.",
+  "diagnosis_title": "CTA Tidak Jelas Menyebabkan Peminat LIVE Tidak Membeli",
+  "diagnosis_summary": "Ketiga-tiga isu saling berkait: viewers cepat keluar, ramai tanya harga tetapi tidak beli, dan cara order tidak disebut dengan jelas. Isu CTA dan cara order dijadikan keutamaan kerana ia paling mudah diuji dalam tujuh hari. Ini dugaan awal yang perlu disahkan dengan rakaman LIVE dan rekod pertanyaan.",
   "primary_issue": 3,
-  "priority_reason": "CTA yang jelas boleh diperbaiki dalam masa seminggu tanpa kos, dan terus berkait dengan masalah soalan harga yang tidak diteruskan dengan pembelian. Ia juga mudah diuji pada LIVE seterusnya.",
-  "other_issues": "Viewers yang keluar cepat menunjukkan bahagian pembukaan LIVE mungkin perlu dikuatkan, tetapi CTA perlu dipastikan sedia dahulu supaya penonton yang tinggal tahu apa langkah seterusnya. Soalan harga pula menunjukkan ada minat, jadi jawapan harga perlu disertakan nilai produk dan arahan order.",
-  "likely_cause": "Mungkin penonton berminat tetapi tidak diberi langkah order yang mudah dan berulang, dan harga dijawab tanpa menerangkan manfaat, kegunaan atau sebab produk berbaloi. Mungkin juga pembukaan LIVE kurang menarik. Semua ini belum disahkan.",
-  "impact": "Jika benar, peluang daripada penonton yang sudah berminat boleh terlepas. Simulasi aplikasi: pada kadar semasa 1% dengan 60 viewers relevan dan nilai order RM80 (nilai ini bukan diisi peserta), anggaran jualan ialah RM48.00; jika kadar 4%, RM192.00; perbezaan simulasi RM144.00 bagi satu LIVE. Ini bukan ramalan atau jaminan.",
+  "issue_analysis": [
+    {
+      "number": 1,
+      "reason": "Viewers keluar awal mungkin kerana pembukaan LIVE kurang menarik atau tiada sebab untuk kekal. Ini perlu disemak kemudian selepas CTA dan penerangan nilai diperbaiki, kerana jumlah viewers kekal tidak dapat disahkan lagi."
+    },
+    {
+      "number": 2,
+      "reason": "Pertanyaan harga tanpa pembelian mungkin bermakna nilai produk belum dijelaskan sebelum harga disebut atau langkah seterusnya tidak jelas. Ia menunjukkan ada minat, jadi jawapan harga perlu disertakan dengan CTA."
+    },
+    {
+      "number": 3,
+      "reason": "Ini patut didahulukan kerana pelanggan yang berminat tidak tahu apa perlu dibuat untuk membeli, dan ia boleh dibaiki dengan skrip ringkas dalam seminggu. Ia juga terus menyokong isu 2, dan pembukaan LIVE boleh ditambah baik kemudian."
+    }
+  ],
+  "priority_reason": "Ini patut didahulukan kerana pelanggan yang berminat tidak tahu apa perlu dibuat untuk membeli, dan ia boleh dibaiki dengan skrip ringkas dalam seminggu. Ia juga terus menyokong isu 2, dan pembukaan LIVE boleh ditambah baik kemudian.",
+  "other_issues": "Situasi 1: Viewers keluar awal mungkin kerana pembukaan LIVE kurang menarik atau tiada sebab untuk kekal. Ini perlu disemak kemudian selepas CTA dan penerangan nilai diperbaiki, kerana jumlah viewers kekal tidak dapat disahkan lagi.\nSituasi 2: Pertanyaan harga tanpa pembelian mungkin bermakna nilai produk belum dijelaskan sebelum harga disebut atau langkah seterusnya tidak jelas. Ia menunjukkan ada minat, jadi jawapan harga perlu disertakan dengan CTA.",
+  "likely_cause": "Kemungkinan, tiada skrip CTA yang ringkas dan berulang dalam LIVE, jadi penonton yang berminat tidak diberi langkah order yang jelas selepas bertanya harga. Ini belum disahkan dan perlu disemak melalui rakaman LIVE serta chat. Kemungkinan lain ialah harga atau nilai produk belum diterangkan dengan cukup.",
+  "impact": "Jika dugaan ini betul, peluang jualan daripada penonton yang berminat mungkin terlepas. Simulasi aplikasi: jualan pada kadar semasa 1% ialah RM48.00 dan senario 4% ialah RM192.00, perbezaan simulasi RM144.00 bagi satu LIVE. Ini bukan ramalan atau jaminan; nilai order RM80 dan sasaran 4% bukan dimasukkan oleh peserta, jadi sahkan andaian dan pastikan viewers relevan.",
   "evidence_to_check": [
-    "Rakaman LIVE terakhir: adakah CTA disebut, berapa kali dan pada minit berapa",
-    "Chat/DM yang tanya harga: apa jawapan anda dan adakah ada arahan order",
-    "Statistik LIVE: masa penonton keluar dan bilangan viewers sebenar yang relevan",
-    "Nilai order purata sebenar kerana RM80 dalam kalkulator bukan diisi anda"
+    "Rakaman LIVE terkini: berapa kali dan pada minit ke berapa cara order disebut",
+    "Chat atau DM yang tanya harga: apa jawapan diberi dan adakah ada langkah order",
+    "Data viewers: bila viewers mula keluar",
+    "Purata nilai order sebenar berbanding RM80 dalam kalkulator"
   ],
   "workshop": {
-    "title": "Tulis Skrip CTA 3 Ayat untuk LIVE",
-    "purpose": "Menghasilkan satu skrip CTA pendek yang menjawab harga, nilai dan cara order.",
+    "title": "Tulis Skrip CTA 3 Langkah untuk LIVE",
+    "purpose": "Menghasilkan satu skrip CTA 3 langkah yang boleh dibaca semasa LIVE apabila ada yang tanya harga.",
     "steps": [
-      "Pilih satu produk utama untuk LIVE seterusnya.",
-      "Tulis satu ayat nilai: masalah kulit/penjagaan diri yang diselesaikan dan manfaatnya.",
-      "Tulis satu ayat harga atau tawaran, termasuk sebab ia berbaloi.",
-      "Tulis satu ayat langkah order yang jelas, contohnya komen, klik troli atau WhatsApp.",
-      "Baca kuat-kuat dan pendekkan sehingga boleh disebut dalam 20 saat."
+      "Pilih satu produk utama yang paling kerap ditanya harga.",
+      "Tulis jawapan harga satu ayat: sebut manfaat dahulu, kemudian harga.",
+      "Tulis langkah order dalam 3 langkah mudah, contohnya klik troli, pilih variasi, bayar.",
+      "Tambah ayat dorongan, contohnya stok terhad atau bonus LIVE jika benar.",
+      "Baca skrip kuat-kuat dan ringkaskan sehingga muat 20 saat.",
+      "Tentukan masa dalam LIVE untuk ulang CTA, contohnya setiap 10 minit."
     ],
-    "example": "Contoh (ilustrasi sahaja, serum muka): \"Serum ini membantu kulit nampak lebih lembap dalam rutin harian. Harga hari ini RM__ dan ada hadiah untuk 10 order pertama. Nak order? Klik troli kuning sekarang, atau taip SAYA NAK di komen.\"",
-    "output": "Tulis dalam aplikasi skrip CTA 3 ayat anda untuk satu produk LIVE."
+    "example": "Contoh serum muka: 'Serum ini bantu kulit nampak lebih lembap, harga RM80. Nak order: 1) tekan troli kuning, 2) pilih serum, 3) bayar sekarang. Ada free gift untuk 10 pembeli LIVE.' Ini hanya ilustrasi, bukan jawapan anda.",
+    "output": "Tulis skrip CTA 3 langkah anda untuk satu produk dalam aplikasi."
   },
   "plan": [
     {
       "day": 1,
-      "action": "Semak rakaman LIVE terakhir dan catat bila CTA disebut.",
-      "measure": "Jumlah CTA direkod untuk 1 LIVE.",
-      "evidence": "Nota ringkas dengan minit CTA."
+      "action": "Tonton semula satu rakaman LIVE dan catat bila CTA disebut.",
+      "measure": "Satu catatan masa CTA disiapkan.",
+      "evidence": "Nota masa CTA daripada rakaman."
     },
     {
       "day": 2,
-      "action": "Tulis skrip CTA 3 ayat untuk satu produk.",
-      "measure": "1 skrip siap, boleh disebut dalam 20 saat.",
-      "evidence": "Skrip bertulis dalam aplikasi."
+      "action": "Senaraikan 5 soalan harga dan jawapan yang diberi.",
+      "measure": "Lima soalan dan jawapan dicatat.",
+      "evidence": "Tangkap layar chat atau DM."
     },
     {
       "day": 3,
-      "action": "Sediakan jawapan standard untuk soalan harga dan susulan DM.",
-      "measure": "1 templat jawapan siap digunakan.",
-      "evidence": "Tangkapan skrin templat."
+      "action": "Tulis skrip CTA 3 langkah untuk satu produk.",
+      "measure": "Satu skrip siap dalam 3 langkah.",
+      "evidence": "Teks skrip dalam aplikasi."
     },
     {
       "day": 5,
-      "action": "Buat LIVE dan sebut CTA sekurang-kurangnya 3 kali.",
+      "action": "Buat satu LIVE dan sebut CTA sekurang-kurangnya 3 kali.",
       "measure": "CTA disebut 3 kali atau lebih.",
-      "evidence": "Rakaman LIVE dengan penanda minit."
+      "evidence": "Rakaman LIVE dan penanda masa CTA."
     },
     {
       "day": 7,
-      "action": "Bandingkan LIVE ini dengan LIVE lama.",
-      "measure": "Perbandingan 3 data: viewers, soalan harga, order.",
-      "evidence": "Jadual perbandingan ringkas."
+      "action": "Bandingkan viewers, pertanyaan harga dan order LIVE ini dengan LIVE lama.",
+      "measure": "Satu jadual perbandingan ringkas siap.",
+      "evidence": "Data LIVE dan rekod order."
     }
   ],
   "reflection": {
-    "prepared": "Anda sudah nampak bahawa CTA yang tidak jelas mungkin menghalang minat harga menjadi pembelian, dan anda mempunyai skrip CTA untuk diuji.",
-    "to_validate": "Perlu disahkan sama ada viewers memang relevan, nilai order sebenar, dan sama ada masalah utama ialah CTA, pembukaan LIVE atau tawaran.",
-    "further_guidance": "Anda mungkin perlu latihan untuk pembukaan LIVE yang lebih menarik, menjawab bantahan harga dan menyebut CTA secara semula jadi semasa LIVE."
+    "prepared": "Anda faham bahawa pertanyaan harga ialah tanda minat, dan CTA yang jelas ialah langkah pertama untuk diuji. Anda juga akan ada satu skrip CTA siap guna.",
+    "to_validate": "Perlu disahkan sama ada viewers memang relevan, nilai order sebenar menghampiri RM80, dan sama ada masalah sebenar ialah CTA, harga atau pembukaan LIVE.",
+    "further_guidance": "Anda mungkin perlu latihan menyebut CTA secara semula jadi, memperbaiki 30 saat pertama LIVE, dan menjawab bantahan harga selepas data seminggu dikumpul."
   }
 }

@@ -203,14 +203,35 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   function drawPillars() {
     $$('.category').forEach((b) => { const on = b.dataset.cat === state.pillar; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
   }
+  // Once an analysis exists, switching challenge needs a reset of all challenge data (Langkah 1 stays).
+  const hasAnalysis = () => Object.values(state.byPillar || {}).some((a) => a?.ai);
   $$('.category').forEach((b) => {
     b.onclick = () => {
-      if (b.dataset.cat === state.pillar && view === 1) return;
-      state.pillar = b.dataset.cat;
+      const to = b.dataset.cat;
+      if (to === state.pillar) { if (view !== 1 && !answers().ai) go(1); return; }
+      if (hasAnalysis()) return askToSwitch(to);
+      state.pillar = to;
       drawPillars(); safeSave();
       go(1);
     };
   });
+  function askToSwitch(to) {
+    const dlg = $('switchDialog');
+    $('switchFrom').textContent = PILLARS[state.pillar].name;
+    $('switchTo').textContent = PILLARS[to].name;
+    dlg.onclose = () => {
+      if (dlg.returnValue !== 'reset') { drawPillars(); return; }
+      // the server keeps an AI result a save does not carry; resetAt tells it this one is wiped on purpose
+      state = { ...state, pillar: to, byPillar: {}, resetAt: new Date().toISOString() };
+      reached = 1;
+      drawPillars(); saveNow();
+      go(1);
+      scrollToEl($('main'));
+    };
+    dlg.returnValue = '';
+    dlg.showModal();
+    $('switchConfirmBtn').blur();
+  }
 
   // Shows one of the main panel's views: 1 pick · 2 numbers & start date · 3 report.
   // The report needs a diagnosis; without one, the participant is sent to step 2 to make it.
@@ -301,7 +322,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     try {
       await saveNow(); // the server builds the AI input from the saved answers
       const r = await KB.api('/api/coach', { method: 'POST', body: {} });
-      Object.assign(answers(), { ai: r.ai, planDone: [] });
+      Object.assign(answers(), { ai: r.ai, planDone: [], revealed: 1 });
       reached = 3;
       go(3);
       scrollToEl($('main'));
@@ -327,8 +348,13 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $('diagEyebrow').textContent = ai.source === 'ai' ? 'DIAGNOSIS AWAL · DISEDIAKAN OLEH AI' : 'DIAGNOSIS AWAL';
     $('diagnosisTitle').textContent = R.diagnosis_title;
     $('diagnosisIntro').textContent = R.diagnosis_summary;
-    $('symptomList').innerHTML = a.selected.map((i, n) => `<li${R.primary_issue === n + 1 ? ' class="primary"' : ''}>${R.primary_issue === n + 1 ? '<span class="badge">Isu utama</span> ' : ''}${KB.esc(d.issues[i])}</li>`).join('');
-    $('priorityBlock').innerHTML = [R.priority_reason && `<p><b>Kenapa didahulukan:</b> ${KB.esc(R.priority_reason)}</p>`, R.other_issues && `<p><b>Kaitan dua isu lain:</b> ${KB.esc(R.other_issues)}</p>`].filter(Boolean).join('');
+    // One row per ticked situation with the AI's reason beside it; the main issue is highlighted.
+    // (Older analyses have only the two combined reasons: the main one goes on its row.)
+    const reasonOf = (n) => R.issue_analysis?.find((x) => x.number === n)?.reason || (n === R.primary_issue ? R.priority_reason : '');
+    $('symptomList').innerHTML = a.selected.map((i, k) => {
+      const n = k + 1, main = R.primary_issue === n, why = reasonOf(n);
+      return `<div class="issuerow${main ? ' primary' : ''}" role="row"><div class="issuecell" role="cell"><span class="issuenum">${n}</span><div>${main ? '<span class="badge">Isu utama</span>' : ''}<p>${KB.esc(d.issues[i])}</p></div></div><div class="reasoncell" role="cell"><span class="reasonlabel">${main ? 'Kenapa didahulukan' : 'Analisis'}</span><p>${why ? KB.esc(why) : '—'}</p></div></div>`;
+    }).join('') + (!R.issue_analysis?.length && R.other_issues ? `<p class="issuenote"><b>Kaitan isu lain:</b> ${KB.esc(R.other_issues)}</p>` : '');
     $('causeText').textContent = R.likely_cause;
     $('impactText').textContent = R.impact;
     $('evidenceToCheck').innerHTML = R.evidence_to_check.length ? `<p class="mini">Bukti untuk disemak</p><ul>${R.evidence_to_check.map((x) => `<li>${KB.esc(x)}</li>`).join('')}</ul>` : '';
@@ -359,8 +385,38 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $('reportNote').textContent = ai.source === 'ai' ? AI_NOTE : REPORT_NOTE;
     $$('[data-regenerate]').forEach((b) => { b.hidden = ai.source !== 'ai' && !KB.cfg.aiReady; });
     drawStale();
+    drawReveal();
     msg('reportMessage', '');
   }
+
+  // ─────────────── the report, one section at a time ───────────────
+  const SECTIONS = 7;
+  const revealed = () => Math.min(SECTIONS, Math.max(1, answers().revealed || 1));
+  function drawReveal() {
+    const n = revealed();
+    $$('#resultView .reveal').forEach((el) => { el.hidden = +el.dataset.step > n; });
+    show('revealNav', n < SECTIONS);
+    show('reportActions', n >= SECTIONS);
+    $('revealCount').textContent = `${n} / ${SECTIONS}`;
+    $('revealFill').style.width = `${(n / SECTIONS) * 100}%`;
+    $('revealNextBtn').textContent = n === SECTIONS - 1 ? 'Lihat bahagian terakhir →' : 'Seterusnya →';
+    requestAnimationFrame(growAll);
+  }
+  function revealTo(n) {
+    const before = revealed();
+    answers().revealed = Math.min(SECTIONS, n);
+    drawReveal(); safeSave();
+    // bring the first newly shown section into view, and move focus to its heading for screen readers
+    const first = $('resultView').querySelector(`.reveal[data-step="${before + 1}"]`);
+    if (first && n > before) {
+      first.classList.add('appear');
+      scrollToEl(first);
+      const h = first.querySelector('h3, h4');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    }
+  }
+  $('revealNextBtn').onclick = () => revealTo(revealed() + 1);
+  $('revealAllBtn').onclick = () => revealTo(SECTIONS);
   function drawStale() { show('staleNotice', !!answers().ai && !fresh()); }
   $('workOutput').addEventListener('input', () => { answers().workOutput = $('workOutput').value; autoGrow($('workOutput')); safeSave(); });
   $('exampleBtn').onclick = () => {
