@@ -1,5 +1,5 @@
-// Business Quick Fix: intake → pick a pillar and 3 situations → optional numbers, start date and
-// evidence → AI coach report (server/coach.mjs; the fixed v4 text when the AI is off). Saved
+// Business Quick Fix: intake → pick a pillar and 3 situations → optional numbers and start date
+// → AI coach report (server/coach.mjs; the fixed v4 text when the AI is off). Saved
 // through our API to the participant's row in the Google Sheet. No login: a random key in this browser identifies the participant; a
 // facilitator's ?c=CODE files them under that session.
 import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, defaultPlan, coachInput } from './content.mjs';
@@ -12,8 +12,8 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   const CACHE_KEY = 'kbsme_bqf_v4_cache';
   const COHORT_KEY = 'kbsme_cohort_code';
 
-  // step: 0 intake · 1 pick situations · 2 optional evidence · 3 report
-  const blank = () => ({ profile: {}, pillar: 'sales', byPillar: {}, evidenceText: '' });
+  // step: 0 intake · 1 pick situations · 2 optional numbers & start date · 3 report
+  const blank = () => ({ profile: {}, pillar: 'sales', byPillar: {} });
   let state = blank(), view = 0, reached = 0, journey = null, session = null;
 
   const params = new URLSearchParams(location.search);
@@ -212,7 +212,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     };
   });
 
-  // Shows one of the main panel's views: 1 pick · 2 numbers & evidence · 3 report.
+  // Shows one of the main panel's views: 1 pick · 2 numbers & start date · 3 report.
   // The report needs a diagnosis; without one, the participant is sent to step 2 to make it.
   function go(n) {
     if (n === 3 && !answers().ai) n = 2;
@@ -256,7 +256,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   }
   $('diagnoseBtn').onclick = () => { if (answers().selected.length === PICK) { go(2); scrollToEl($('main')); } };
 
-  // ─────────────── Langkah 03: numbers, start date and optional evidence ───────────────
+  // ─────────────── Langkah 03: optional numbers and start date ───────────────
   function drawEvidence() {
     const p = state.pillar, d = PILLARS[p], a = answers();
     $('calculatorTitle').textContent = d.calculatorTitle;
@@ -267,11 +267,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $$('[data-calc]').forEach((el) => { el.oninput = () => { a.calc[el.dataset.calc] = el.value; drawCalc(); safeSave(); }; });
     drawCalc();
     drawStartDate();
-    $('evidenceHint').textContent = `Contoh yang berguna: ${d.evidence}`;
-    $('evidenceText').value = state.evidenceText || '';
-    $('evidenceBox').open = !!(txt(state.evidenceText) || journey?.evidenceFile);
     $('reportBtn').textContent = a.ai && fresh() ? 'Lihat laporan saya →' : 'Jana diagnosis AI saya →';
-    drawFile();
   }
   // Empty boxes show the prototype's example figures, which the calculator uses until the
   // participant enters their own; only their own figures are sent to the AI.
@@ -287,36 +283,6 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     drawStartDate(); safeSave();
     if (view === 3) drawStale();
   }));
-  function drawFile() {
-    const f = journey?.evidenceFile;
-    $('fileStatus').textContent = f ? `Disimpan: ${f.name}` : 'Belum ada fail.';
-    show('removeFileBtn', !!f);
-  }
-  $('evidenceText').addEventListener('input', () => { state.evidenceText = $('evidenceText').value; autoGrow($('evidenceText')); safeSave(); });
-  $('evidenceBox').addEventListener('toggle', () => requestAnimationFrame(growAll));
-  $('fileUpload').addEventListener('change', async () => {
-    const f = $('fileUpload').files?.[0];
-    clearFieldErrors(); msg('evidenceMessage', '');
-    if (!f) return;
-    if (f.size > 4 * 1024 * 1024) { $('fileUpload').value = ''; return fieldError('fileUpload', 'Fail melebihi 4 MB. Pilih fail yang lebih kecil.'); }
-    const okay = ['image/png', 'image/jpeg', 'image/webp', 'text/plain', 'text/csv', 'application/pdf'];
-    if (!okay.includes(f.type) && !/\.(csv|txt|pdf)$/i.test(f.name)) { $('fileUpload').value = ''; return fieldError('fileUpload', 'Format fail tidak disokong. Guna PNG, JPG, WEBP, PDF, TXT atau CSV.'); }
-    $('fileStatus').textContent = `Memuat naik ${f.name}…`;
-    try {
-      const r = await KB.api('/api/upload', { method: 'POST', raw: f, headers: { 'X-File-Name': encodeURIComponent(f.name) } });
-      journey.evidenceFile = r.evidenceFile;
-      notice('evidenceMessage', 'Fail disimpan.');
-    } catch (err) {
-      fieldError('fileUpload', err.status === 413 ? 'Fail melebihi 4 MB.' : err.message || 'Fail gagal dimuat naik. Cuba lagi.');
-    } finally {
-      $('fileUpload').value = '';
-      drawFile();
-    }
-  });
-  $('removeFileBtn').onclick = async () => {
-    try { await KB.api('/api/upload', { method: 'DELETE' }); journey.evidenceFile = null; drawFile(); notice('evidenceMessage', 'Fail dibuang.'); }
-    catch (err) { notice('evidenceMessage', err.message, true); }
-  };
   $('evidenceBackBtn').onclick = () => { go(1); scrollToEl($('main')); };
   $('reportBtn').onclick = () => { if (answers().ai && fresh()) { go(3); scrollToEl($('main')); } else generate(); };
 

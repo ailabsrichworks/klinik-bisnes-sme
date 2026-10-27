@@ -70,7 +70,7 @@
           <div class="field"><label for="businessAge">Berapa lama bisnes beroperasi? *</label><select id="businessAge"></select></div>
           <div class="field"><label for="monthlySales">Purata jualan bulanan *</label><select id="monthlySales"></select></div>
         </div>
-        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini (nama, profil bisnes, pilihan cabaran, angka dan bukti yang saya kongsi) disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix, dan profil bisnes, pilihan cabaran serta angka saya (tanpa nama) dianalisis oleh AI untuk menyediakan diagnosis. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
+        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini (nama, profil bisnes, pilihan cabaran dan angka yang saya kongsi) disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix, dan profil bisnes, pilihan cabaran serta angka saya (tanpa nama) dianalisis oleh AI untuk menyediakan diagnosis. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
         <p class="intake-note">Maklumat bertanda * diperlukan untuk meneruskan. Jawapan anda disimpan dalam rekod Klinik Bisnes SME (Google Sheet Richworks) dan boleh dipadam bila-bila masa dengan butang "Padam data saya".</p>
         <div class="bottomrow"><span class="counter">Langkah 1 daripada 2 · Maklumat peserta</span><button class="primary" type="submit" id="profileBtn">Simpan maklumat &amp; mula →</button></div>
         <div id="intakeMessage" class="message" role="status" aria-live="polite"></div>
@@ -105,9 +105,9 @@
           <div class="bottomrow"><span class="counter" id="counter" aria-live="polite">0 daripada 3 dipilih</span><button class="primary" type="button" id="diagnoseBtn" disabled>Lihat diagnosis saya →</button></div>
         </div>
 
-        <!-- Langkah 03: numbers, start date and optional evidence, before the AI report -->
+        <!-- Langkah 03: optional numbers and start date, before the AI report -->
         <div id="evidenceView" hidden>
-          <div class="sectionhead"><div><div class="label">Langkah 03 · Angka &amp; bukti (pilihan)</div><h2>Tambah angka anda sebelum diagnosis.</h2></div><div class="tag">PILIHAN</div></div>
+          <div class="sectionhead"><div><div class="label">Langkah 03 · Angka anda (pilihan)</div><h2>Tambah angka anda sebelum diagnosis.</h2></div><div class="tag">PILIHAN</div></div>
           <p class="instruction">Semua di bawah ialah pilihan. Jika anda isi angka sendiri dan tarikh mula, AI menggunakannya untuk menyesuaikan diagnosis dan pelan anda.</p>
           <section class="workshop" aria-labelledby="calculatorTitle">
             <div class="label">Kalkulator</div><h3 id="calculatorTitle"></h3><p class="sub" id="calculatorIntro"></p>
@@ -117,17 +117,6 @@
             <p class="fineprint" id="calcOwnNote"></p>
           </section>
           <div class="field datefield"><label for="startDate">Bila anda akan mula?</label><input id="startDate" type="date" data-startdate></div>
-          <details class="evidence-box" id="evidenceBox">
-            <summary>Ada contoh sebenar untuk dikongsi? <span>(pilihan · untuk fasilitator)</span></summary>
-            <div class="promptbox" id="evidenceHint"></div>
-            <div class="notice"><strong>Penting:</strong> bukti ini <strong>tidak dihantar kepada AI</strong> dan tidak mengubah laporan anda. Ia disimpan dalam rekod Klinik Bisnes SME (Google Sheet dan Google Drive Richworks) supaya fasilitator boleh menyemaknya. Buang nama, nombor telefon dan maklumat pelanggan sebelum berkongsi.</div>
-            <div class="field"><label for="evidenceText">Tampal contoh (pilihan)</label><textarea id="evidenceText" class="grow" rows="4" maxlength="9500" placeholder="Contoh: perbualan dengan pelanggan, caption, angka jualan atau kos…"></textarea></div>
-            <div class="upload">
-              <label for="fileUpload" class="upload-label"><svg aria-hidden="true"><use href="#i-upload"/></svg><span><strong>Lampirkan satu fail (pilihan)</strong><small>PNG, JPG, WEBP, PDF, TXT atau CSV · maksimum 4 MB</small></span></label>
-              <input id="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,text/plain,text/csv,application/pdf,.txt,.csv,.pdf">
-              <div class="filestatus"><span id="fileStatus">Belum ada fail.</span><button type="button" class="linkbtn danger" id="removeFileBtn" hidden>Buang fail</button></div>
-            </div>
-          </details>
           <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
           <div class="bottomrow"><button class="ghost" type="button" id="evidenceBackBtn">← Kembali</button><button class="primary" type="button" id="reportBtn">Jana diagnosis AI saya →</button></div>
         </div>
