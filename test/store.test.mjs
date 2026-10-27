@@ -128,3 +128,59 @@ test('AI calls are logged and counted, also after a restart', async () => {
   assert.equal(g.rows('Log AI').length, 3);
   assert.deepEqual((await open(g)).aiCount('j1'), { mine: 1, all: 2 });
 });
+
+test('every answer and every AI result has its own column', async () => {
+  const g = createFakeGoogle();
+  const s = await open(g);
+  const { journey } = s.create({ privacyVersion: 'v3' });
+  const diagnosis = {
+    origin: 'ai', at: '2026-10-27T03:00:00.000Z', pathway: 'live', title: 'Semak 4 claim', reason: 'Sebab belum diketahui.',
+    observations: ['12 claims', '8 paid'], unknowns: ['Sebab tidak bayar'], strength: 'Bukti terhad', quickFix: 'AI QUICK FIX',
+    tasks: [{ title: 'Kumpul claim log', proof: 'Log' }], tasksSource: 'ai',
+  };
+  s.update(journey, { step: 4, state: {
+    profile: { business: 'Butik Ain', businessActive: 'yes', ownerAuthority: 'yes', revenue: 'RM3,000 – bawah RM10,000', pain: 'live' },
+    costs: { sellingPrice: '25', platformCost: '2.5' }, content: { postsWeek: '3', hasContentPlan: 'no' },
+    live: { liveExperience: 'yes', liveViewers: '180', liveClaims: '12', livePaid: '8', invoiceTiming: 'next_day' },
+    diagnosis, pathway: 'live', confirmed: true, quickFix: 'Versi saya', quality: [true, true, false],
+    tasks: [{ title: 'Kumpul claim log', proof: 'Log', status: 'selesai', note: 'siap' }], metrics: ['12', '', 'ya'],
+  } });
+  await s.flush();
+  const r = rowFor(g, journey.id);
+  const at = (c) => r[col(c)];
+  assert.equal(at('step'), '5');
+  assert.equal(at('cost_selling_price'), '25');
+  assert.equal(at('cost_platform'), '2.5');
+  assert.equal(at('content_posts_week'), '3');
+  assert.equal(at('content_has_plan'), 'tidak');
+  assert.equal(at('live_viewers'), '180');
+  assert.equal(at('live_unpaid_rate'), '4 (33.3%)');
+  assert.equal(at('live_invoice_timing'), 'hari berikutnya / lewat');
+  assert.equal(at('diagnosis_at'), '2026-10-27T03:00:00.000Z');
+  assert.equal(at('diagnosis_observations'), '• 12 claims\n• 8 paid');
+  assert.equal(at('diagnosis_unknowns'), '• Sebab tidak bayar');
+  assert.equal(at('ai_quick_fix'), 'AI QUICK FIX');
+  assert.equal(at('ai_tasks'), '1. Kumpul claim log — bukti: Log');
+  assert.equal(at('quick_fix'), 'Versi saya');
+  assert.equal(at('quick_fix_edited'), 'ya');
+  assert.equal(at('quality_checks'), '2/3');
+  assert.match(at('tasks'), /\[selesai\] Kumpul claim log — bukti: Log — nota: siap/);
+  assert.equal(at('day7_result_1'), 'Claims disahkan: 12');
+  assert.equal(at('day7_result_2'), '');
+  assert.equal(at('day7_result_3'), 'Invoice timestamp direkod: ya');
+  assert.equal(at('programme'), 'ready · live');
+});
+
+test('the AI log keeps what was sent and what came back', async () => {
+  const g = createFakeGoogle();
+  const s = await open(g);
+  s.logAi({ journeyId: 'j1', model: 'm', status: 'ok', input: 1, output: 2, file: 'chat.png', request: { pasted_evidence: 'RM25' }, response: { pathway: 'live', title: 'T' }, result: { pathway: 'missing', title: 'Sahkan data LIVE dahulu', guard: 'live_blocked', tasksSource: 'template' } });
+  await s.flush();
+  const [head, row] = g.rows('Log AI');
+  const at = (c) => row[head.indexOf(c)];
+  assert.equal(at('evidence_file'), 'chat.png');
+  assert.equal(at('pathway'), 'missing');
+  assert.equal(at('guard'), 'live_blocked');
+  assert.deepEqual(JSON.parse(at('request')), { pasted_evidence: 'RM25' });
+  assert.equal(JSON.parse(at('response')).pathway, 'live');
+});

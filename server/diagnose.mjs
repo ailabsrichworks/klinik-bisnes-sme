@@ -159,7 +159,12 @@ export async function diagnose({ store, journey, body }) {
     }
     attachment = evidenceBlock(file);
   }
-  const logCall = (status, message) => store.logAi({ journeyId: journey.id, model: message?.model || config.claudeModel, status, input: message?.usage?.input_tokens, output: message?.usage?.output_tokens });
+  // Every call goes to the Log AI tab with what was sent (no file bytes) and what came back.
+  const logCall = (status, message, extra = {}) => store.logAi({
+    journeyId: journey.id, model: message?.model || config.claudeModel, status,
+    input: message?.usage?.input_tokens, output: message?.usage?.output_tokens,
+    file: hasFile ? journey.evidence?.name : '', request: facts, ...extra,
+  });
   if (attachment) content.push(attachment);
   content.push({ type: 'text', text: JSON.stringify(facts, null, 2) });
 
@@ -175,7 +180,7 @@ export async function diagnose({ store, journey, body }) {
       fallbacks: 'default',
     });
   } catch (err) {
-    logCall('error');
+    logCall('error', null, { error: `${err?.status || ''} ${err?.message || err}`.trim() });
     if (err instanceof Anthropic.RateLimitError) throw new DiagnoseError(429, 'AI sedang sibuk. Cuba semula dalam seminit.');
     if (err instanceof Anthropic.BadRequestError) {
       console.error('[diagnose] bad request', err.message);
@@ -186,18 +191,16 @@ export async function diagnose({ store, journey, body }) {
   }
 
   if (message.stop_reason === 'refusal') {
-    logCall('refusal', message);
+    logCall('refusal', message, { error: 'refusal' });
     throw new DiagnoseError(422, 'AI tidak dapat menyemak bukti ini. Cuba terangkan dengan teks biasa.');
   }
 
   const text = message.content.filter((c) => c.type === 'text').map((c) => c.text).join('');
   let out;
   try { out = JSON.parse(text); } catch {
-    logCall('error', message);
+    logCall('error', message, { error: `output not JSON (stop_reason ${message.stop_reason})`, response: text });
     throw new DiagnoseError(502, 'Respons AI tidak lengkap. Cuba semula.');
   }
-  logCall('ok', message);
-
   const list = (a, n) => (Array.isArray(a) ? a.slice(0, n).map((x) => clip(x, 350)) : []);
   const result = {
     pathway: PATHWAYS.includes(out.pathway) ? out.pathway : 'missing',
@@ -216,8 +219,9 @@ export async function diagnose({ store, journey, body }) {
 
   // Hard rule (spec §5.3, T06–T08): never `live` without LIVE experience, real LIVE evidence and consistent numbers.
   const blocked = result.pathway === 'live' && liveBlock({ live, evidenceText, hasFile });
-  if (blocked) return liveFallback(result, blocked);
-  return result;
+  const final = blocked ? liveFallback(result, blocked) : result;
+  logCall('ok', message, { result: final, response: out });
+  return final;
 }
 
 function liveFallback(result, why) {

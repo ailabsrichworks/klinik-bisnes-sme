@@ -90,5 +90,12 @@ export function appsScriptClients({ url, secret, fetchImpl = fetch, timeoutMs = 
     },
   };
 
-  return { sheets, drive, ping: () => rpc('tabs') };
+  // Confirms the Sheet stores participant text exactly as typed (no formulas, no number conversion).
+  // Returns the values that came back changed; empty means all good.
+  async function selfTest() {
+    const res = await rpc('selfTest');
+    return res.filter((r) => String(r.got) !== r.sent);
+  }
+
+  return { sheets, drive, ping: () => rpc('tabs'), selfTest };
 }

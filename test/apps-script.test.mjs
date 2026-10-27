@@ -15,20 +15,33 @@ function fakeAppsScript() {
   const sheets = [];
   const files = new Map();
   let nextId = 100;
-  const range = (sh, r, c, nr, nc) => ({
+  const range = (sh, r, c, nr, nc) => { const rg = {
     getSheet: () => sh, getRow: () => r, getColumn: () => c,
     getValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => sh.cells[r - 1 + i]?.[c - 1 + j] ?? '')),
-    setRichTextValues: (vals) => {
+    // Behaves like the real Sheet: a leading apostrophe forces text (and is not stored); otherwise
+    // "=..." becomes a formula, and in cells not formatted as text, numbers and TRUE/FALSE convert.
+    setNumberFormat: (f) => { for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) sh.formats[`${r + i},${c + j}`] = f; return rg; },
+    setValues: (vals) => {
       assert.equal(vals.length, nr); vals.forEach((row) => assert.equal(row.length, nc));
       assert.ok(r - 1 + nr <= sh.maxRows && c - 1 + nc <= sh.maxCols, 'write outside the grid');
-      vals.forEach((row, i) => row.forEach((v, j) => { (sh.cells[r - 1 + i] ||= [])[c - 1 + j] = v.text; }));
+      vals.forEach((row, i) => row.forEach((v, j) => {
+        const text = sh.formats[`${r + i},${c + j}`] === '@';
+        let out = v;
+        if (typeof v === 'string' && v.startsWith("'")) out = v.slice(1);
+        else if (typeof v === 'string' && v.startsWith('=')) out = `FORMULA(${v})`;
+        else if (!text && typeof v === 'string' && /^[+-]?\d+(\.\d+)?$/.test(v)) out = Number(v);
+        else if (!text && /^(TRUE|FALSE)$/.test(v)) out = v === 'TRUE';
+        (sh.cells[r - 1 + i] ||= [])[c - 1 + j] = out;
+      }));
+      return rg;
     },
+    clearContent: () => { for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) if (sh.cells[r - 1 + i]) sh.cells[r - 1 + i][c - 1 + j] = ''; return rg; },
     protect: () => { sh.protected = true; const p = { setDescription: () => p, setWarningOnly: (w) => { sh.warningOnly = w; return p; } }; return p; },
     setFontWeight: (w) => { sh.bold = w; },
-  });
+  }; return rg; };
   const makeSheet = (name) => {
     const sh = {
-      name, id: nextId++, cells: [], maxRows: 1000, maxCols: 26, frozen: 0, hidden: [],
+      name, id: nextId++, cells: [], formats: {}, maxRows: 1000, maxCols: 26, frozen: 0, hidden: [],
       getName: () => sh.name, getSheetId: () => sh.id,
       getMaxRows: () => sh.maxRows, getMaxColumns: () => sh.maxCols,
       insertRowsAfter: (_a, n) => { sh.maxRows += n; }, insertColumnsAfter: (_a, n) => { sh.maxCols += n; },
@@ -156,6 +169,24 @@ test('journeys save as text, survive a restart, and follow a sorted sheet', asyn
   assert.equal(rowFor(fake, b.journey.id)[col('business')], '');
   const s2 = await open(fetchImpl);
   assert.equal(s2.verify(a.journey.id, a.token)?.state.profile.business, 'Ain Tudung Baru');
+});
+
+test('participant text is stored exactly as typed, never as a formula', async () => {
+  const { fake, fetchImpl } = loadScript();
+  const c = appsScriptClients({ url: 'u', secret: 's3cret', fetchImpl });
+  const s = await open(fetchImpl);
+  assert.deepEqual(await c.selfTest(), []);
+  const { journey } = s.create({ privacyVersion: 'v3' });
+  s.update(journey, { state: { evidenceText: '=IMPORTXML("http://x")', profile: { business: '+60 Kedai', product: '0012', customer: 'TRUE' }, costs: { sellingPrice: '25.50' } } });
+  await s.flush();
+  const row = rowFor(fake, journey.id);
+  assert.equal(row[col('evidence_text')], '=IMPORTXML("http://x")');
+  assert.equal(row[col('business')], '+60 Kedai');
+  assert.equal(row[col('product')], '0012');
+  assert.equal(row[col('customer')], 'TRUE');
+  assert.equal(row[col('cost_selling_price')], '25.50');
+  assert.equal(row[col('provisional_balance')], '');
+  assert.equal((await open(fetchImpl)).journeys.get(journey.id).state.profile.product, '0012');
 });
 
 test('evidence files: upload, read back, replace, delete with the participant', async () => {

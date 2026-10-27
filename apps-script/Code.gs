@@ -65,6 +65,8 @@ function handle(req) {
         write(sh.getRange(row, 1), req.values);
         return row;
       });
+    case 'selfTest':
+      return selfTest(ss);
     case 'fileCreate': {
       const blob = Utilities.newBlob(Utilities.base64Decode(req.base64), req.mime, req.name);
       const f = folder().createFile(blob);
@@ -105,8 +107,9 @@ function read(range, tz) {
   return rows;
 }
 
-// Writes values as plain text (rich text values are never read as formulas or numbers),
-// starting at the range's top-left cell and growing the sheet if needed.
+// Writes values as plain text, starting at the range's top-left cell and growing the sheet if
+// needed. The cells are formatted as text so "13.00" or "0012" stay as typed, and anything starting
+// with = + - @ gets a leading apostrophe so participant text can never become a formula.
 function write(start, values) {
   if (!values.length) return;
   const sh = start.getSheet();
@@ -115,15 +118,31 @@ function write(start, values) {
   const lastRow = r0 + values.length - 1, lastCol = c0 + width - 1;
   if (sh.getMaxRows() < lastRow) sh.insertRowsAfter(sh.getMaxRows(), lastRow - sh.getMaxRows());
   if (sh.getMaxColumns() < lastCol) sh.insertColumnsAfter(sh.getMaxColumns(), lastCol - sh.getMaxColumns());
-  const rich = values.map(function (row) {
+  const text = values.map(function (row) {
     const out = [];
-    for (let i = 0; i < width; i++) {
-      const v = row[i];
-      out.push(SpreadsheetApp.newRichTextValue().setText(v === null || v === undefined ? '' : String(v)).build());
-    }
+    for (let i = 0; i < width; i++) out.push(asText(row[i]));
     return out;
   });
-  sh.getRange(r0, c0, values.length, width).setRichTextValues(rich);
+  sh.getRange(r0, c0, values.length, width).setNumberFormat('@').setValues(text);
+}
+
+function asText(v) {
+  const s = v === null || v === undefined ? '' : String(v);
+  return /^[=+\-@']/.test(s) ? "'" + s : s;
+}
+
+// Writes tricky values to a spare cell, reads them back and clears it. The server runs this at
+// start-up to confirm participant text is stored exactly as typed.
+function selfTest(ss) {
+  const sh = ss.getSheetByName('README') || ss.getSheets()[0];
+  const probe = ['=1+1', '+5', '-3', '@x', "'q", '13.00', '0012', 'TRUE', '2026-11-30'];
+  const cell = sh.getRange(1, 30, 1, probe.length);
+  return withLock(function () {
+    write(cell, [probe]);
+    const back = cell.getValues()[0].map(function (v) { return v instanceof Date ? 'date' : v; });
+    cell.clearContent();
+    return probe.map(function (p, i) { return { sent: p, got: back[i] }; });
+  });
 }
 
 function format(ss, f) {

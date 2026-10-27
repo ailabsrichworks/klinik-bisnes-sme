@@ -9,20 +9,32 @@
 // filter the sheet without the app overwriting the wrong row. Run ONE server instance.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { costSummary, programmeFit, PATH_LABELS } from '../public/js/rules.mjs';
+import { costSummary, liveMath, programmeFit, PATH_LABELS, METRIC_LABELS } from '../public/js/rules.mjs';
 
+// One column per participant answer and per AI result, in the order of the five steps.
 export const PESERTA = [
   'id', 'session_code', 'created_at', 'updated_at', 'step',
-  'participant', 'business', 'product', 'customer', 'channel', 'revenue', 'business_active', 'owner_authority',
-  'pain', 'evidence_text', 'evidence_file', 'evidence_link', 'costs', 'provisional_balance', 'content', 'live',
-  'diagnosis_by', 'diagnosis_pathway', 'diagnosis_title', 'diagnosis_reason', 'diagnosis_strength',
-  'pathway', 'confirmed', 'quick_fix', 'tasks_source', 'tasks', 'tasks_done', 'tracker_started_at',
-  'metrics', 'review_notes', 'programme', 'next_step',
+  // Langkah 1: business
+  'participant', 'business', 'product', 'customer', 'channel', 'revenue', 'business_active', 'owner_authority', 'pain',
+  // Langkah 2: evidence
+  'evidence_text', 'evidence_file', 'evidence_link',
+  'cost_selling_price', 'cost_material', 'cost_packaging', 'cost_delivery', 'cost_platform', 'cost_promotion', 'cost_other', 'provisional_balance',
+  'content_posts_week', 'content_hours_week', 'content_has_plan', 'content_tracks_results',
+  'live_experience', 'live_viewers', 'live_claims', 'live_paid', 'live_unpaid_rate', 'live_invoice_timing',
+  // Langkah 3: AI diagnosis (as the AI returned it)
+  'diagnosis_at', 'diagnosis_by', 'diagnosis_pathway', 'diagnosis_title', 'diagnosis_reason', 'diagnosis_observations', 'diagnosis_unknowns',
+  'diagnosis_strength', 'diagnosis_guard', 'ai_quick_fix', 'ai_tasks_source', 'ai_tasks',
+  // Langkah 3–4: the participant's choices and edits
+  'pathway', 'confirmed', 'quick_fix', 'quick_fix_edited', 'quality_checks',
+  // Langkah 5: tracker and Day 7
+  'tasks', 'tasks_done', 'tracker_started_at', 'day7_result_1', 'day7_result_2', 'day7_result_3', 'review_notes',
+  'programme', 'next_step',
   'marketing_consent', 'marketing_consent_at', 'privacy_notice_version', 'privacy_accepted_at', 'ai_consent_at',
   'token_hash', 'state_json',
 ];
 export const SESI = ['code', 'name', 'session_date', 'active_until', 'notes'];
-export const LOG_AI = ['time', 'journey_id', 'model', 'status', 'input_tokens', 'output_tokens'];
+// One row per AI call, including reruns: what was sent (without the file's bytes) and what came back.
+export const LOG_AI = ['time', 'journey_id', 'model', 'status', 'input_tokens', 'output_tokens', 'evidence_file', 'pathway', 'title', 'guard', 'tasks_source', 'error', 'request', 'response'];
 const README = [
   ['KBSME Business Quick Fix — data peserta'],
   [''],
@@ -31,7 +43,7 @@ const README = [
   ['', 'evidence_link: fail bukti dalam Shared Drive. provisional_balance: baki sementara daripada kos diketahui sahaja (bukan untung).'],
   ['', 'tasks: 7 tugasan dengan status. programme: cadangan programme (ready / pending / withheld / none).'],
   ['Sesi', 'Kod sesi untuk fasilitator. Isi code (huruf besar), name, session_date dan active_until (kosong = tiada tamat). Pautan: /?c=KOD'],
-  ['Log AI', 'Satu baris setiap panggilan AI: masa, peserta, model, status, token input/output.'],
+  ['Log AI', 'Satu baris setiap panggilan AI (termasuk jana semula): masa, peserta, model, status, token, keputusan, dan input (request) serta output penuh AI (response).'],
   [''],
   ['Padam data', 'Butang "Padam data saya" dalam app mengosongkan baris peserta dan memadam fail dalam Drive. Untuk permintaan manual, kosongkan baris dan padam fail di Drive.'],
 ];
@@ -73,34 +85,49 @@ function parseUntil(v) {
 }
 
 const tasksText = (tasks) => (tasks || []).map((t, i) => `${i + 1}. [${t.status || 'belum'}] ${t.title}${t.proof ? ` — bukti: ${t.proof}` : ''}${t.note ? ` — nota: ${t.note}` : ''}`).join('\n');
-const pairs = (obj) => Object.entries(obj || {}).filter(([, v]) => String(v ?? '').trim() !== '').map(([k, v]) => `${k}: ${v}`).join('; ');
+const aiTasksText = (tasks) => (tasks || []).map((t, i) => `${i + 1}. ${t.title}${t.proof ? ` — bukti: ${t.proof}` : ''}`).join('\n');
+const bullets = (list) => (list || []).map((x) => `• ${x}`).join('\n');
+const yesNo = (v) => ({ yes: 'ya', no: 'tidak' }[v] ?? v ?? '');
+const INVOICE = { during: 'semasa LIVE / segera', same_day: 'hari yang sama', next_day: 'hari berikutnya / lewat' };
 
 // One readable row for trainers; state_json keeps the full state for the participant's app.
 function toRow(j) {
   const s = j.state || {};
-  const p = s.profile || {};
+  const p = s.profile || {}, c = s.costs || {}, ct = s.content || {}, l = s.live || {};
   const d = s.diagnosis;
-  const bal = costSummary(s.costs || {}).provisional_balance;
-  const fit = d ? programmeFit({ profile: p, live: s.live || {}, pathway: s.pathway || d.pathway, diagnosedPathway: d.pathway }) : null;
-  const v = {
-    id: j.id, session_code: j.sessionCode, created_at: j.createdAt, updated_at: j.updatedAt, step: j.step ?? '',
+  const bal = costSummary(c).provisional_balance;
+  const lm = liveMath(l);
+  const path = s.pathway || d?.pathway;
+  const fit = d ? programmeFit({ profile: p, live: l, pathway: path, diagnosedPathway: d.pathway }) : null;
+  const labels = METRIC_LABELS[path] || METRIC_LABELS.missing;
+  const metric = (i) => (String(s.metrics?.[i] ?? '').trim() ? `${labels[i]}: ${s.metrics[i]}` : '');
+  return {
+    id: j.id, session_code: j.sessionCode, created_at: j.createdAt, updated_at: j.updatedAt, step: j.step == null ? '' : j.step + 1,
     participant: p.participant, business: p.business, product: p.product, customer: p.customer, channel: p.channel,
-    revenue: p.revenue, business_active: p.businessActive, owner_authority: p.ownerAuthority,
-    pain: p.pain, evidence_text: s.evidenceText, evidence_file: j.evidence?.name, evidence_link: j.evidence?.link,
-    costs: pairs(s.costs), provisional_balance: bal == null ? '' : bal.toFixed(2), content: pairs(s.content), live: pairs(s.live),
-    diagnosis_by: d ? (d.origin === 'ai' ? 'AI' : 'rule-based') : '', diagnosis_pathway: d?.pathway, diagnosis_title: d?.title,
-    diagnosis_reason: d?.reason, diagnosis_strength: d?.strength,
-    pathway: s.pathway ? `${s.pathway} · ${PATH_LABELS[s.pathway] || ''}` : '', confirmed: s.confirmed ? 'ya' : '',
-    quick_fix: s.quickFix, tasks_source: d?.tasksSource, tasks: tasksText(s.tasks),
-    tasks_done: (s.tasks || []).filter((t) => t.status === 'selesai').length, tracker_started_at: s.trackerStartedAt,
-    metrics: (s.metrics || []).filter(Boolean).join(' | '), review_notes: s.reviewNotes,
+    revenue: p.revenue, business_active: yesNo(p.businessActive), owner_authority: yesNo(p.ownerAuthority), pain: p.pain,
+    evidence_text: s.evidenceText, evidence_file: j.evidence?.name, evidence_link: j.evidence?.link,
+    cost_selling_price: c.sellingPrice, cost_material: c.materialCost, cost_packaging: c.packagingCost, cost_delivery: c.deliveryCost,
+    cost_platform: c.platformCost, cost_promotion: c.promotionCost, cost_other: c.otherCost,
+    provisional_balance: bal == null ? '' : bal.toFixed(2),
+    content_posts_week: ct.postsWeek, content_hours_week: ct.hoursWeek, content_has_plan: yesNo(ct.hasContentPlan), content_tracks_results: yesNo(ct.tracksContent),
+    live_experience: yesNo(l.liveExperience), live_viewers: l.liveViewers, live_claims: l.liveClaims, live_paid: l.livePaid,
+    live_unpaid_rate: lm.valid ? `${lm.unpaid} (${lm.rate.toFixed(1)}%)` : '', live_invoice_timing: INVOICE[l.invoiceTiming] ?? l.invoiceTiming,
+    diagnosis_at: d?.at, diagnosis_by: d ? (d.origin === 'ai' ? 'AI' : 'rule-based (AI off)') : '',
+    diagnosis_pathway: d?.pathway, diagnosis_title: d?.title, diagnosis_reason: d?.reason,
+    diagnosis_observations: bullets(d?.observations), diagnosis_unknowns: bullets(d?.unknowns),
+    diagnosis_strength: d?.strength, diagnosis_guard: d?.guard, ai_quick_fix: d?.quickFix,
+    ai_tasks_source: d?.tasksSource, ai_tasks: aiTasksText(d?.tasks),
+    pathway: path ? `${path} · ${PATH_LABELS[path] || ''}` : '', confirmed: s.confirmed ? 'ya' : '',
+    quick_fix: s.quickFix, quick_fix_edited: d && s.quickFix ? (s.quickFix.trim() === String(d.quickFix || '').trim() ? 'tidak' : 'ya') : '',
+    quality_checks: d ? `${(s.quality || []).filter(Boolean).length}/3` : '',
+    tasks: tasksText(s.tasks), tasks_done: (s.tasks || []).filter((t) => t.status === 'selesai').length, tracker_started_at: s.trackerStartedAt,
+    day7_result_1: metric(0), day7_result_2: metric(1), day7_result_3: metric(2), review_notes: s.reviewNotes,
     programme: fit && fit.status !== 'none' ? `${fit.status}${fit.key ? ` · ${fit.key}` : ''}` : '', next_step: s.nextStep,
     marketing_consent: j.consent.marketing ? 'ya' : '', marketing_consent_at: j.consent.marketingAt,
     privacy_notice_version: j.consent.privacyVersion, privacy_accepted_at: j.consent.privacyAt, ai_consent_at: j.consent.aiAt,
     token_hash: j.tokenHash,
     state_json: JSON.stringify({ state: s, consent: j.consent, evidence: j.evidence || null }),
   };
-  return v;
 }
 
 function fromRow(r) {
@@ -295,10 +322,14 @@ export class Store {
   }
 
   // ─── AI log and limits ───
-  logAi({ journeyId, model, status, input, output }) {
+  logAi({ journeyId, model, status, input, output, file, result, error, request, response }) {
     const t = now();
     this.aiCalls.push({ t: Date.parse(t), journeyId });
-    this.pendingLogs.push({ time: t, journey_id: journeyId, model, status, input_tokens: input ?? '', output_tokens: output ?? '' });
+    this.pendingLogs.push({
+      time: t, journey_id: journeyId, model, status, input_tokens: input ?? '', output_tokens: output ?? '', evidence_file: file || '',
+      pathway: result?.pathway, title: result?.title, guard: result?.guard, tasks_source: result?.tasksSource, error: error || '',
+      request: request ? JSON.stringify(request, null, 1) : '', response: response ? JSON.stringify(response, null, 1) : '',
+    });
   }
 
   aiCount(journeyId) {

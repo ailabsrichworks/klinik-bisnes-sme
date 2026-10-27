@@ -24,6 +24,14 @@ export const COST_LABELS = {
 export const CONTENT_KEYS = ['postsWeek', 'hoursWeek', 'hasContentPlan', 'tracksContent'];
 export const LIVE_KEYS = ['liveExperience', 'liveViewers', 'liveClaims', 'livePaid', 'invoiceTiming'];
 
+// Day 7 result labels per pathway (tracker step and the Sheet).
+export const METRIC_LABELS = {
+  content: ['Post diterbitkan', 'Masa content (minit)', 'Enquiry yang jelas berkaitan'],
+  live: ['Claims disahkan', 'Paid orders disahkan', 'Invoice timestamp direkod'],
+  cost: ['Kos belum jelas yang disahkan', 'Dokumen kos diperiksa', 'Jurang kos yang masih belum jelas'],
+  missing: ['Fakta berjaya diperoleh', 'Dokumen sumber disahkan', 'Keputusan selepas semakan'],
+};
+
 export const REVENUE_BANDS = ['Pre-revenue', 'Bawah RM3,000', 'RM3,000 – bawah RM10,000', 'RM10,000 – bawah RM30,000', 'RM30,000 ke atas'];
 const ELIGIBLE_REVENUE = REVENUE_BANDS.slice(1, 4);
 

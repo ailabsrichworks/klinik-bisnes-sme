@@ -1,6 +1,6 @@
 // Participant app: five steps, saved through our API to the participant's row in the Google Sheet.
 // No login: a random key in this browser identifies the participant. A facilitator's ?c=CODE files them under that session.
-import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit, templateTasks, TASK_TITLE_MAX, TASK_PROOF_MAX } from './rules.mjs';
+import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit, templateTasks, TASK_TITLE_MAX, TASK_PROOF_MAX, METRIC_LABELS } from './rules.mjs';
 
 (async () => {
   'use strict';
@@ -359,7 +359,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       } else {
         result = demoDiagnose();
       }
-      state.diagnosis = result; state.pathway = result.pathway; state.confirmed = false; state.quickFix = result.quickFix;
+      state.diagnosis = { ...result, at: new Date().toISOString() }; state.pathway = result.pathway; state.confirmed = false; state.quickFix = result.quickFix;
       state.quality = [false, false, false]; state.tasks = tasksFor(result.pathway); state.metrics = ['', '', ''];
       $('confirmDiagnosis').checked = false;
       drawDiagnosis(); drawBuild(); go(2);
@@ -418,13 +418,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     $('completionBar').style.width = `${(100 * done) / 7}%`;
     drawMetrics();
   }
-  function metricLabels() {
-    const p = currentPath();
-    return p === 'content' ? ['Post diterbitkan', 'Masa content (minit)', 'Enquiry yang jelas berkaitan']
-      : p === 'live' ? ['Claims disahkan', 'Paid orders disahkan', 'Invoice timestamp direkod']
-      : p === 'cost' ? ['Kos belum jelas yang disahkan', 'Dokumen kos diperiksa', 'Jurang kos yang masih belum jelas']
-      : ['Fakta berjaya diperoleh', 'Dokumen sumber disahkan', 'Keputusan selepas semakan'];
-  }
+  function metricLabels() { return METRIC_LABELS[currentPath()] || METRIC_LABELS.missing; }
   function drawMetrics() {
     $('metricsArea').innerHTML = metricLabels().map((t, i) => `<div class="field"><label for="metric${i}">${scrub(t)}</label><input type="number" inputmode="numeric" id="metric${i}" min="0" step="1" placeholder="Jika tahu"></div>`).join('');
     state.metrics.forEach((v, i) => { $('metric' + i).value = v ?? ''; });

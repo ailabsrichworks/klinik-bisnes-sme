@@ -31,6 +31,16 @@ try {
   process.exit(1);
 }
 
+if (clients.selfTest) {
+  try {
+    const bad = await clients.selfTest();
+    if (bad.length) console.error(`[store] WARNING: the Sheet changed text it was given: ${bad.map((b) => `${b.sent} → ${b.got}`).join(', ')}. Update the Apps Script (paste the latest apps-script/Code.gs, then Deploy → Manage deployments → New version).`);
+    else console.log('[store] Apps Script self-test passed: text is stored exactly as typed');
+  } catch (err) {
+    console.error(`[store] WARNING: Apps Script self-test unavailable (${err.message}). Paste the latest apps-script/Code.gs and deploy a new version.`);
+  }
+}
+
 const server = createApp({ store }).listen(config.port, () => console.log(`KBSME Quick Fix listening on :${config.port}`));
 
 // Railway sends SIGTERM on deploy: write pending changes before exiting.
