@@ -3,6 +3,7 @@ import { Store, googleClients } from './store.mjs';
 import { appsScriptClients } from './apps-script.mjs';
 import { createFakeGoogle } from './google-fake.mjs';
 import { createApp } from './app.mjs';
+import { reportSaver } from './reports.mjs';
 
 const missing = missingConfig();
 if (missing.length) console.warn(`[config] missing: ${missing.join(', ')}`);
@@ -41,13 +42,14 @@ if (clients.selfTest) {
   }
 }
 
-const server = createApp({ store }).listen(config.port, () => console.log(`KBSME Quick Fix listening on :${config.port}`));
+const reports = reportSaver(store);
+const server = createApp({ store, reports }).listen(config.port, () => console.log(`KBSME Quick Fix listening on :${config.port}`));
 
 // Railway sends SIGTERM on deploy: write pending changes before exiting.
 for (const sig of ['SIGTERM', 'SIGINT']) {
   process.once(sig, async () => {
     server.close();
-    try { await store.stop(); } catch (err) { console.error('[store] final flush failed', err?.message); }
+    try { await reports.flushAll(); await store.stop(); } catch (err) { console.error('[store] final flush failed', err?.message); }
     process.exit(0);
   });
 }

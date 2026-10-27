@@ -28,7 +28,7 @@ export const PESERTA = [
   'pathway', 'confirmed', 'quick_fix', 'quick_fix_edited', 'quality_checks',
   // Langkah 5: tracker and Day 7
   'tasks', 'tasks_done', 'tracker_started_at', 'day7_result_1', 'day7_result_2', 'day7_result_3', 'review_notes',
-  'programme', 'next_step',
+  'programme', 'next_step', 'report_link', 'report_at',
   'marketing_consent', 'marketing_consent_at', 'privacy_notice_version', 'privacy_accepted_at', 'ai_consent_at',
   'token_hash', 'state_json',
 ];
@@ -41,7 +41,7 @@ const README = [
   ['Peserta', 'Satu baris setiap peserta. Dikemas kini oleh app; jangan edit atau padam lajur id, token_hash dan state_json.'],
   ['', 'Untuk menyusun atau menapis, guna Filter view (Data → Filter views) supaya susunan baris asal kekal.'],
   ['', 'evidence_link: fail bukti dalam Shared Drive. provisional_balance: baki sementara daripada kos diketahui sahaja (bukan untung).'],
-  ['', 'tasks: 7 tugasan dengan status. programme: cadangan programme (ready / pending / withheld / none).'],
+  ['', 'tasks: 7 tugasan dengan status. programme: cadangan programme (ready / pending / withheld / none). report_link: laporan PDF peserta (disimpan apabila peserta sampai Langkah 5, dikemas kini jika berubah).'],
   ['Sesi', 'Kod sesi untuk fasilitator. Isi code (huruf besar), name, session_date dan active_until (kosong = tiada tamat). Pautan: /?c=KOD'],
   ['Log AI', 'Satu baris setiap panggilan AI (termasuk jana semula): masa, peserta, model, status, token, keputusan, dan input (request) serta output penuh AI (response).'],
   [''],
@@ -123,10 +123,11 @@ function toRow(j) {
     tasks: tasksText(s.tasks), tasks_done: (s.tasks || []).filter((t) => t.status === 'selesai').length, tracker_started_at: s.trackerStartedAt,
     day7_result_1: metric(0), day7_result_2: metric(1), day7_result_3: metric(2), review_notes: s.reviewNotes,
     programme: fit && fit.status !== 'none' ? `${fit.status}${fit.key ? ` · ${fit.key}` : ''}` : '', next_step: s.nextStep,
+    report_link: j.report?.link, report_at: j.report?.at,
     marketing_consent: j.consent.marketing ? 'ya' : '', marketing_consent_at: j.consent.marketingAt,
     privacy_notice_version: j.consent.privacyVersion, privacy_accepted_at: j.consent.privacyAt, ai_consent_at: j.consent.aiAt,
     token_hash: j.tokenHash,
-    state_json: JSON.stringify({ state: s, consent: j.consent, evidence: j.evidence || null }),
+    state_json: JSON.stringify({ state: s, consent: j.consent, evidence: j.evidence || null, report: j.report || null }),
   };
 }
 
@@ -136,7 +137,7 @@ function fromRow(r) {
   try { extra = JSON.parse(r.state_json || '{}'); } catch { /* row edited by hand: start from blank state */ }
   return {
     id: r.id, tokenHash: r.token_hash, sessionCode: r.session_code || '', createdAt: r.created_at, updatedAt: r.updated_at,
-    step: r.step === '' ? null : Number(r.step), state: extra.state || {}, consent: extra.consent || {}, evidence: extra.evidence || null,
+    step: r.step === '' ? null : Number(r.step) - 1, state: extra.state || {}, consent: extra.consent || {}, evidence: extra.evidence || null, report: extra.report || null,
   };
 }
 
@@ -278,9 +279,10 @@ export class Store {
     this.update(j, {});
   }
 
-  // Clears the participant's row and deletes their Drive file.
+  // Clears the participant's row and deletes their Drive files (evidence and report).
   async remove(j) {
     if (j.evidence?.fileId) await this.deleteFile(j.evidence.fileId);
+    if (j.report?.fileId) await this.deleteFile(j.report.fileId);
     this.journeys.delete(j.id);
     this.fileCache.delete(j.id);
     this.dirty.delete(j.id);
@@ -303,6 +305,22 @@ export class Store {
     for (const [k, v] of this.fileCache) if (Date.now() - v.at > 30 * 60_000) this.fileCache.delete(k);
     if (old) await this.deleteFile(old);
     return j.evidence;
+  }
+
+  // The participant's report PDF: one file per participant, replaced when it changes.
+  async saveReport(j, bytes, hash) {
+    const old = j.report?.fileId;
+    const name = `Laporan · ${String(j.state?.profile?.business || 'Peserta').replace(/[^\w.\- ]+/g, '').trim().slice(0, 80) || 'Peserta'} · ${j.id}.pdf`;
+    const { data } = await withRetry(() => this.drive.files.create({
+      requestBody: { name, parents: [this.folderId] },
+      media: { mimeType: 'application/pdf', body: Readable.from(bytes) },
+      supportsAllDrives: true,
+      fields: 'id, webViewLink',
+    }), 'upload report');
+    if (!this.journeys.has(j.id)) return this.deleteFile(data.id); // deleted while the report was being made
+    this.update(j, { report: { fileId: data.id, link: data.webViewLink || '', at: now(), hash } });
+    if (old) await this.deleteFile(old);
+    return j.report;
   }
 
   async readFile(j) {

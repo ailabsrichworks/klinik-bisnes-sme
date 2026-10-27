@@ -39,7 +39,9 @@ Created by the app on first start (header rows are bold, frozen and protected wi
 
 Writes are batched: the server keeps journeys in memory and writes changed rows every 5 seconds (one read + up to three writes per batch), retrying on Google's quota errors (429) with backoff. That stays within the Sheets limit of 60 requests a minute even with a full class. Participant text is written as plain text (`RAW`), never as formulas. The browser saves on each step change, after the diagnosis, on tracker status changes, 20 seconds after typing stops, and when the page is hidden or closed; it also keeps a copy locally.
 
-"Padam data saya" (delete my data) clears the participant's row and deletes their Drive file.
+**Report PDFs:** when a participant reaches Langkah 5, the server builds their report as a PDF (`server/report-pdf.mjs`, IBM Plex Sans from `server/fonts`, OFL) and saves it in the same Drive folder, linked in `report_link`. It waits 15 seconds after the last change, keeps one file per participant, and replaces it only when their answers change (tracker status, notes, Day 7 results). Participants still print or save their own copy with "Print / Save PDF".
+
+"Padam data saya" (delete my data) clears the participant's row and deletes their Drive files (evidence and report).
 
 ## API
 

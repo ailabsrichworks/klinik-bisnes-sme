@@ -84,8 +84,9 @@ function fakeAppsScript() {
       getFolderById: (id) => { if (id !== 'folder-1') throw new Error('No item with the given ID could be found'); return g.DriveApp.createFolder(); },
       getFileById: (id) => {
         const f = files.get(id);
-        if (!f || f.trashed) throw new Error('No item with the given ID could be found, or you do not have permission to access it.');
-        return { getBlob: () => f, setTrashed: (t) => { f.trashed = t; } };
+        // Like Drive: a binned file can still be opened by id until the bin is emptied.
+        if (!f) throw new Error('No item with the given ID could be found, or you do not have permission to access it.');
+        return { getBlob: () => f, isTrashed: () => f.trashed, setTrashed: (t) => { f.trashed = t; } };
       },
     },
     Utilities: {
@@ -205,7 +206,8 @@ test('evidence files: upload, read back, replace, delete with the participant', 
   await s.remove(journey);
   assert.ok([...fake.files.values()].every((f) => f.trashed));
   assert.equal(rowFor(fake, journey.id), undefined);
-  await s.deleteFile(first); // already gone: no error
+  await assert.rejects(s.readFile({ id: 'x', evidence: { fileId: first, mime: 'image/png' } }), (e) => e.code === 404);
+  await s.deleteFile(first); // already in the bin: no error
   assert.equal((await open(fetchImpl)).verify(journey.id, token), null);
 });
 

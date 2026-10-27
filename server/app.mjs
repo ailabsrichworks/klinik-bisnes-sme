@@ -47,7 +47,7 @@ const view = (j, store) => ({
   createdAt: j.createdAt,
 });
 
-export function createApp({ store }) {
+export function createApp({ store, reports }) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -130,6 +130,7 @@ export function createApp({ store }) {
     if (!state || typeof state !== 'object' || Array.isArray(state)) return res.status(400).json({ error: 'Data tidak sah.' });
     if (JSON.stringify(state).length > STATE_MAX) return res.status(413).json({ error: 'Data terlalu besar. Ringkaskan teks bukti atau Quick Fix.' });
     store.update(req.journey, { state, step: Number.isInteger(step) && step >= 0 && step <= 4 ? step : req.journey.step });
+    if (reports && req.journey.step === 4) reports.schedule(req.journey); // Langkah 5: keep a copy of the report in Drive
     res.json({ saved: true });
   });
 

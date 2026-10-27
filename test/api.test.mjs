@@ -1,5 +1,6 @@
 // API routes against the in-process fake Google store (no credentials, no AI calls).
 process.env.SHEETS_FLUSH_MS = '3600000';
+process.env.REPORT_DELAY_MS = '30';
 delete process.env.ANTHROPIC_API_KEY;
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { createFakeGoogle } from '../server/google-fake.mjs';
 import { Store, PESERTA } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+import { reportSaver } from '../server/reports.mjs';
 import { config } from '../server/config.mjs';
 
 let g, store, server, base;
@@ -17,7 +19,7 @@ before(async () => {
   g.setCell('Sesi', 1, 0, 'KL-NOV26'); g.setCell('Sesi', 1, 1, 'Sesi KL');
   g.setCell('Sesi', 2, 0, 'TAMAT'); g.setCell('Sesi', 2, 3, '2020-01-01');
   await store.loadSessions();
-  server = createApp({ store }).listen(0);
+  server = createApp({ store, reports: reportSaver(store) }).listen(0);
   base = `http://127.0.0.1:${server.address().port}`;
 });
 after(async () => { server.close(); await store.stop(); });
@@ -121,4 +123,51 @@ test('delete my data clears the row and the Drive file, and the key stops workin
 test('cross-site calls are refused', async () => {
   const r = await fetch(base + '/api/journey', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://evil.example' }, body: JSON.stringify({ acceptNotice: config.noticeVersion }) });
   assert.equal(r.status, 403);
+});
+
+test('the report PDF is saved to Drive at Langkah 5, one per participant, and deleted with the data', async () => {
+  const k = await start('KL-NOV26');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const reports = () => [...g.files.values()].filter((f) => f.name.startsWith('Laporan') && f.name.includes(k.id));
+  const diagnosis = { origin: 'ai', pathway: 'cost', title: 'Fee belum disahkan', reason: 'Sebab.', observations: ['a'], unknowns: ['b'], strength: 'Bukti terhad', quickFix: 'QF', tasks: [{ title: 'T1', proof: 'P1' }], tasksSource: 'ai' };
+  const state = { profile: { business: 'Ain Tudung', product: 'Tudung' }, diagnosis, pathway: 'cost', quickFix: 'QF', tasks: [{ day: 1, title: 'T1', proof: 'P1', status: 'belum', note: '' }] };
+  const put = (st, step) => call('/api/journey', { method: 'PUT', key: k, body: { state: st, step } });
+
+  await put(state, 3); // Langkah 4: no report yet
+  await sleep(150);
+  assert.equal(reports().length, 0);
+
+  await put(state, 4); await put(state, 4); // reaching Langkah 5, twice in a row
+  await sleep(500);
+  assert.equal(reports().length, 1);
+  const [first] = reports();
+  assert.equal(first.mimeType, 'application/pdf');
+  assert.equal(first.bytes.subarray(0, 5).toString(), '%PDF-');
+  assert.deepEqual(first.parents, ['f']);
+
+  await put(state, 4); // nothing changed: same file kept
+  await sleep(300);
+  assert.equal(reports()[0], first);
+
+  await put({ ...state, tasks: [{ ...state.tasks[0], status: 'selesai' }] }, 4); // tracker updated: replaced
+  await sleep(500);
+  assert.equal(reports().length, 1);
+  assert.notEqual(reports()[0], first);
+
+  await store.flush();
+  const row = g.rows('Peserta').find((r) => r[0] === k.id);
+  assert.match(row[PESERTA.indexOf('report_link')], /^https:\/\/drive/);
+  assert.equal(row[PESERTA.indexOf('step')], '5');
+
+  assert.equal((await call('/api/me', { method: 'DELETE', key: k })).status, 200);
+  assert.equal(reports().length, 0);
+});
+
+test('the saved step survives a restart', async () => {
+  const k = await start();
+  await call('/api/journey', { method: 'PUT', key: k, body: { state: { profile: { business: 'X' } }, step: 2 } });
+  await store.flush();
+  const again = new Store({ sheets: g.sheets, drive: g.drive, sheetId: 's', folderId: 'f' });
+  await again.init(); await again.stop();
+  assert.equal(again.journeys.get(k.id).step, 2);
 });

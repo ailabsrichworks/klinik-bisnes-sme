@@ -72,8 +72,11 @@ function handle(req) {
       const f = folder().createFile(blob);
       return { id: f.getId(), webViewLink: f.getUrl() };
     }
-    case 'fileGet':
-      return Utilities.base64Encode(DriveApp.getFileById(req.id).getBlob().getBytes());
+    case 'fileGet': {
+      const f = DriveApp.getFileById(req.id);
+      if (f.isTrashed()) throw new Error('File not found (in the bin)');
+      return Utilities.base64Encode(f.getBlob().getBytes());
+    }
     case 'fileDelete':
       DriveApp.getFileById(req.id).setTrashed(true); // Drive empties the bin after 30 days
       return true;
