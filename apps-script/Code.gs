@@ -148,6 +148,7 @@ function selfTest(ss) {
   });
 }
 
+// Header formatting sent by the server. Unknown kinds are ignored, so an older script still works.
 function format(ss, f) {
   const sh = ss.getSheetByName(f.tab);
   if (!sh) return;
@@ -157,6 +158,19 @@ function format(ss, f) {
     sh.getRange(1, 1, 1, sh.getMaxColumns()).setFontWeight('bold');
   } else if (f.kind === 'hideColumn') {
     sh.hideColumns(f.col + 1);
+  } else if (f.kind === 'showColumns') {
+    if (f.n > 0) sh.showColumns(f.col + 1, f.n);
+  } else if (f.kind === 'colWidth') {
+    if (f.n > 0) sh.setColumnWidths(f.col + 1, f.n, f.px);
+  } else if (f.kind === 'rowHeight') {
+    sh.setRowHeight(f.row + 1, f.px);
+  } else if (f.kind === 'freeze') {
+    sh.setFrozenRows(f.rows);
+  } else if (f.kind === 'style') {
+    // A section's header cells: background colour, bold, two wrapped lines, top-aligned.
+    const r = sh.getRange(f.row + 1, f.col + 1, 1, f.ncols || 1).setBackground(f.bg).setVerticalAlignment('top');
+    if (f.bold) r.setFontWeight('bold');
+    if (f.wrap) r.setWrap(true);
   }
 }
 

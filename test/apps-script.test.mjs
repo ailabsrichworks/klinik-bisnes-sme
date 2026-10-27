@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { appsScriptClients } from '../server/apps-script.mjs';
-import { Store, PESERTA } from '../server/store.mjs';
+import { Store, PESERTA, HEADER, SECTIONS, COLUMNS } from '../server/store.mjs';
 
 const colIndex = (s) => [...s].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0); // 1-based
 
@@ -37,16 +37,21 @@ function fakeAppsScript() {
     },
     clearContent: () => { for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) if (sh.cells[r - 1 + i]) sh.cells[r - 1 + i][c - 1 + j] = ''; return rg; },
     protect: () => { sh.protected = true; const p = { setDescription: () => p, setWarningOnly: (w) => { sh.warningOnly = w; return p; } }; return p; },
-    setFontWeight: (w) => { sh.bold = w; },
+    setFontWeight: (w) => { sh.bold = w; return rg; },
+    setBackground: (bg) => { for (let j = 0; j < nc; j++) sh.bg[c - 1 + j] = bg; return rg; },
+    setWrap: (w) => { sh.wrap = w; return rg; },
+    setVerticalAlignment: () => rg,
   }; return rg; };
   const makeSheet = (name) => {
     const sh = {
-      name, id: nextId++, cells: [], formats: {}, maxRows: 1000, maxCols: 26, frozen: 0, hidden: [],
+      name, id: nextId++, cells: [], formats: {}, bg: [], maxRows: 1000, maxCols: 26, frozen: 0, hidden: [],
       getName: () => sh.name, getSheetId: () => sh.id,
       getMaxRows: () => sh.maxRows, getMaxColumns: () => sh.maxCols,
       insertRowsAfter: (_a, n) => { sh.maxRows += n; }, insertColumnsAfter: (_a, n) => { sh.maxCols += n; },
       setFrozenRows: (n) => { sh.frozen = n; },
-      hideColumns: (c) => sh.hidden.push(c),
+      hideColumns: (c) => { if (!sh.hidden.includes(c)) sh.hidden.push(c); },
+      showColumns: (c, n) => { sh.hidden = sh.hidden.filter((x) => x < c || x >= c + n); },
+      setColumnWidths: () => {}, setRowHeight: (r, px) => { sh.rowHeight = px; },
       getLastRow: () => { for (let i = sh.cells.length - 1; i >= 0; i--) if ((sh.cells[i] || []).some((v) => v !== '' && v != null)) return i + 1; return 0; },
       getRange: (r, c, nr = 1, nc = 1) => range(sh, r, c, nr, nc),
     };
@@ -125,7 +130,7 @@ const open = async (fetchImpl, secret = 's3cret') => {
 };
 const tab = (fake, name) => fake.sheets.find((s) => s.name === name);
 const rowFor = (fake, id) => tab(fake, 'Peserta').cells.find((r) => r?.[0] === id);
-const col = (n) => PESERTA.indexOf(n);
+const col = (key) => PESERTA.indexOf(HEADER[key]);
 
 test('the script refuses a wrong or unset secret', async () => {
   const { fetchImpl } = loadScript();
@@ -147,6 +152,10 @@ test('first start creates the tabs, headers, protection and hidden columns', asy
   assert.equal(p.warningOnly, true);
   assert.equal(p.bold, 'bold');
   assert.deepEqual(p.hidden, [col('token_hash') + 1, col('state_json') + 1]);
+  // each column's header has its section's colour; headers wrap onto two lines
+  for (const c of COLUMNS) assert.equal(p.bg[col(c.key)], SECTIONS[c.s].color, c.key);
+  assert.equal(p.wrap, true);
+  assert.equal(p.rowHeight, 54);
   assert.match(tab(fake, 'README').cells[0][0], /KBSME/);
   await open(fetchImpl); // a second start changes nothing
   assert.deepEqual(fake.sheets.map((x) => x.name), ['Peserta', 'Sesi', 'README']);
@@ -186,7 +195,7 @@ test('participant text is stored exactly as typed, never as a formula', async ()
   assert.equal(row[col('business')], '+60 Kedai');
   assert.equal(row[col('industry')], 'TRUE');
   assert.equal(row[col('workshop_output')], '@kos 0012');
-  assert.match(row[col('calc_inputs')], /Harga jualan seunit \(RM\): 25\.50/);
+  assert.equal(row[col('calc_1')], 'Harga jualan seunit (RM): 25.50');
   assert.equal((await open(fetchImpl)).journeys.get(journey.id).state.byPillar.money.workOutput, '@kos 0012');
 });
 
@@ -231,10 +240,11 @@ test('a Peserta tab from the AI version is left alone through the script too', a
   const { fake, fetchImpl } = loadScript();
   const c = appsScriptClients({ url: 'u', secret: 's3cret', fetchImpl });
   await c.sheets.spreadsheets.batchUpdate({ requestBody: { requests: [{ addSheet: { properties: { title: 'Peserta' } } }] } });
-  await c.sheets.spreadsheets.values.batchUpdate({ requestBody: { valueInputOption: 'RAW', data: [{ range: "'Peserta'!A1", values: [['id', 'diagnosis_pathway'], ['lama', 'cost']] }] } });
+  await c.sheets.spreadsheets.values.batchUpdate({ requestBody: { valueInputOption: 'RAW', data: [{ range: "'Peserta'!A1", values: [['id', 'diagnosis_pathway', 'token_hash', 'state_json'], ['lama', 'cost', 'h', '{}']] }] } });
   const s = await open(fetchImpl);
   assert.equal(s.tab, 'Peserta v4');
-  assert.deepEqual(tab(fake, 'Peserta').cells[1], ['lama', 'cost']);
+  assert.deepEqual(tab(fake, 'Peserta').cells[1], ['lama', 'cost', 'h', '{}']);
+  assert.deepEqual(tab(fake, 'Peserta').cells[0], ['id', 'diagnosis_pathway', 'token_hash', 'state_json']);
   assert.deepEqual(tab(fake, 'Peserta v4').cells[0], PESERTA);
 });
 

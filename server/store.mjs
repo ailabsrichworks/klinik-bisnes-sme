@@ -11,40 +11,87 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { PILLARS, calculate, calcInputs } from '../public/js/content.mjs';
 
-// One column per participant answer, in the order of the four steps.
-export const PESERTA = [
-  'id', 'session_code', 'created_at', 'updated_at', 'step',
-  // Langkah 1: about the business
-  'full_name', 'business', 'industry', 'business_model', 'years_running', 'monthly_sales',
-  // Langkah 2: the pillar and the 3 ticked situations
-  'pillar', 'situation_1', 'situation_2', 'situation_3',
-  // Langkah 3: optional evidence (not analysed; for trainers)
-  'evidence_text', 'evidence_file', 'evidence_link',
-  // Langkah 4: the report
-  'calc_inputs', 'calc_result', 'workshop_output',
-  'plan_action', 'plan_success_measure', 'plan_start_date', 'plan_proof',
-  'report_link', 'report_at', 'report_downloaded_at',
-  'consent_at', 'privacy_notice_version',
-  'token_hash', 'state_json',
+// The Peserta tab: one column per answer, grouped by the part of the app it comes from. Each
+// header shows the section on its first line and the field on the second, and every section
+// has its own header colour (see ensureSchema), so trainers can tell where each value came from.
+export const SECTIONS = {
+  rekod: { title: 'REKOD', color: '#e8eaed' },
+  l1: { title: 'LANGKAH 1 · MAKLUMAT BISNES', color: '#d9ead3' },
+  l2: { title: 'LANGKAH 2 · PILIH CABARAN', color: '#fff2cc' },
+  l3: { title: 'LANGKAH 3 · BUKTI (PILIHAN)', color: '#fce5cd' },
+  calc: { title: 'LAPORAN 04 · KIRA / SEMAK IMPAK', color: '#cfe2f3' },
+  work: { title: 'LAPORAN 05 · QUICK FIX WORKSHOP', color: '#d0e0e3' },
+  plan: { title: 'LAPORAN 06 · PELAN TINDAKAN 7 HARI', color: '#f4cccc' },
+  pdf: { title: 'LAPORAN PDF', color: '#ead1dc' },
+  consent: { title: 'PERSETUJUAN', color: '#efefef' },
+  sys: { title: 'SISTEM · JANGAN EDIT', color: '#d9d9d9' },
+};
+export const COLUMNS = [
+  { key: 'id', s: 'rekod', label: 'ID peserta' },
+  { key: 'session_code', s: 'rekod', label: 'Kod sesi' },
+  { key: 'created_at', s: 'rekod', label: 'Mula' },
+  { key: 'updated_at', s: 'rekod', label: 'Dikemas kini' },
+  { key: 'step', s: 'rekod', label: 'Langkah dicapai' },
+  { key: 'full_name', s: 'l1', label: 'Nama penuh' },
+  { key: 'business', s: 'l1', label: 'Nama bisnes' },
+  { key: 'industry', s: 'l1', label: 'Industri' },
+  { key: 'business_model', s: 'l1', label: 'Model bisnes' },
+  { key: 'years_running', s: 'l1', label: 'Tempoh beroperasi' },
+  { key: 'monthly_sales', s: 'l1', label: 'Purata jualan bulanan' },
+  { key: 'pillar', s: 'l2', label: 'Cabaran dipilih' },
+  { key: 'situation_1', s: 'l2', label: 'Situasi 1' },
+  { key: 'situation_2', s: 'l2', label: 'Situasi 2' },
+  { key: 'situation_3', s: 'l2', label: 'Situasi 3' },
+  { key: 'evidence_text', s: 'l3', label: 'Contoh ditampal' },
+  { key: 'evidence_file', s: 'l3', label: 'Nama fail' },
+  { key: 'evidence_link', s: 'l3', label: 'Pautan fail (Drive)' },
+  { key: 'calc_1', s: 'calc', label: 'Input 1' },
+  { key: 'calc_2', s: 'calc', label: 'Input 2' },
+  { key: 'calc_3', s: 'calc', label: 'Input 3' },
+  { key: 'calc_4', s: 'calc', label: 'Input 4' },
+  { key: 'calc_result', s: 'calc', label: 'Hasil kalkulator' },
+  { key: 'workshop_output', s: 'work', label: 'Hasil latihan peserta' },
+  { key: 'plan_action', s: 'plan', label: 'Tindakan' },
+  { key: 'plan_success_measure', s: 'plan', label: 'Ukuran kejayaan' },
+  { key: 'plan_start_date', s: 'plan', label: 'Tarikh mula' },
+  { key: 'plan_proof', s: 'plan', label: 'Bukti selepas 7 hari' },
+  { key: 'report_link', s: 'pdf', label: 'Pautan laporan (Drive)' },
+  { key: 'report_at', s: 'pdf', label: 'Laporan disimpan' },
+  { key: 'report_downloaded_at', s: 'pdf', label: 'Dimuat turun peserta' },
+  { key: 'consent_at', s: 'consent', label: 'Persetujuan diberi' },
+  { key: 'privacy_notice_version', s: 'consent', label: 'Versi notis privasi' },
+  { key: 'token_hash', s: 'sys', label: 'token_hash' },
+  { key: 'state_json', s: 'sys', label: 'state_json' },
 ];
+const headerOf = (c) => `${SECTIONS[c.s].title}\n${c.label}`;
+export const PESERTA = COLUMNS.map(headerOf);
+export const HEADER = Object.fromEntries(COLUMNS.map((c) => [c.key, headerOf(c)]));
+const KEY_OF = Object.fromEntries(COLUMNS.map((c) => [headerOf(c), c.key]));
 export const SESI = ['code', 'name', 'session_date', 'active_until', 'notes'];
 export const STEP_NAMES = ['Maklumat bisnes', 'Pilih cabaran', 'Bukti (pilihan)', 'Laporan'];
 const README = [
   ['KBSME Business Quick Fix — data peserta'],
   [''],
-  ['Peserta', 'Satu baris setiap peserta. Dikemas kini oleh app; jangan edit atau padam lajur id, token_hash dan state_json.'],
-  ['', 'Untuk menyusun atau menapis, guna Filter view (Data → Filter views) supaya susunan baris asal kekal.'],
-  ['', 'step: langkah terakhir yang dicapai (1 Maklumat bisnes, 2 Pilih cabaran, 3 Bukti, 4 Laporan). pillar: Sales / Marketing / Urus Duit. situation_1–3: tiga situasi yang ditanda.'],
-  ['', 'evidence_text / evidence_link: bukti pilihan yang ditampal atau dimuat naik (tidak dianalisis oleh app). calc_inputs / calc_result: angka kalkulator dan hasilnya.'],
-  ['', 'workshop_output: hasil latihan Quick Fix. plan_*: pelan tindakan 7 hari. report_link: laporan PDF (disimpan apabila peserta sampai laporan, dikemas kini jika berubah).'],
+  ['Peserta', 'Satu baris setiap peserta, dikemas kini oleh app. Baris pertama setiap lajur: bahagian app (warna sama = bahagian sama); baris kedua: medan.'],
+  ['', 'Untuk menyusun atau menapis, guna Filter view (Data → Filter views) supaya susunan baris asal kekal. Jangan edit lajur SISTEM.'],
+  ['Bahagian', 'REKOD: ID, kod sesi, masa mula / dikemas kini, langkah terakhir dicapai (1 Maklumat bisnes … 4 Laporan).'],
+  ['', 'LANGKAH 1 · MAKLUMAT BISNES: borang pertama. LANGKAH 2 · PILIH CABARAN: Sales / Marketing / Urus Duit dan tiga situasi yang ditanda.'],
+  ['', 'LANGKAH 3 · BUKTI (PILIHAN): contoh yang ditampal dan fail yang dimuat naik (tidak dianalisis oleh app).'],
+  ['', 'LAPORAN 04 · KIRA / SEMAK IMPAK: setiap input kalkulator ("label: nilai") dan hasilnya. LAPORAN 05: hasil latihan Quick Fix. LAPORAN 06: pelan tindakan 7 hari.'],
+  ['', 'Bahagian 01–03 dan 07 dalam laporan ialah teks tetap mengikut cabaran, jadi tidak disimpan di sini.'],
+  ['', 'LAPORAN PDF: pautan laporan dalam Drive (disimpan apabila peserta sampai laporan, dikemas kini jika berubah) dan masa peserta memuat turun.'],
   ['Sesi', 'Kod sesi untuk fasilitator. Isi code (huruf besar), name, session_date dan active_until (kosong = tiada tamat). Pautan: /?c=KOD'],
   [''],
   ['Padam data', 'Butang "Padam data saya" dalam app mengosongkan baris peserta dan memadam fail dalam Drive. Untuk permintaan manual, kosongkan baris dan padam fail di Drive.'],
 ];
-// Columns that only the earlier (AI) version had: a Peserta tab with these is left alone.
-const LEGACY_MARKERS = ['diagnosis_pathway', 'ai_quick_fix'];
-
+// Tabs the participant rows may live in, in order. A tab that already has rows in another
+// layout (e.g. from the earlier AI version) is left alone and the next name is used.
+const TAB_NAMES = ['Peserta', 'Peserta v4', 'Peserta v4 (2)'];
+// Columns only the earlier AI version had. A tab with any of them is never touched.
+const AI_COLUMNS = ['diagnosis_pathway', 'diagnosis_title', 'ai_quick_fix', 'pathway', 'tasks'];
 const HIDDEN = ['token_hash', 'state_json'];
+const README_ROWS = 20;
+const hex = (h) => ({ red: parseInt(h.slice(1, 3), 16) / 255, green: parseInt(h.slice(3, 5), 16) / 255, blue: parseInt(h.slice(5, 7), 16) / 255 });
 const CELL_MAX = 49000; // Sheets allows 50,000 characters per cell
 const FLUSH_MS = Number(process.env.SHEETS_FLUSH_MS || 5000);
 const SESI_REFRESH_MS = 60_000;
@@ -105,7 +152,10 @@ function toRow(j) {
     situation_2: P && selected[1] != null ? P.issues[selected[1]] : '',
     situation_3: P && selected[2] != null ? P.issues[selected[2]] : '',
     evidence_text: s.evidenceText, evidence_file: j.evidence?.name, evidence_link: j.evidence?.link,
-    calc_inputs: reachedReport ? P.fields.map((f) => `${f.label}: ${calcInputs(pillar, calc)[f.id]}`).join('\n') : '',
+    ...Object.fromEntries([0, 1, 2, 3].map((i) => {
+      const f = reachedReport && P.fields[i];
+      return [`calc_${i + 1}`, f ? `${f.label}: ${calcInputs(pillar, calc)[f.id]}` : ''];
+    })),
     calc_result: result ? [...result.lines, result.note].join('\n') : '',
     workshop_output: reachedReport ? workOutput : '',
     plan_action: reachedReport ? plan.action : '', plan_success_measure: reachedReport ? plan.measure : '',
@@ -156,18 +206,34 @@ export class Store {
     await this.flush();
   }
 
-  // Creates missing tabs, writes header rows, freezes and protects them, hides internal columns.
-  // A Peserta tab from the earlier AI version is kept as it is; new rows then go to "Peserta v4".
+  // Creates missing tabs and header rows, and styles the participant tab's headers by section.
+  // Picks the participant tab: the first of TAB_NAMES that is missing, already in this layout,
+  // in the earlier v4 layout (plain keys as headers: upgraded in place, rows rewritten from their
+  // saved state), or has no rows yet (its header is then replaced). Any other tab with rows, such
+  // as one from the AI version, is left alone.
   async ensureSchema() {
     const { data } = await withRetry(() => this.sheets.spreadsheets.get({ spreadsheetId: this.sheetId, fields: 'sheets.properties' }), 'read tabs');
     const ids = Object.fromEntries((data.sheets || []).map((s) => [s.properties.title, s.properties.sheetId]));
-    const header = async (title) => (await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(title)}!1:1` }), `read ${title} header`)).data.values?.[0] || [];
-    if (ids.Peserta !== undefined && (await header('Peserta')).some((h) => LEGACY_MARKERS.includes(h))) {
-      this.tab = 'Peserta v4';
-      console.log('[store] the Peserta tab is from the earlier AI version; it is left as it is and new rows go to "Peserta v4"');
+    const get = async (range, label) => (await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range }), label)).data.values || [];
+    let reset = false, oldWidth = 0;
+    for (const t of TAB_NAMES) {
+      this.tab = t;
+      if (ids[t] === undefined) break;
+      const h = (await get(`${q(t)}!1:1`, `read ${t} header`))[0] || [];
+      if (h.includes(HEADER.id) && h.includes(HEADER.state_json)) break;
+      if (h.some((x) => AI_COLUMNS.includes(x))) { console.log(`[store] the "${t}" tab is from the AI version; it is left as it is`); continue; }
+      if (['id', 'token_hash', 'state_json'].every((k) => h.includes(k))) { this.legacyCols = h; reset = true; oldWidth = h.length; break; }
+      const rows = (await get(`${q(t)}!A2:A`, `read ${t} rows`)).filter((r) => r[0]);
+      if (!rows.length) { reset = true; oldWidth = h.length; break; }
+      console.log(`[store] the "${t}" tab has rows in an older layout; it is left as it is`);
     }
-    const want = { [this.tab]: PESERTA, Sesi: SESI, README: null };
-    const missing = Object.keys(want).filter((t) => ids[t] === undefined);
+    if (this.tab !== 'Peserta') console.log(`[store] participant rows go to the "${this.tab}" tab`);
+    if (this.legacyCols) {
+      this.legacyRows = await this.readTab(this.tab, this.legacyCols); // read before the header changes
+      console.log(`[store] upgrading "${this.tab}" to the sectioned layout (${this.legacyRows.filter((r) => r.id).length} rows)`);
+    }
+
+    const missing = [this.tab, 'Sesi', 'README'].filter((t) => ids[t] === undefined);
     if (missing.length) {
       const res = await withRetry(() => this.sheets.spreadsheets.batchUpdate({
         spreadsheetId: this.sheetId,
@@ -175,33 +241,50 @@ export class Store {
       }), 'add tabs');
       for (const r of res.data.replies || []) if (r.addSheet) ids[r.addSheet.properties.title] = r.addSheet.properties.sheetId;
     }
+
     const writes = [], format = [];
-    for (const [title, cols] of Object.entries(want)) {
-      if (!cols) {
-        if (missing.includes(title)) writes.push({ range: `${q(title)}!A1`, values: README });
-        continue;
-      }
-      const got = await header(title);
-      const add = cols.filter((h) => !got.includes(h));
-      this.cols[title] = [...got, ...add];
-      if (add.length) writes.push({ range: `${q(title)}!${letter(got.length)}1`, values: [add] });
-      if (missing.includes(title)) {
-        format.push({ addProtectedRange: { protectedRange: { range: { sheetId: ids[title], startRowIndex: 0, endRowIndex: 1 }, description: 'Header — app bergantung pada nama lajur ini', warningOnly: true } } });
-        format.push({ repeatCell: { range: { sheetId: ids[title], startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: 'userEnteredFormat.textFormat.bold' } });
-        if (title === this.tab) {
-          for (const h of HIDDEN) {
-            const i = this.cols[title].indexOf(h);
-            format.push({ updateDimensionProperties: { range: { sheetId: ids[title], dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { hiddenByUser: true }, fields: 'hiddenByUser' } });
-          }
-        }
-      }
+    // Participant tab: the header in this layout (a reset tab's old header is overwritten).
+    {
+      const got = reset ? [] : (await get(`${q(this.tab)}!1:1`, 'read header'))[0] || [];
+      const add = PESERTA.filter((h) => !got.includes(h));
+      this.cols[this.tab] = [...got, ...add];
+      if (reset) writes.push({ range: `${q(this.tab)}!A1`, values: [[...PESERTA, ...Array(Math.max(0, oldWidth - PESERTA.length)).fill('')]] });
+      else if (add.length) writes.push({ range: `${q(this.tab)}!${letter(got.length)}1`, values: [add] });
+    }
+    // Sesi: plain header, edited by hand.
+    {
+      const got = (await get(`${q('Sesi')}!1:1`, 'read Sesi header'))[0] || [];
+      const add = SESI.filter((h) => !got.includes(h));
+      this.cols.Sesi = [...got, ...add];
+      if (add.length) writes.push({ range: `${q('Sesi')}!${letter(got.length)}1`, values: [add] });
+    }
+    // README: rewritten at each start so the column guide stays current.
+    writes.push({ range: `${q('README')}!A1`, values: [...README, ...Array(Math.max(0, README_ROWS - README.length)).fill([''])].map((r) => [r[0] ?? '', r[1] ?? '']) });
+
+    for (const title of [this.tab, 'Sesi']) {
+      if (!missing.includes(title)) continue;
+      format.push({ addProtectedRange: { protectedRange: { range: { sheetId: ids[title], startRowIndex: 0, endRowIndex: 1 }, description: 'Header — app bergantung pada nama lajur ini', warningOnly: true } } });
+      format.push({ repeatCell: { range: { sheetId: ids[title], startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: 'userEnteredFormat.textFormat.bold' } });
+    }
+    // Participant headers: a colour per section, two wrapped lines, internal columns hidden.
+    // Applied at every start (cheap and idempotent), so a later script update picks it up.
+    const sid = ids[this.tab], cols = this.cols[this.tab];
+    format.push({ updateSheetProperties: { properties: { sheetId: sid, gridProperties: { frozenRowCount: 1 } }, fields: 'gridProperties.frozenRowCount' } });
+    format.push({ updateDimensionProperties: { range: { sheetId: sid, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 54 }, fields: 'pixelSize' } });
+    format.push({ updateDimensionProperties: { range: { sheetId: sid, dimension: 'COLUMNS', startIndex: 0, endIndex: cols.length }, properties: { hiddenByUser: false, pixelSize: 190 }, fields: 'hiddenByUser,pixelSize' } });
+    for (const c of COLUMNS) {
+      const i = cols.indexOf(HEADER[c.key]);
+      format.push({ repeatCell: { range: { sheetId: sid, startRowIndex: 0, endRowIndex: 1, startColumnIndex: i, endColumnIndex: i + 1 }, cell: { userEnteredFormat: { backgroundColor: hex(SECTIONS[c.s].color), textFormat: { bold: true }, wrapStrategy: 'WRAP', verticalAlignment: 'TOP' } }, fields: 'userEnteredFormat(backgroundColor,textFormat.bold,wrapStrategy,verticalAlignment)' } });
+    }
+    for (const key of HIDDEN) {
+      const i = cols.indexOf(HEADER[key]);
+      format.push({ updateDimensionProperties: { range: { sheetId: sid, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { hiddenByUser: true }, fields: 'hiddenByUser' } });
     }
     if (writes.length) await withRetry(() => this.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: this.sheetId, requestBody: { valueInputOption: 'RAW', data: writes } }), 'write headers');
-    if (format.length) await withRetry(() => this.sheets.spreadsheets.batchUpdate({ spreadsheetId: this.sheetId, requestBody: { requests: format } }), 'format headers');
+    await withRetry(() => this.sheets.spreadsheets.batchUpdate({ spreadsheetId: this.sheetId, requestBody: { requests: format } }), 'format headers');
   }
 
-  async readTab(title) {
-    const cols = this.cols[title];
+  async readTab(title, cols = this.cols[title]) {
     const { data } = await withRetry(() => this.sheets.spreadsheets.values.get({
       spreadsheetId: this.sheetId, range: `${q(title)}!A2:${letter(cols.length - 1)}`, valueRenderOption: 'UNFORMATTED_VALUE',
     }), `read ${title}`);
@@ -209,10 +292,15 @@ export class Store {
   }
 
   async loadJourneys() {
-    for (const r of await this.readTab(this.tab)) {
+    const upgrading = !!this.legacyRows;
+    for (const byHeader of this.legacyRows || await this.readTab(this.tab)) {
+      const r = Object.fromEntries(Object.entries(byHeader).map(([h, v]) => [KEY_OF[h] ?? h, v]));
       const j = fromRow(r);
-      if (j) this.journeys.set(j.id, j);
+      if (!j) continue;
+      this.journeys.set(j.id, j);
+      if (upgrading) this.dirty.add(j.id); // rewrite the row in the new layout
     }
+    if (upgrading) { this.legacyRows = null; await this.flush(); }
   }
 
   async loadSessions() {
@@ -330,7 +418,7 @@ export class Store {
     try {
       const updates = [], appends = [];
       // Find each row by id now, in case rows were sorted or moved by hand.
-      const idCol = letter(cols.indexOf('id'));
+      const idCol = letter(cols.indexOf(HEADER.id));
       const { data } = await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(tab)}!${idCol}:${idCol}` }), 'read ids');
       const rowOf = new Map((data.values || []).map((r, i) => [r[0], i + 1]).filter(([id], i) => i > 0 && id));
       const end = letter(cols.length - 1);
@@ -338,7 +426,7 @@ export class Store {
         const j = this.journeys.get(id);
         if (!j) continue;
         const v = toRow(j);
-        const values = [cols.map((c) => cell(v[c]))];
+        const values = [cols.map((c) => cell(v[KEY_OF[c]]))];
         if (rowOf.has(id)) updates.push({ range: `${q(tab)}!A${rowOf.get(id)}:${end}${rowOf.get(id)}`, values });
         else appends.push(values[0]);
       }

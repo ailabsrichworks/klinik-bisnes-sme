@@ -40,11 +40,22 @@ export function appsScriptClients({ url, secret, fetchImpl = fetch, timeoutMs = 
       },
       async batchUpdate({ requestBody }) {
         const adds = [], items = [];
+        const toHex = (c) => '#' + ['red', 'green', 'blue'].map((k) => Math.round((c[k] || 0) * 255).toString(16).padStart(2, '0')).join('');
         for (const r of requestBody.requests) {
           if (r.addSheet) adds.push({ title: r.addSheet.properties.title, frozen: r.addSheet.properties.gridProperties?.frozenRowCount || 0 });
           else if (r.addProtectedRange) items.push({ kind: 'protectHeader', tab: tabOf(r.addProtectedRange.protectedRange.range) });
-          else if (r.repeatCell) items.push({ kind: 'boldHeader', tab: tabOf(r.repeatCell.range) });
-          else if (r.updateDimensionProperties) items.push({ kind: 'hideColumn', tab: tabOf(r.updateDimensionProperties.range), col: r.updateDimensionProperties.range.startIndex });
+          else if (r.updateSheetProperties) items.push({ kind: 'freeze', tab: tabOf(r.updateSheetProperties.properties), rows: r.updateSheetProperties.properties.gridProperties.frozenRowCount });
+          else if (r.repeatCell) {
+            const { range, cell } = r.repeatCell, f = cell.userEnteredFormat || {};
+            if (f.backgroundColor) items.push({ kind: 'style', tab: tabOf(range), row: range.startRowIndex, col: range.startColumnIndex, ncols: range.endColumnIndex - range.startColumnIndex, bg: toHex(f.backgroundColor), bold: !!f.textFormat?.bold, wrap: f.wrapStrategy === 'WRAP' });
+            else items.push({ kind: 'boldHeader', tab: tabOf(range) });
+          } else if (r.updateDimensionProperties) {
+            const { range, properties: p } = r.updateDimensionProperties, tab = tabOf(range);
+            if (range.dimension === 'ROWS') { if (p.pixelSize) items.push({ kind: 'rowHeight', tab, row: range.startIndex, px: p.pixelSize }); continue; }
+            if (p.hiddenByUser === true) items.push({ kind: 'hideColumn', tab, col: range.startIndex });
+            if (p.hiddenByUser === false) items.push({ kind: 'showColumns', tab, col: range.startIndex, n: range.endIndex - range.startIndex });
+            if (p.pixelSize) items.push({ kind: 'colWidth', tab, col: range.startIndex, n: range.endIndex - range.startIndex, px: p.pixelSize });
+          }
         }
         const replies = [];
         if (adds.length) {

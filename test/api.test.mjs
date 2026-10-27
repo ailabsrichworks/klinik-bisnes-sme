@@ -5,7 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createFakeGoogle } from '../server/google-fake.mjs';
-import { Store, PESERTA } from '../server/store.mjs';
+import { Store, PESERTA, HEADER } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { reportSaver } from '../server/reports.mjs';
 import { config } from '../server/config.mjs';
@@ -78,7 +78,7 @@ test('saves reach the sheet; bad or oversized saves are refused', async () => {
   assert.equal((await call('/api/journey', { method: 'PUT', key: k, body: { state: { profile: { name: 'x'.repeat(46_000) } } } })).status, 413);
   await store.flush();
   const row = g.rows('Peserta').find((r) => r[0] === k.id);
-  const at = (c) => row[PESERTA.indexOf(c)];
+  const at = (c) => row[PESERTA.indexOf(HEADER[c])];
   assert.equal(at('session_code'), 'KL-NOV26');
   assert.equal(at('pillar'), 'Marketing');
   assert.equal(at('situation_1'), PILLARS.marketing.issues[1]);
@@ -123,12 +123,14 @@ test('the report PDF downloads once 3 situations are ticked, and the download ti
   assert.match(res.headers.get('content-disposition'), /filename="Laporan-Quick-Fix-Kuih-Siti-Anak\.pdf"/);
   assert.equal(Buffer.from(await res.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
   await store.flush();
-  assert.match(g.rows('Peserta').find((r) => r[0] === k.id)[PESERTA.indexOf('report_downloaded_at')], /^\d{4}-\d\d-\d\dT/);
+  assert.match(g.rows('Peserta').find((r) => r[0] === k.id)[PESERTA.indexOf(HEADER.report_downloaded_at)], /^\d{4}-\d\d-\d\dT/);
 });
 
 test('the report PDF is saved to Drive at the report step, one per participant, and deleted with the data', async () => {
   const k = await start('KL-NOV26');
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // PDFs take a moment to build (fonts, logos): poll instead of guessing a fixed wait.
+  const until = async (ok, ms = 5000) => { for (const t0 = Date.now(); !ok() && Date.now() - t0 < ms;) await sleep(50); };
   const reports = () => [...g.files.values()].filter((f) => f.name.startsWith('Laporan') && f.name.includes(k.id));
   const state = reportState('sales');
   const put = (st, step) => call('/api/journey', { method: 'PUT', key: k, body: { state: st, step } });
@@ -138,7 +140,7 @@ test('the report PDF is saved to Drive at the report step, one per participant, 
   assert.equal(reports().length, 0);
 
   await put(state, 3); await put(state, 3);
-  await sleep(500);
+  await until(() => reports().length === 1);
   assert.equal(reports().length, 1);
   const [first] = reports();
   assert.equal(first.bytes.subarray(0, 5).toString(), '%PDF-');
@@ -153,7 +155,7 @@ test('the report PDF is saved to Drive at the report step, one per participant, 
 
   const changed = structuredClone(state); changed.byPillar.sales.workOutput = 'Versi baharu';
   await put(changed, 3);
-  await sleep(500);
+  await until(() => reports().length === 1 && reports()[0] !== first);
   assert.equal(reports().length, 1);
   assert.notEqual(reports()[0], first);
 
