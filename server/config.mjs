@@ -30,6 +30,8 @@ export const config = {
   dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 0),
 
   // Bump when the privacy notice text changes; participants are asked to accept again.
+  // Where the report button sends participants after the PDF downloads (the class page).
+  classUrl: env.CLASS_URL || 'https://klinikbisnessme.rcg.my',
   noticeVersion: env.NOTICE_VERSION || '2026-10-v6',
 };
 

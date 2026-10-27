@@ -198,6 +198,10 @@ textarea.grow { resize: none; overflow: hidden; }
 #resultView .bottomrow { position: relative; }
 @media (max-width: 760px) { #resultView .bottomrow > * { flex: 1 1 100%; } }
 
+.classcta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-top: 14px; padding: 16px; border-radius: 16px; background: var(--nude); }
+.classcta p { margin: 0; font-size: 15px; flex: 1 1 260px; }
+@media (max-width: 760px) { .classcta .primary { flex: 1 1 100%; } }
+
 .account-links { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: 16px; }
 .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 25px; }
 .footer p { margin: 0 0 6px; }

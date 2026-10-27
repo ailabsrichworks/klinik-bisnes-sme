@@ -102,7 +102,7 @@ export function createApp({ store, reports }) {
   api.use(sameOrigin);
 
   api.get('/config', (_req, res) => {
-    res.set('Cache-Control', 'no-store').json({ noticeVersion: config.noticeVersion, aiReady: aiReady() });
+    res.set('Cache-Control', 'no-store').json({ noticeVersion: config.noticeVersion, aiReady: aiReady(), classUrl: config.classUrl });
   });
 
   // Session code lookup for facilitator links (/?c=CODE). The code is optional.

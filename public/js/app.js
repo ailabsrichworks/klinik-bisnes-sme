@@ -528,6 +528,18 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
   $('editNumbersBtn').onclick = () => { go(2); scrollToEl($('main')); };
   $('backToQuestionsBtn').onclick = () => { go(1); scrollToEl($('main')); };
 
+  // The download button is also the call to action: after the PDF, the class page opens in a new
+  // tab. Browsers that block it (the PDF takes a moment, so the click no longer counts) still get
+  // the link right under the button.
+  function openClass() {
+    const url = KB.cfg.classUrl;
+    if (!url) return;
+    $('classLink').href = url;
+    show('classCta', true);
+    const w = window.open(url, '_blank');
+    if (w) w.opener = null;
+  }
+
   // Downloads the report PDF the server builds (the same file kept in Drive). Saves first.
   $('downloadBtn').onclick = async () => {
     const btn = $('downloadBtn'), label = btn.innerHTML;
@@ -542,6 +554,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
       notice('reportMessage', 'Laporan PDF dimuat turun.');
+      openClass();
     } catch (err) {
       console.error(err);
       notice('reportMessage', `PDF gagal dimuat turun: ${err.message}. Cuba lagi.`, true);
