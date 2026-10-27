@@ -4,6 +4,8 @@
 import { createHash } from 'node:crypto';
 import { reportPdf } from './report-pdf.mjs';
 
+export const sessionNameOf = (store, j) => (j.sessionCode ? store.sessionByCode(j.sessionCode)?.name || j.sessionCode : '');
+
 export function reportSaver(store, { delayMs = Number(process.env.REPORT_DELAY_MS || 15_000) } = {}) {
   const timers = new Map();
 
@@ -11,7 +13,7 @@ export function reportSaver(store, { delayMs = Number(process.env.REPORT_DELAY_M
     timers.delete(id);
     const j = store.journeys.get(id);
     if (!j?.state?.diagnosis) return null;
-    const sessionName = j.sessionCode ? store.sessionByCode(j.sessionCode)?.name || j.sessionCode : '';
+    const sessionName = sessionNameOf(store, j);
     const { evidenceFile, programme, ...content } = j.state;
     const hash = createHash('sha256').update(JSON.stringify([content, sessionName])).digest('hex').slice(0, 16);
     if (j.report?.hash === hash) return j.report; // nothing changed since the last copy

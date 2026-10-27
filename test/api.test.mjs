@@ -171,3 +171,16 @@ test('the saved step survives a restart', async () => {
   await again.init(); await again.stop();
   assert.equal(again.journeys.get(k.id).step, 2);
 });
+
+test('the participant can download their report PDF once there is a diagnosis', async () => {
+  const k = await start();
+  assert.equal((await call('/api/report.pdf', { key: k })).status, 409);
+  assert.equal((await fetch(base + '/api/report.pdf')).status, 401);
+  const diagnosis = { origin: 'ai', pathway: 'content', title: 'Rutin content', reason: 'r', observations: [], unknowns: [], strength: 'Bukti terhad', quickFix: 'QF', tasks: [], tasksSource: 'template' };
+  await call('/api/journey', { method: 'PUT', key: k, body: { state: { profile: { business: 'Kuih Siti & Anak' }, diagnosis, pathway: 'content', quickFix: 'QF', tasks: [] }, step: 2 } });
+  const res = await fetch(base + '/api/report.pdf', { headers: { 'x-journey-id': k.id, 'x-journey-token': k.token } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'application/pdf');
+  assert.match(res.headers.get('content-disposition'), /filename="Laporan-Quick-Fix-Kuih-Siti-Anak\.pdf"/);
+  assert.equal(Buffer.from(await res.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+});

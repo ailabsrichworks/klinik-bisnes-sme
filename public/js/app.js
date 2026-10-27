@@ -442,6 +442,31 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     ];
     r.innerHTML = blocks.map(([title, value]) => `<div class="report-row"><b>${scrub(title)}</b><p>${scrub(value)}</p></div>`).join('');
   }
+  // Downloads the report PDF the server builds (the same file kept in Drive). Saves first so it has
+  // the latest answers. If the download fails, falls back to the browser's print view.
+  async function downloadReport() {
+    const btn = $('downloadBtn');
+    dataFromForm(); unsaved = true;
+    btn.disabled = true; btn.textContent = 'Menyediakan PDF…';
+    try {
+      await pushRemote();
+      const k = KB.getKey();
+      const res = await fetch('/api/report.pdf', { headers: k ? { 'X-Journey-Id': k.id, 'X-Journey-Token': k.token } : {} });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Ralat ${res.status}`);
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Laporan-Quick-Fix.pdf';
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      message('PDF dimuat turun.');
+    } catch (err) {
+      console.error(err);
+      message('PDF gagal dimuat turun. Gunakan "Save as PDF" dalam paparan cetak.', true);
+      printReport();
+    } finally {
+      btn.disabled = false; btn.textContent = 'Muat turun PDF';
+    }
+  }
+
   function printReport() {
     dataFromForm(); drawReport();
     const p = state.profile, d = state.diagnosis;
@@ -522,8 +547,8 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       else message('Lengkapkan langkah sebelumnya dahulu.', true);
     };
   });
-  $('printBtn').onclick = printReport;
-  $('copyBtn').onclick = async () => { dataFromForm(); try { await navigator.clipboard.writeText(reportText()); message('Ringkasan disalin ke clipboard.'); } catch { message('Clipboard tidak tersedia; gunakan Print / Save PDF.', true); } };
+  $('downloadBtn').onclick = downloadReport;
+  $('copyBtn').onclick = async () => { dataFromForm(); try { await navigator.clipboard.writeText(reportText()); message('Ringkasan disalin ke clipboard.'); } catch { message('Clipboard tidak tersedia; gunakan butang Muat turun PDF.', true); } };
   $('exportBtn').onclick = exportData;
   $('restartBtn').onclick = restart;
   $('deleteBtn').onclick = deleteAccount;

@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
 import { diagnose, limitReached, countIp, DiagnoseError } from './diagnose.mjs';
+import { reportPdf } from './report-pdf.mjs';
+import { sessionNameOf } from './reports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(here, '..', 'public');
@@ -168,6 +170,21 @@ export function createApp({ store, reports }) {
       if (err instanceof DiagnoseError) return res.status(err.status).json({ error: err.message });
       console.error('[diagnose] unexpected', err);
       res.status(500).json({ error: 'Ralat server. Cuba semula.' });
+    }
+  });
+
+  // The participant's report as a PDF download (the same file that is kept in Drive).
+  api.get('/report.pdf', ipLimit(60), requireJourney, async (req, res) => {
+    const j = req.journey;
+    if (!j.state?.diagnosis) return res.status(409).json({ error: 'Jana diagnosis dahulu sebelum memuat turun laporan.' });
+    try {
+      const bytes = await reportPdf({ state: j.state, sessionName: sessionNameOf(store, j) });
+      if (reports && j.step === 4) reports.schedule(j);
+      const slug = String(j.state.profile?.business || 'Peserta').normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'Peserta';
+      res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="Laporan-Quick-Fix-${slug}.pdf"`, 'Cache-Control': 'no-store' }).send(bytes);
+    } catch (err) {
+      console.error('[report.pdf]', err?.message);
+      res.status(500).json({ error: 'PDF gagal dijana. Cuba lagi.' });
     }
   });
 
