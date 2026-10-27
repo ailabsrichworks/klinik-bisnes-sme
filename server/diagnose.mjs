@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from './config.mjs';
-import { admin } from './supabase.mjs';
 import { PATHWAYS, PAINS, costSummary, contentSummary, liveSummary, liveBlock, hasEvidence, normalizeTasks, templateTasks } from '../public/js/rules.mjs';
 
 export { PATHWAYS };
@@ -104,24 +103,18 @@ export class DiagnoseError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-// Loads an uploaded evidence file (already verified to belong to userId) as a Claude content block.
-async function evidenceBlock(userId, fileId) {
-  if (!fileId) return null;
-  const { data: row } = await admin.from('evidence_files')
-    .select('storage_path, mime_type, file_name, user_id').eq('id', fileId).maybeSingle();
-  if (!row || row.user_id !== userId) throw new DiagnoseError(404, 'Lampiran tidak dijumpai.');
-  const { data: blob, error } = await admin.storage.from('evidence').download(row.storage_path);
-  if (error || !blob) throw new DiagnoseError(502, 'Lampiran gagal dimuat turun. Cuba lampirkan semula.');
-  const bytes = Buffer.from(await blob.arrayBuffer());
-  const type = row.mime_type;
+// Turns the participant's uploaded evidence file into a Claude content block.
+function evidenceBlock(file) {
+  if (!file) return null;
+  const { bytes, mime: type, name } = file;
   if (['image/png', 'image/jpeg', 'image/webp'].includes(type)) {
     return { type: 'image', source: { type: 'base64', media_type: type, data: bytes.toString('base64') } };
   }
   if (type === 'application/pdf') {
-    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: bytes.toString('base64') }, title: row.file_name };
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: bytes.toString('base64') }, title: name };
   }
   if (type === 'text/plain' || type === 'text/csv') {
-    return { type: 'document', source: { type: 'text', media_type: 'text/plain', data: bytes.toString('utf8') }, title: row.file_name };
+    return { type: 'document', source: { type: 'text', media_type: 'text/plain', data: bytes.toString('utf8') }, title: name };
   }
   throw new DiagnoseError(415, 'Jenis lampiran tidak disokong.');
 }
@@ -132,12 +125,12 @@ function clip(value, max) {
 
 const pick = (obj, keys, max = 20) => Object.fromEntries(keys.map((k) => [k, clip(obj?.[k], max)]));
 
-export async function diagnose({ userId, body }) {
+export async function diagnose({ store, journey, body }) {
   const costs = pick(body.costs, ['sellingPrice', 'materialCost', 'packagingCost', 'deliveryCost', 'platformCost', 'promotionCost', 'otherCost']);
   const contentIn = pick(body.content, ['postsWeek', 'hoursWeek', 'hasContentPlan', 'tracksContent']);
   const live = pick(body.live, ['liveExperience', 'liveViewers', 'liveClaims', 'livePaid', 'invoiceTiming']);
   const evidenceText = clip(body.evidence_text, 9500);
-  const hasFile = !!body.evidence_file_id;
+  const hasFile = !!(body.use_file && journey.evidence?.fileId);
   if (!hasEvidence({ evidenceText, costs, content: contentIn, live, hasFile })) {
     throw new DiagnoseError(422, 'Tampal sekurang-kurangnya satu bukti, isi angka, atau lampirkan fail terlebih dahulu.');
   }
@@ -157,7 +150,16 @@ export async function diagnose({ userId, body }) {
   };
 
   const content = [];
-  const attachment = await evidenceBlock(userId, body.evidence_file_id);
+  let attachment = null;
+  if (hasFile) {
+    let file;
+    try { file = await store.readFile(journey); } catch (err) {
+      console.error('[diagnose] file download', err?.message);
+      throw new DiagnoseError(502, 'Lampiran gagal dimuat turun. Cuba lampirkan semula.');
+    }
+    attachment = evidenceBlock(file);
+  }
+  const logCall = (status, message) => store.logAi({ journeyId: journey.id, model: message?.model || config.claudeModel, status, input: message?.usage?.input_tokens, output: message?.usage?.output_tokens });
   if (attachment) content.push(attachment);
   content.push({ type: 'text', text: JSON.stringify(facts, null, 2) });
 
@@ -173,7 +175,7 @@ export async function diagnose({ userId, body }) {
       fallbacks: 'default',
     });
   } catch (err) {
-    await logCall(userId, 'error');
+    logCall('error');
     if (err instanceof Anthropic.RateLimitError) throw new DiagnoseError(429, 'AI sedang sibuk. Cuba semula dalam seminit.');
     if (err instanceof Anthropic.BadRequestError) {
       console.error('[diagnose] bad request', err.message);
@@ -184,17 +186,17 @@ export async function diagnose({ userId, body }) {
   }
 
   if (message.stop_reason === 'refusal') {
-    await logCall(userId, 'refusal', message);
+    logCall('refusal', message);
     throw new DiagnoseError(422, 'AI tidak dapat menyemak bukti ini. Cuba terangkan dengan teks biasa.');
   }
 
   const text = message.content.filter((c) => c.type === 'text').map((c) => c.text).join('');
   let out;
   try { out = JSON.parse(text); } catch {
-    await logCall(userId, 'error', message);
+    logCall('error', message);
     throw new DiagnoseError(502, 'Respons AI tidak lengkap. Cuba semula.');
   }
-  await logCall(userId, 'ok', message);
+  logCall('ok', message);
 
   const list = (a, n) => (Array.isArray(a) ? a.slice(0, n).map((x) => clip(x, 350)) : []);
   const result = {
@@ -233,32 +235,22 @@ function liveFallback(result, why) {
   };
 }
 
-async function logCall(userId, status, message) {
-  const { error } = await admin.from('ai_calls').insert({
-    user_id: userId,
-    model: message?.model || config.claudeModel,
-    status,
-    input_tokens: message?.usage?.input_tokens ?? null,
-    output_tokens: message?.usage?.output_tokens ?? null,
-  });
-  if (error) console.error('[diagnose] could not log call', error.message);
-}
-
-// Returns a message if the caller (or the whole site) has hit today's limit, else null.
-// A limit of 0 (the default) means no limit.
-export async function limitReached(userId) {
-  const { dailyAiLimitPerUser: perUser, dailyAiLimitGlobal: global } = config;
-  if (!perUser && !global) return null;
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [mine, all] = await Promise.all([
-    admin.from('ai_calls').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since),
-    admin.from('ai_calls').select('id', { count: 'exact', head: true }).gte('created_at', since),
-  ]);
-  if (perUser && (mine.count ?? 0) >= perUser) {
-    return `Had ${perUser} diagnosis sehari telah dicapai. Cuba semula esok, atau edit Quick Fix secara manual.`;
-  }
-  if (global && (all.count ?? 0) >= global) {
-    return 'Had harian AI untuk semua peserta telah dicapai. Sila maklumkan fasilitator.';
-  }
+// Returns a message if this participant, this IP or the whole site has hit today's limit, else null.
+// A limit of 0 (the default) means no limit. IP counts are kept in memory only.
+const ipCalls = new Map(); // ip → timestamps
+export function limitReached(store, journey, ip) {
+  const { dailyAiLimitPerUser: perUser, dailyAiLimitPerIp: perIp, dailyAiLimitGlobal: global } = config;
+  if (!perUser && !perIp && !global) return null;
+  const { mine, all } = store.aiCount(journey.id);
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const fromIp = (ipCalls.get(ip) || []).filter((t) => t > since);
+  if (perUser && mine >= perUser) return `Had ${perUser} diagnosis sehari telah dicapai. Cuba semula esok, atau edit Quick Fix secara manual.`;
+  if (perIp && fromIp.length >= perIp) return 'Had harian AI untuk rangkaian ini telah dicapai. Cuba semula esok.';
+  if (global && all >= global) return 'Had harian AI untuk semua peserta telah dicapai. Sila maklumkan fasilitator.';
   return null;
+}
+export function countIp(ip) {
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  ipCalls.set(ip, [...(ipCalls.get(ip) || []).filter((t) => t > since), Date.now()]);
+  if (ipCalls.size > 10_000) for (const [k, v] of ipCalls) if (!v.some((t) => t > since)) ipCalls.delete(k);
 }

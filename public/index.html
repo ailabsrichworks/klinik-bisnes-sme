@@ -53,9 +53,9 @@
         <p><b>Ringkasan notis privasi</b></p>
         <ul>
           <li>Tiada emel, nombor telefon atau password diperlukan. Sesi anda disimpan tanpa nama dalam browser ini.</li>
-          <li>Kami simpan maklumat bisnes, bukti dan tracker yang anda isi, untuk sesi ini dan semakan Hari 7.</li>
+          <li>Kami simpan maklumat bisnes, bukti dan tracker yang anda isi dalam Google Sheet dan Google Drive Richworks, untuk sesi ini dan semakan Hari 7.</li>
           <li>Apabila anda tekan “Jana Diagnosis”, bukti dihantar kepada penyedia AI (Anthropic) untuk dianalisis.</li>
-          <li>Fasilitator sesi boleh melihat kemajuan anda untuk membantu semasa sesi.</li>
+          <li>Pasukan Klinik Bisnes SME dan fasilitator sesi boleh melihat jawapan anda untuk membantu anda.</li>
           <li>Anda boleh muat turun atau padam semua data anda pada bila-bila masa.</li>
         </ul>
         <p><a href="/privacy" target="_blank" rel="noopener">Baca notis privasi penuh</a></p>
@@ -76,7 +76,7 @@
         <button type="button" class="step-tab" data-go="2"><span class="n">3</span><b>Diagnosis</b></button>
         <button type="button" class="step-tab" data-go="3"><span class="n">4</span><b>Quick Fix</b></button>
         <button type="button" class="step-tab" data-go="4"><span class="n">5</span><b>Tracker 7 Hari</b></button>
-        <div class="side-bottom"><p id="saveState">Disimpan ke akaun anda.</p></div>
+        <div class="side-bottom"><p id="saveState">Disimpan.</p></div>
       </nav>
       <main class="workspace">
         <div class="row wrap demo-bar" id="demoBar" hidden>
@@ -205,14 +205,13 @@
         <div class="row wrap" style="margin-top:14px">
           <button type="button" class="link-btn" id="exportBtn">Muat turun semua data saya (JSON)</button>
           <button type="button" class="link-btn" id="restartBtn">Mula semula</button>
-          <button type="button" class="link-btn danger" id="deleteBtn">Padam akaun & data saya</button>
+          <button type="button" class="link-btn danger" id="deleteBtn">Padam data saya</button>
           <span class="spacer"></span><a class="link-btn" href="/privacy">Notis privasi</a>
         </div>
       </main>
     </div>
   </div>
   <div id="print-area"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="/js/common.js"></script>
   <script type="module" src="/js/app.js"></script>
 </body>

@@ -1,14 +1,11 @@
 // Spec v3 §7 acceptance tests against the REAL AI backend (costs ~11 Claude calls).
 // Needs the dev server on PUBLIC_URL and .env loaded:  node --env-file=.env test/acceptance.mjs [T01 T05 ...]
-// Each test uses a throwaway @example.com user (admin API, no email sent) in a throwaway session code; all deleted afterwards.
+// Each test starts its own journey through the app's API (as a participant would) and deletes it afterwards
+// with "Delete my data", which also clears its row in the Sheet and its file in Drive.
 import { readFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
-import { createClient } from '@supabase/supabase-js';
 import { programmeFit } from '../public/js/rules.mjs';
 
 const BASE = process.env.PUBLIC_URL || 'http://localhost:3000';
-const { SUPABASE_URL: url, SUPABASE_ANON_KEY: anon, SUPABASE_SERVICE_ROLE_KEY: service, NOTICE_VERSION } = process.env;
-const admin = createClient(url, service, { auth: { persistSession: false } });
 const FIXTURES = new URL('./fixtures/', import.meta.url);
 
 const owner = { business: 'Kek Pisang Mak Long', product: 'Kek pisang loaf', channel: 'Shopee / Marketplace', revenue: 'RM3,000 – bawah RM10,000', businessActive: 'yes', ownerAuthority: 'yes' };
@@ -51,49 +48,28 @@ const TESTS = [
     expect: (r) => [r.pathway === 'content'], fit: 'ready', review: 'marketing opted out → no outreach; tracker continues' },
 ];
 
-let cohortId = null;
-async function testCohort() {
-  if (cohortId) return cohortId;
-  const { data, error } = await admin.from('cohorts').insert({ code: `TEST-${randomUUID().slice(0, 6).toUpperCase()}`, name: 'Acceptance test', active_until: new Date(Date.now() + 3600e3).toISOString() }).select('id').single();
-  if (error) throw error;
-  return (cohortId = data.id);
-}
+const { noticeVersion } = await fetch(BASE + '/api/config').then((r) => r.json());
+const call = (path, key, init = {}) => fetch(BASE + path, { ...init, headers: { origin: BASE, 'x-journey-id': key.id, 'x-journey-token': key.token, ...init.headers } });
 
-async function withUser(fn) {
-  const sb = createClient(url, anon, { auth: { persistSession: false } });
-  const email = `kbsme-accept-${randomUUID().slice(0, 8)}@example.com`;
-  const { error: cuErr } = await admin.auth.admin.createUser({ email, email_confirm: true });
-  if (cuErr) throw cuErr;
-  const { data: link } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
-  const { data: sess, error } = await sb.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' });
-  if (error) throw error;
-  const uid = sess.user.id, token = sess.session.access_token;
-  const { data: journey, error: jErr } = await sb.from('journeys').insert({ user_id: uid, cohort_id: await testCohort(), state: {} }).select('id').single();
-  if (jErr) throw jErr;
-  try { return await fn({ sb, uid, token, journeyId: journey.id }); }
+async function withJourney(fn) {
+  const res = await fetch(BASE + '/api/journey', { method: 'POST', headers: { 'content-type': 'application/json', origin: BASE }, body: JSON.stringify({ acceptNotice: noticeVersion }) });
+  if (!res.ok) throw new Error(`could not start a journey: HTTP ${res.status}`);
+  const { id, token } = await res.json();
+  const key = { id, token };
+  try { return await fn(key); }
   finally {
-    // The app's own delete path first; the per-IP limit (5/min) can refuse it, so fall back to the admin API.
-    const res = await fetch(BASE + '/api/me', { method: 'DELETE', headers: { authorization: `Bearer ${token}`, origin: BASE } });
-    if (!res.ok) {
-      const { data: files } = await admin.storage.from('evidence').list(uid);
-      if (files?.length) await admin.storage.from('evidence').remove(files.map((f) => `${uid}/${f.name}`));
-      await admin.auth.admin.deleteUser(uid);
-    }
+    const del = await call('/api/me', key, { method: 'DELETE' });
+    if (!del.ok) console.warn(`  could not delete journey ${id}: HTTP ${del.status}`);
   }
 }
 
 async function run(t) {
-  return withUser(async ({ sb, uid, token, journeyId }) => {
-    let evidence_file_id = null;
+  return withJourney(async (key) => {
     if (t.file) {
-      const j = { id: journeyId };
-      const bytes = readFileSync(new URL(t.file[0], FIXTURES));
-      const path = `${uid}/${randomUUID()}.${t.file[0].split('.').pop()}`;
-      await sb.storage.from('evidence').upload(path, bytes, { contentType: t.file[1] });
-      const { data } = await sb.from('evidence_files').insert({ user_id: uid, journey_id: j.id, storage_path: path, file_name: t.file[0], mime_type: t.file[1], size_bytes: bytes.length }).select('id').single();
-      evidence_file_id = data.id;
+      const up = await call('/api/upload', key, { method: 'POST', headers: { 'x-file-name': t.file[0] }, body: readFileSync(new URL(t.file[0], FIXTURES)) });
+      if (!up.ok) throw new Error(`upload failed: HTTP ${up.status}`);
     }
-    const res = await fetch(BASE + '/api/diagnose', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, origin: BASE }, body: JSON.stringify({ ...t.input, evidence_file_id }) });
+    const res = await call('/api/diagnose', key, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...t.input, use_file: !!t.file }) });
     const body = await res.json();
     if (t.status) return { checks: [res.status === t.status], body, httpStatus: res.status };
     if (!res.ok) return { checks: [false], body, httpStatus: res.status };
@@ -117,6 +93,5 @@ for (const t of TESTS.filter((x) => !only.length || only.includes(x.id))) {
   console.log(`\n${pass ? 'PASS' : 'FAIL'} ${t.id} · HTTP ${r.httpStatus} · ${((Date.now() - t0) / 1000).toFixed(1)}s · checks ${r.checks.map((c) => (c ? '✓' : '✗')).join('')}${t.review ? `\n  review: ${t.review}` : ''}`);
   console.log(JSON.stringify(r.body, null, 2).split('\n').map((l) => '  ' + l).join('\n'));
 }
-if (cohortId) await admin.from('cohorts').delete().eq('id', cohortId);
 console.log('\nSUMMARY', results.map((r) => `${r.id}:${r.pass ? 'pass' : 'FAIL'}`).join(' '));
 process.exitCode = results.every((r) => r.pass) ? 0 : 1;

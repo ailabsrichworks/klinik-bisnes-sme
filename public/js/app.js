@@ -1,5 +1,5 @@
-// Participant app: five steps, saved to the participant's Supabase journey row.
-// No login: anyone can use it (anonymous sign-in). A facilitator's ?c=CODE files them under that session.
+// Participant app: five steps, saved through our API to the participant's row in the Google Sheet.
+// No login: a random key in this browser identifies the participant. A facilitator's ?c=CODE files them under that session.
 import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KEYS, costSummary, liveMath, liveBlock, hasEvidence, programmeFit, templateTasks, TASK_TITLE_MAX, TASK_PROOF_MAX } from './rules.mjs';
 
 (async () => {
@@ -20,9 +20,9 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   });
 
   let state = blank(), step = 0, file = null, fileUrl = null;
-  let user = null, journey = null, cohort = null;
+  let journey = null; // { id, consent, evidenceFile, session, createdAt } from our server
 
-  // ─────────────── boot: session code → anonymous session ───────────────
+  // ─────────────── boot: saved key → journey; otherwise privacy notice → new journey ───────────────
   const params = new URLSearchParams(location.search);
   const normCode = (c) => String(c || '').trim().toUpperCase();
   if (params.get('c')) { try { localStorage.setItem(COHORT_KEY, normCode(params.get('c'))); } catch {} }
@@ -32,23 +32,15 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   try {
     await KB.init();
   } catch (err) {
-    $('loadingGate').innerHTML = `<p>${scrub(err.message)}</p>`;
+    $('loadingGate').innerHTML = '<p>Data gagal dimuatkan. Semak sambungan internet dan muat semula halaman.</p>';
     return;
   }
-  const sb = KB.sb;
 
   function showOnly(id) {
     ['codeGate', 'consentGate', 'loadingGate', 'app'].forEach((x) => show(x, x === id));
     document.body.classList.toggle('in-app', id === 'app');
   }
-
-  // Participants can look up one code; they cannot list sessions.
-  async function lookupCohort(code) {
-    if (!code) return null;
-    const { data, error } = await sb.rpc('cohort_by_code', { p_code: code });
-    if (error) throw error;
-    return data?.[0] || null;
-  }
+  const failed = () => { showOnly('loadingGate'); $('loadingGate').innerHTML = '<p>Data gagal dimuatkan. Semak sambungan internet dan muat semula halaman.</p>'; };
 
   // Shown when a code is not recognised; the participant can fix it or continue without one.
   function askForCode(text = '', isError = false) {
@@ -59,27 +51,28 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
 
   async function boot() {
     showOnly('loadingGate');
-    try {
-      cohort = await lookupCohort(cohortCode());
-    } catch (err) {
-      console.error(err);
-      $('loadingGate').innerHTML = '<p>Data gagal dimuatkan. Semak sambungan internet dan muat semula halaman.</p>';
-      return;
+    if (KB.getKey()) {
+      try {
+        journey = await KB.api('/api/journey');
+        if (journey.consent.privacyVersion === KB.cfg.noticeVersion) return loadApp();
+        return askConsent(async () => { await KB.api('/api/consent', { method: 'POST', body: { kind: 'privacy', granted: true } }); });
+      } catch (err) {
+        if (err.status !== 401) { console.error(err); return failed(); }
+        KB.setKey(null); // the journey was deleted or the key is stale: start again
+      }
     }
-    if (cohortCode() && !cohort) return askForCode('Kod sesi ini tidak sah.', true);
-    const s = await KB.session();
-    if (s?.user) {
-      // The saved login may belong to a user that was deleted; check with the server before reusing it.
-      const { data: live, error: gone } = await sb.auth.getUser();
-      if (live?.user && !gone) return start(live.user);
-      await sb.auth.signOut({ scope: 'local' });
+    const code = cohortCode();
+    if (code) {
+      try { await KB.api(`/api/session/${encodeURIComponent(code)}`); } catch (err) {
+        if (err.status === 404) return askForCode('Kod sesi ini tidak sah.', true);
+        console.error(err); return failed();
+      }
     }
-    const { data, error } = await sb.auth.signInAnonymously();
-    if (error) {
-      console.error(error);
-      return askForCode(error.status === 429 ? 'Terlalu ramai cuba masuk serentak. Tunggu seminit dan cuba lagi.' : 'Tidak dapat memulakan sesi. Cuba lagi.', true);
-    }
-    start(data.user);
+    askConsent(async () => {
+      const j = await KB.api('/api/journey', { method: 'POST', body: { code: cohortCode() || undefined, acceptNotice: KB.cfg.noticeVersion } });
+      KB.setKey({ id: j.id, token: j.token });
+      journey = j;
+    });
   }
 
   $('noCodeBtn').onclick = () => { try { localStorage.removeItem(COHORT_KEY); } catch {} boot(); };
@@ -91,57 +84,34 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     boot();
   });
 
-  async function start(u) {
-    user = u;
-    showOnly('loadingGate');
-    const { data: notice } = await sb.from('consents').select('id').eq('user_id', u.id)
-      .eq('kind', 'privacy_notice').eq('notice_version', KB.cfg.noticeVersion).eq('granted', true).limit(1);
-    if (!notice?.length) {
-      showOnly('consentGate');
-      $('consentBtn').onclick = async () => {
-        if (!$('noticeAccept').checked) return msg('consentMessage', 'Tandakan persetujuan untuk meneruskan.', true);
-        const { error } = await sb.from('consents').insert({ user_id: u.id, kind: 'privacy_notice', granted: true, notice_version: KB.cfg.noticeVersion });
-        if (error?.code === '23503') { await sb.auth.signOut({ scope: 'local' }); return boot(); } // user no longer exists: start a fresh session
-        if (error) return msg('consentMessage', 'Gagal menyimpan. Cuba lagi.', true);
+  function askConsent(accept) {
+    showOnly('consentGate');
+    $('consentBtn').onclick = async () => {
+      if (!$('noticeAccept').checked) return msg('consentMessage', 'Tandakan persetujuan untuk meneruskan.', true);
+      $('consentBtn').disabled = true;
+      try {
+        await accept();
         loadApp();
-      };
-      return;
-    }
-    loadApp();
+      } catch (err) {
+        msg('consentMessage', err.status === 404 ? 'Kod sesi ini tidak sah.' : err.status === 429 ? 'Terlalu ramai cuba serentak. Tunggu seminit dan cuba lagi.' : 'Gagal menyimpan. Cuba lagi.', true);
+      } finally {
+        $('consentBtn').disabled = false;
+      }
+    };
   }
 
-  async function loadApp() {
-    showOnly('loadingGate');
-    try {
-      await loadJourney();
-    } catch (err) {
-      console.error(err);
-      $('loadingGate').innerHTML = '<p>Data gagal dimuatkan. Semak sambungan internet dan muat semula halaman.</p>';
-      return;
-    }
+  function loadApp() {
+    if (!journey) return boot();
+    if (journey.session) $('cohortLabel').textContent = `${journey.session.name}${journey.session.sessionDate ? ' · ' + new Date(journey.session.sessionDate).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
+    const obj = journey.state || {};
+    state = { ...blank(), ...obj, profile: { ...blank().profile, ...(obj.profile || {}) }, costs: obj.costs || {}, content: obj.content || {}, live: obj.live || {} };
+    state.evidenceFile = journey.evidenceFile || null;
     showOnly('app');
     initFields(); toggleCosts();
     // Test mode: an empty form opens already filled (?demo=content|live|unknown picks the case; default cost).
     if (demoMode && !state.profile.business && !state.diagnosis) return fillDemo(DEMO[params.get('demo')] ? params.get('demo') : 'cost');
     const want = Number(params.get('step'));
     go(want >= 1 && want <= 5 ? want - 1 : guessStep());
-  }
-
-  async function loadJourney() {
-    if (cohort) $('cohortLabel').textContent = `${cohort.name}${cohort.session_date ? ' · ' + new Date(cohort.session_date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
-    let q = sb.from('journeys').select('*').eq('user_id', user.id).limit(1);
-    q = cohort ? q.eq('cohort_id', cohort.id) : q.is('cohort_id', null);
-    const { data: rows, error } = await q;
-    if (error) throw error;
-    if (rows.length) {
-      journey = rows[0];
-    } else {
-      const { data, error: e2 } = await sb.from('journeys').insert({ user_id: user.id, cohort_id: cohort?.id ?? null, state: blank() }).select().single();
-      if (e2) throw e2;
-      journey = data;
-    }
-    const obj = journey.state || {};
-    state = { ...blank(), ...obj, profile: { ...blank().profile, ...(obj.profile || {}) }, costs: obj.costs || {}, content: obj.content || {}, live: obj.live || {} };
   }
 
   function guessStep() {
@@ -153,37 +123,42 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   }
 
   // ─────────────── saving ───────────────
-  let saveTimer = null, saving = Promise.resolve(), lastName = null;
+  // Every change is kept in this browser at once; the server (Google Sheet) gets it on step change,
+  // diagnosis, tracker status change, after a pause in typing, and when the page is hidden or closed.
+  let saveTimer = null, saving = Promise.resolve(), unsaved = false;
   function setSaveState(t) { const el = $('saveState'); if (el) el.textContent = t; }
   function safeSave() {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ id: journey?.id, state })); } catch {}
-    setSaveState('Menyimpan…');
+    unsaved = true;
+    setSaveState('Belum dihantar…');
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(pushRemote, 700);
+    saveTimer = setTimeout(pushRemote, 20_000);
   }
-  function pushRemote() {
-    if (!journey) return;
+  function pushRemote({ keepalive = false } = {}) {
+    clearTimeout(saveTimer); saveTimer = null;
+    if (!journey || !unsaved) return saving;
+    unsaved = false;
     const fit = currentFit();
     state.programme = state.diagnosis ? { status: fit.status, key: fit.key } : null;
-    const payload = {
-      state,
-      pathway: state.diagnosis ? currentPath() : null,
-      step,
-      tasks_done: (state.tasks || []).filter((t) => t.status === 'selesai').length,
-      tracker_started_at: state.trackerStartedAt,
-    };
+    const { evidenceFile, ...body } = state; // the file record is kept by the server
     saving = saving.then(async () => {
-      const { error } = await sb.from('journeys').update(payload).eq('id', journey.id);
-      if (error) { setSaveState('Belum disimpan — semak internet.'); return; }
-      setSaveState('Disimpan ke akaun anda.');
-      const name = txt(state.profile.participant);
-      if (name && name !== lastName) { lastName = name; await sb.from('profiles').update({ full_name: name }).eq('id', user.id); }
+      setSaveState('Menyimpan…');
+      try {
+        await KB.api('/api/journey', { method: 'PUT', body: { state: body, step }, keepalive });
+        setSaveState('Disimpan.');
+      } catch (err) {
+        unsaved = true;
+        setSaveState(err.status === 401 ? 'Sesi tamat — muat semula halaman.' : 'Belum disimpan — semak internet.');
+      }
     });
+    return saving;
   }
-  window.addEventListener('beforeunload', () => { if (saveTimer) { clearTimeout(saveTimer); pushRemote(); } });
+  const saveNow = () => { unsaved = true; return pushRemote(); };
+  window.addEventListener('pagehide', () => pushRemote({ keepalive: true }));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') pushRemote({ keepalive: true }); });
 
   async function recordConsent(kind, granted) {
-    await sb.from('consents').insert({ user_id: user.id, kind, granted, notice_version: KB.cfg.noticeVersion });
+    try { await KB.api('/api/consent', { method: 'POST', body: { kind, granted } }); } catch (err) { console.error(err); }
   }
 
   // ─────────────── form <-> state ───────────────
@@ -244,7 +219,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       drawTracker(); drawReport();
     }
     clearMessage();
-    safeSave();
+    safeSave(); pushRemote();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -359,17 +334,13 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
 
   // ─────────────── diagnosis ───────────────
   async function uploadEvidence() {
-    if (!file) return state.evidenceFile?.id || null;
-    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5);
-    const type = file.type || (ext === 'csv' ? 'text/csv' : ext === 'pdf' ? 'application/pdf' : 'text/plain');
-    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { error: upErr } = await sb.storage.from('evidence').upload(path, file, { contentType: type, upsert: false });
-    if (upErr) throw new Error('Lampiran gagal dimuat naik. Cuba fail yang lebih kecil.');
-    const { data, error } = await sb.from('evidence_files').insert({ user_id: user.id, journey_id: journey.id, storage_path: path, file_name: file.name.slice(0, 180), mime_type: type, size_bytes: file.size }).select('id').single();
-    if (error) throw new Error('Lampiran gagal direkod.');
-    state.evidenceFile = { id: data.id, name: file.name };
+    if (!file) return !!state.evidenceFile;
+    const r = await KB.api('/api/upload', { method: 'POST', raw: file, headers: { 'X-File-Name': encodeURIComponent(file.name) } })
+      .catch((err) => { throw new Error(err.status === 413 ? 'Fail melebihi 4 MB.' : err.message || 'Lampiran gagal dimuat naik.'); });
+    state.evidenceFile = r.evidenceFile;
     file = null;
-    return data.id;
+    $('fileStatus').textContent = `Disimpan: ${r.evidenceFile.name}. Pilih fail lain untuk menggantikan.`;
+    return true;
   }
 
   async function createDiagnosis() {
@@ -382,8 +353,8 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       let result;
       if (KB.cfg.aiReady) {
         await recordConsent('ai_processing', true);
-        const fileId = await uploadEvidence();
-        const r = await KB.api('/api/diagnose', { method: 'POST', body: { business: state.profile, pain: state.profile.pain, evidence_text: state.evidenceText, costs: state.costs, content: state.content, live: state.live, evidence_file_id: fileId } });
+        const useFile = await uploadEvidence();
+        const r = await KB.api('/api/diagnose', { method: 'POST', body: { business: state.profile, pain: state.profile.pain, evidence_text: state.evidenceText, costs: state.costs, content: state.content, live: state.live, use_file: useFile } });
         result = { ...r, origin: 'ai' };
       } else {
         result = demoDiagnose();
@@ -438,7 +409,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       wrap.querySelector('[data-proof]').value = item.proof || '';
       wrap.querySelector('[data-note]').value = item.note || '';
     });
-    $$('#tracker [data-status]').forEach((el) => { el.onchange = () => { state.tasks[+el.dataset.status].status = el.value; safeSave(); drawTracker(); drawReport(); }; });
+    $$('#tracker [data-status]').forEach((el) => { el.onchange = () => { state.tasks[+el.dataset.status].status = el.value; saveNow(); drawTracker(); drawReport(); }; });
     $$('#tracker [data-note]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.note].note = el.value; safeSave(); drawReport(); }; });
     $$('#tracker [data-title]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.title].title = el.value; safeSave(); drawReport(); }; });
     $$('#tracker [data-proof]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.proof].proof = el.value; safeSave(); }; });
@@ -504,27 +475,26 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   // ─────────────── account actions ───────────────
   async function exportData() {
     dataFromForm();
-    const [{ data: consents }, { data: files }] = await Promise.all([
-      sb.from('consents').select('kind, granted, notice_version, created_at').eq('user_id', user.id),
-      sb.from('evidence_files').select('file_name, mime_type, size_bytes, created_at').eq('user_id', user.id),
-    ]);
-    const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), email: user.email, cohort: cohort?.code || null, journey: state, consents, evidence_files: files }, null, 2)], { type: 'application/json' });
+    await pushRemote();
+    const saved = await KB.api('/api/journey').catch(() => null);
+    const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), id: journey?.id, session: saved?.session?.code || null, created: saved?.createdAt || null, consent: saved?.consent || null, evidence_file: saved?.evidenceFile || null, journey: state }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'KBSME_Quick_Fix_data_saya.json'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
   async function restart() {
-    if (!confirm('Kosongkan borang, diagnosis dan tracker untuk sesi ini? Akaun anda kekal.')) return;
+    if (!confirm('Kosongkan borang, diagnosis dan tracker? Jawapan yang disimpan akan diganti.')) return;
     state = blank(); file = null; $('fileUpload').value = ''; $('privacyConfirm').checked = false;
     if (fileUrl) URL.revokeObjectURL(fileUrl); fileUrl = null; $('filePreview').style.display = 'none';
     initFields(); toggleCosts(); go(0);
   }
   async function deleteAccount() {
-    if (!confirm('Padam akaun, semua jawapan, tracker dan fail yang dimuat naik? Tindakan ini tidak boleh dibatalkan.')) return;
+    if (!confirm('Padam semua jawapan, tracker dan fail yang dimuat naik? Tindakan ini tidak boleh dibatalkan.')) return;
     try {
+      clearTimeout(saveTimer); unsaved = false;
       await KB.api('/api/me', { method: 'DELETE' });
       try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(COHORT_KEY); } catch {}
-      await sb.auth.signOut();
+      KB.setKey(null);
       alert('Data anda telah dipadam.');
       location.href = '/';
     } catch (err) { message(err.message, true); }
@@ -585,6 +555,5 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     $$('[data-demo]').forEach((b) => { b.onclick = () => fillDemo(b.dataset.demo); });
   }
 
-  // If there's no session after Supabase has read the URL, show sign-in.
   boot();
 })();
