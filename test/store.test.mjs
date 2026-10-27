@@ -16,7 +16,7 @@ const open = async (g) => {
 };
 const rowFor = (g, id, tab = 'Peserta') => g.rows(tab).find((r) => r?.[0] === id);
 const col = (key) => PESERTA.indexOf(HEADER[key]);
-const profile = { name: 'Nur Aina', business: 'Aina Frozen Food', industry: 'F&B / Makanan & Minuman', businessModel: 'Jual produk fizikal', businessAge: '1 hingga kurang 3 tahun', monthlySales: 'RM5,000–RM10,000' };
+const profile = { name: 'Nur Aina', phone: '012-345 6789', email: 'aina@contoh.com', business: 'Aina Frozen Food', industry: 'F&B / Makanan & Minuman', businessModel: 'Jual produk fizikal', businessAge: '1 hingga kurang 3 tahun', monthlySales: 'RM5,000–RM10,000' };
 
 test('first run creates the tabs; each header names its section and field', async () => {
   const g = createFakeGoogle();
@@ -24,6 +24,8 @@ test('first run creates the tabs; each header names its section and field', asyn
   const head = g.rows('Peserta')[0];
   assert.deepEqual(head, PESERTA);
   assert.equal(head[col('full_name')], 'LANGKAH 1 · MAKLUMAT BISNES\nNama penuh');
+  assert.equal(head[col('phone')], 'LANGKAH 1 · MAKLUMAT BISNES\nNo. telefon');
+  assert.equal(head[col('email')], 'LANGKAH 1 · MAKLUMAT BISNES\nEmel');
   assert.equal(head[col('situation_2')], 'LANGKAH 2 · PILIH CABARAN\nSituasi 2');
   assert.equal(head[col('calc_1')], 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN)\nKalkulator · Input 1');
   assert.equal(head[col('plan_start_date')], 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN)\nBila akan mula');
@@ -118,6 +120,9 @@ test('every answer has its own readable column; the token is checked', async () 
   await s.flush();
   const r = rowFor(g, journey.id);
   const at = (c) => r[col(c)];
+  assert.equal(at('phone'), '012-345 6789');
+  assert.equal(at('email'), 'aina@contoh.com');
+  assert.equal(at('full_name'), 'Nur Aina');
   assert.equal(at('step'), '4 · Laporan');
   assert.equal(at('full_name'), 'Nur Aina');
   assert.equal(at('years_running'), '1 hingga kurang 3 tahun');

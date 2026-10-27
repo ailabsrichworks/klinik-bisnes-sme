@@ -141,7 +141,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
   });
 
   // ─────────────── Langkah 01: intake ───────────────
-  const PROFILE_FIELDS = [['participantName', 'name', 'Isi nama penuh anda.'], ['businessName', 'business', 'Isi nama bisnes anda.'], ['industry', 'industry', 'Pilih industri bisnes.'], ['businessModel', 'businessModel', 'Pilih model bisnes.'], ['businessAge', 'businessAge', 'Pilih berapa lama bisnes beroperasi.'], ['monthlySales', 'monthlySales', 'Pilih purata jualan bulanan.']];
+  const PROFILE_FIELDS = [['participantName', 'name', 'Isi nama penuh anda.'], ['participantPhone', 'phone', 'Isi nombor telefon anda.'], ['participantEmail', 'email', 'Isi emel anda.'], ['businessName', 'business', 'Isi nama bisnes anda.'], ['industry', 'industry', 'Pilih industri bisnes.'], ['businessModel', 'businessModel', 'Pilih model bisnes.'], ['businessAge', 'businessAge', 'Pilih berapa lama bisnes beroperasi.'], ['monthlySales', 'monthlySales', 'Pilih purata jualan bulanan.']];
   const profileComplete = () => PROFILE_FIELDS.every(([, k]) => txt(state.profile[k]));
 
   function fillIntakeOptions() {
@@ -167,6 +167,11 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
       profile[k] = txt($(id).value);
       if (!profile[k]) return fieldError(id, err);
     }
+    // Phone: 9–15 digits, with an optional leading + and spaces or dashes. Email: one @ and a dot after it.
+    const digits = profile.phone.replace(/[\s-]/g, '');
+    if (!/^\+?\d{9,15}$/.test(digits)) return fieldError('participantPhone', 'Nombor telefon tidak sah. Contoh: 012-345 6789 atau +60 12-345 6789.');
+    profile.email = profile.email.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(profile.email)) return fieldError('participantEmail', 'Emel tidak sah. Contoh: nama@contoh.com');
     if (!$('consentData').checked) return fieldError('consentData', 'Tandakan persetujuan ini untuk meneruskan.');
     const btn = $('profileBtn'); btn.disabled = true;
     try {
@@ -546,7 +551,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
   };
 
   // ─────────────── test data (localhost or ?demo) ───────────────
-  const SAMPLE = { name: 'Nur Aina binti Ahmad', business: 'Aina Frozen Food', industry: INTAKE.industry[0], businessModel: INTAKE.businessModel[0], businessAge: INTAKE.businessAge[1], monthlySales: INTAKE.monthlySales[1] };
+  const SAMPLE = { name: 'Nur Aina binti Ahmad', phone: '012-345 6789', email: 'aina@contoh.com', business: 'Aina Frozen Food', industry: INTAKE.industry[0], businessModel: INTAKE.businessModel[0], businessAge: INTAKE.businessAge[1], monthlySales: INTAKE.monthlySales[1] };
   if (demoMode) {
     show('demoBar', true);
     $$('[data-demo]').forEach((b) => {

@@ -30,7 +30,7 @@ export const config = {
   dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 0),
 
   // Bump when the privacy notice text changes; participants are asked to accept again.
-  noticeVersion: env.NOTICE_VERSION || '2026-10-v5',
+  noticeVersion: env.NOTICE_VERSION || '2026-10-v6',
 };
 
 export const appsScriptReady = () => Boolean(config.appsScriptUrl && config.appsScriptSecret);

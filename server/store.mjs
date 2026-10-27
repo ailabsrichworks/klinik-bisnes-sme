@@ -40,6 +40,8 @@ export const COLUMNS = [
   { key: 'updated_at', s: 'rekod', label: 'Dikemas kini' },
   { key: 'step', s: 'rekod', label: 'Langkah dicapai' },
   { key: 'full_name', s: 'l1', label: 'Nama penuh' },
+  { key: 'phone', s: 'l1', label: 'No. telefon' },
+  { key: 'email', s: 'l1', label: 'Emel' },
   { key: 'business', s: 'l1', label: 'Nama bisnes' },
   { key: 'industry', s: 'l1', label: 'Industri' },
   { key: 'business_model', s: 'l1', label: 'Model bisnes' },
@@ -171,7 +173,7 @@ function toRow(j) {
   return {
     id: j.id, session_code: j.sessionCode, created_at: j.createdAt, updated_at: j.updatedAt,
     step: j.step == null ? '' : `${j.step + 1} · ${STEP_NAMES[j.step] || ''}`,
-    full_name: p.name, business: p.business, industry: p.industry, business_model: p.businessModel,
+    full_name: p.name, phone: p.phone, email: p.email, business: p.business, industry: p.industry, business_model: p.businessModel,
     years_running: p.businessAge, monthly_sales: p.monthlySales,
     pillar: P?.name || '',
     situation_1: P && selected[0] != null ? P.issues[selected[0]] : '',

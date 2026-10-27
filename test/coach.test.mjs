@@ -9,7 +9,7 @@ import { PILLARS } from '../public/js/content.mjs';
 
 const sample = JSON.parse(readFileSync(new URL('./fixtures/coach-response.json', import.meta.url), 'utf8'));
 const prompt = readFileSync(new URL('../server/prompts/coach.md', import.meta.url), 'utf8').trim();
-const profile = { name: 'Nur Aina binti Ahmad', business: 'Aina Beauty Rahsia', industry: 'Kecantikan / Kosmetik / Penjagaan diri', businessModel: 'Online seller / E-commerce', businessAge: '1 hingga kurang 3 tahun', monthlySales: 'RM5,000–RM10,000' };
+const profile = { name: 'Nur Aina binti Ahmad', phone: '+60 12-345 6789', email: 'aina@contoh.com', business: 'Aina Beauty Rahsia', industry: 'Kecantikan / Kosmetik / Penjagaan diri', businessModel: 'Online seller / E-commerce', businessAge: '1 hingga kurang 3 tahun', monthlySales: 'RM5,000–RM10,000' };
 const state = (extra = {}) => ({ profile, pillar: 'sales', byPillar: { sales: { selected: [0, 4, 7], calc: {}, plan: {}, ...extra } } });
 const fakeClient = (reply) => {
   const calls = [];
@@ -29,6 +29,7 @@ test('the model gets the profile without the name or business name, and numbered
   const input = coachInput(state());
   const text = JSON.stringify(input);
   assert.ok(!text.includes('Nur Aina') && !text.includes('Aina Beauty Rahsia'), 'no name or business name');
+  assert.ok(!text.includes('345 6789') && !text.includes('aina@contoh.com'), 'no phone or email');
   assert.equal(input.business_industry, profile.industry);
   assert.equal(input.selected_business_category, 'Sales');
   assert.deepEqual(input.selected_issues.map((x) => x.number), [1, 2, 3]);
@@ -140,6 +141,7 @@ test('workshop(): sends the questions with the answers (no name), returns the ou
   const sent = JSON.parse(req.messages[0].content.slice(req.messages[0].content.indexOf('{')));
   assert.deepEqual(sent.answers, [{ question: 'S1?', answer: 'Ibu bekerja' }, { question: 'S2?', answer: '(tidak dijawab)' }]);
   assert.ok(!req.messages[0].content.includes('Nur Aina') && !req.messages[0].content.includes('Aina Beauty'));
+  assert.ok(!/345 6789|aina@contoh\.com/.test(req.messages[0].content), 'no phone or email');
   assert.equal(store.logs[0].status, 'ok');
   assert.match(store.logs[0].title, /^Workshop · /);
 });
