@@ -19,6 +19,7 @@ test('every pillar text is exactly the prototype text', () => {
   for (const k of PILLAR_KEYS) {
     for (const [field, value] of Object.entries({ ...proto.data[k], ...proto.workshopData[k] })) {
       if (field === 'fields' && k !== 'money') continue; // agreed changes: Sales in buyer counts, Marketing in minutes
+      if (field === 'label') { assert.equal(PILLARS[k].label, value.replace('BAHAGIAN', 'PILLAR'), `${k}.label`); continue; } // agreed: Pillar, not Bahagian
       assert.deepEqual(PILLARS[k][field], JSON.parse(JSON.stringify(value)), `${k}.${field}`); // plain copy: vm objects have another realm's prototypes
     }
     assert.equal(PILLARS[k].issues.length, 10);

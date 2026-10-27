@@ -58,7 +58,7 @@ export const PILLARS = {
     "name": "Sales (LIVE Sales)",
     "short": "Sales",
     "blurb": "Cabaran jualan LIVE & conversion",
-    "label": "BAHAGIAN 01 · SALES (LIVE SALES)",
+    "label": "PILLAR 01 · SALES (LIVE SALES)",
     "title": "Apa yang menghalang jualan anda daripada meningkat?",
     "intro": "Pilih tiga situasi yang paling kerap berlaku ketika anda menjual. Fokus pada cara anda menarik minat, meyakinkan pelanggan dan menukar minat kepada pembelian.",
     "issues": [
@@ -103,7 +103,7 @@ export const PILLARS = {
     "name": "Marketing",
     "short": "Marketing",
     "blurb": "Cabaran content & marketing",
-    "label": "BAHAGIAN 02 · MARKETING",
+    "label": "PILLAR 02 · MARKETING",
     "title": "Apa yang menghalang marketing anda daripada menarik pelanggan?",
     "intro": "Pilih tiga situasi yang paling menggambarkan cara anda merancang dan menghasilkan content untuk bisnes.",
     "issues": [
@@ -170,7 +170,7 @@ export const PILLARS = {
     "name": "Urus Duit",
     "short": "Urus Duit",
     "blurb": "Cabaran kos & keuntungan",
-    "label": "BAHAGIAN 03 · URUS DUIT",
+    "label": "PILLAR 03 · URUS DUIT",
     "title": "Adakah anda tahu kos sebenar dan keuntungan produk anda?",
     "intro": "Pilih tiga situasi yang paling kerap berlaku ketika anda mengira kos, menetapkan harga dan menilai keuntungan.",
     "issues": [
