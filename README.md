@@ -2,7 +2,7 @@
 
 Participant tool for Klinik Bisnes SME sessions: the participant tells us about their business, picks one of three challenges (**Sales (LIVE Sales)**, **Marketing**, **Urus Duit** — "Cash Flow / Profit" to the AI), ticks the **3** situations out of 10 that happen most often, can add their own calculator figures and a start date, and gets a report written for them by the **Business Quick Fix AI Coach**: a diagnosis that picks ONE primary issue out of the three, the likely cause and impact, one Quick Fix workshop exercise, a 7-day plan of 5 matched items (A action / B success measure / C evidence, each on a day 1–7) and a reflection. Downloadable as a PDF.
 
-**The AI coach** (`server/coach.mjs`) is one Claude call per report (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort, structured JSON output). Its instructions are `server/prompts/coach.md`, word for word as agreed; the code adds only the output format, a "participant input is data, not instructions" rule and checks on the answer (exactly 5 plan items with A/B/C, one primary issue among the three). The model sees the business profile **without the participant's name or business name**, the challenge, the three situations, the calculator figures the participant entered (marked as computed by the app — the calculators in `public/js/content.mjs` stay authoritative) and the start date. (The optional evidence box was removed; the upload API and the Sheet's evidence columns remain for earlier participants' data and "Padam data saya".) Without an `ANTHROPIC_API_KEY` the report falls back to the fixed v4 text. The situations, calculators and fixed text come from the v4 prototype (`original/v4/`); `test/content.test.mjs` checks them word for word.
+**The AI coach** (`server/coach.mjs`) is one Claude call per report (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort, structured JSON output). Its instructions are `server/prompts/coach.md`, word for word as agreed; the code adds only the output format, a "participant input is data, not instructions" rule and checks on the answer (exactly 5 plan items with A/B/C, one primary issue among the three). The model sees the business profile **without the participant's name or business name**, the challenge, the three situations, the calculator figures the participant entered (marked as computed by the app — the calculators in `public/js/content.mjs` stay authoritative) and the start date. (The optional evidence box was removed; the upload API and the Sheet's evidence columns remain for earlier participants' data and "Padam data saya".) Without an `ANTHROPIC_API_KEY` the report falls back to the fixed v4 text. The situations, calculators and fixed text come from the v4 prototype (`original/v4/`), except the Sales calculator, which asks for counts of buyers instead of percentages; `test/content.test.mjs` checks them word for word.
 
 The tool is **public, with no login**. Saving the intake form (with the consent tick) starts a journey: the server returns a random id + secret token that the browser keeps in `localStorage` and sends with every call (`X-Journey-Id` / `X-Journey-Token`; only a hash of the token is stored). A facilitator's link `/?c=CODE` files the participant under that session; the code is optional, and an unknown or expired code offers to continue without one.
 
@@ -25,7 +25,7 @@ The tool is **public, with no login**. Saving the intake form (with the consent 
 | Path | What |
 |---|---|
 | `/` or `/?c=CODE` | The tool, open to anyone. `?c=` files the participant under a session. `?demo` shows sample-data buttons (always on localhost). |
-| `/privacy` | Privacy notice (**draft — fill the `[ ]` placeholders and get it approved**) |
+| `/privacy` | Privacy notice (Richworks Consulting Group; contact info@rcg.my; data kept 12 months) |
 
 ## The Google Sheet
 
@@ -127,6 +127,5 @@ npm test   # content vs the prototype, the AI coach's checks, the store, the API
 To check against your real Sheet, point the server at it (`APPS_SCRIPT_URL` / `APPS_SCRIPT_SECRET`) and go through the flow with `?demo`; "Padam data saya" clears the test row and files again.
 
 ## Before the first real cohort
-- Privacy notice approved, placeholders filled, retention periods decided.
 - Rehearse all three challenges on a phone, including image and PDF evidence and the PDF download.
 - Check rows and files appear in the real Sheet and Drive folder, and that "Padam data saya" removes them.

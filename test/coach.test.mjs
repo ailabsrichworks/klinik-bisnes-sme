@@ -39,11 +39,11 @@ test('the model gets the profile without the name or business name, and numbered
 });
 
 test('calculator figures the participant entered are sent with the app-computed results', () => {
-  const input = coachInput(state({ calc: { viewers: '60', conversion: '1' }, plan: { startDate: '2026-11-03' } }));
-  const viewers = input.calculator.inputs.find((x) => x.label === 'Purata viewers yang relevan');
-  assert.deepEqual(viewers, { label: 'Purata viewers yang relevan', value: '60', entered_by_participant: true });
+  const input = coachInput(state({ calc: { viewers: '60', buyers: '1' }, plan: { startDate: '2026-11-03' } }));
+  const viewers = input.calculator.inputs.find((x) => x.label === 'Purata viewers yang relevan (orang)');
+  assert.deepEqual(viewers, { label: 'Purata viewers yang relevan (orang)', value: '60', entered_by_participant: true });
   assert.equal(input.calculator.inputs.find((x) => x.label === 'Purata nilai setiap order (RM)').entered_by_participant, false);
-  assert.equal(input.calculator.results_computed_by_app[0], 'Anggaran jualan pada kadar semasa: RM48.00');
+  assert.equal(input.calculator.results_computed_by_app[0], 'Anggaran jualan dengan 1 pembeli: RM80.00');
   assert.equal(input.action_start_date, '2026-11-03');
 });
 

@@ -53,7 +53,7 @@ test('a tab in the earlier v4 layout is upgraded in place, rows kept', async () 
   const r = rowFor(g, 'abc');
   assert.equal(r[col('full_name')], 'Nur Aina');
   assert.equal(r[col('situation_3')], PILLARS.sales.issues[4]);
-  assert.equal(r[col('calc_1')], 'Purata viewers yang relevan: 200');
+  assert.equal(r[col('calc_1')], 'Purata viewers yang relevan (orang): 200');
   assert.equal(r[col('created_at')], '2026-10-27T07:21:56Z');
   assert.equal(r[col('token_hash')], 'f'.repeat(64));
   assert.equal(s.journeys.get('abc').step, 3);

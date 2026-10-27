@@ -60,7 +60,6 @@
     <section class="card intake" id="intakeView" hidden aria-labelledby="intakeTitle">
       <div class="label">Langkah 01 · Maklumat bisnes</div>
       <h2 id="intakeTitle">Sebelum kita mula, kenali bisnes anda dahulu.</h2>
-      <p class="sub">Maklumat ini membantu kami memahami konteks bisnes anda supaya diagnosis lebih relevan dan rekod penyertaan boleh disemak.</p>
       <form id="profileForm" novalidate>
         <div class="intake-grid">
           <div class="field"><label for="participantName">Nama penuh *</label><input id="participantName" autocomplete="name" maxlength="100" placeholder="Nama anda"></div>
@@ -70,8 +69,7 @@
           <div class="field"><label for="businessAge">Berapa lama bisnes beroperasi? *</label><select id="businessAge"></select></div>
           <div class="field"><label for="monthlySales">Purata jualan bulanan *</label><select id="monthlySales"></select></div>
         </div>
-        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini (nama, profil bisnes, pilihan cabaran dan angka yang saya kongsi) disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix, dan profil bisnes, pilihan cabaran serta angka saya (tanpa nama) dianalisis oleh AI untuk menyediakan diagnosis. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
-        <p class="intake-note">Maklumat bertanda * diperlukan untuk meneruskan. Jawapan anda disimpan dalam rekod Klinik Bisnes SME (Google Sheet Richworks) dan boleh dipadam bila-bila masa dengan butang "Padam data saya".</p>
+        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes dan dianalisis oleh AI untuk menyediakan diagnosis. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
         <div class="bottomrow"><span class="counter">Langkah 1 daripada 2 · Maklumat peserta</span><button class="primary" type="submit" id="profileBtn">Simpan maklumat &amp; mula →</button></div>
         <div id="intakeMessage" class="message" role="status" aria-live="polite"></div>
       </form>

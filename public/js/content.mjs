@@ -1,5 +1,6 @@
 // Business Quick Fix (v4) content: fixed text per pillar, intake options and the calculators.
-// Taken word for word from original/v4/Business_Quick_Fix_Prototype.html (data + workshopData).
+// Taken word for word from original/v4/Business_Quick_Fix_Prototype.html (data + workshopData),
+// except the Sales calculator, which asks for counts of buyers instead of percentages.
 // Shared by the browser (app), the server (PDF report, Sheet rows) and the tests.
 
 export const INTAKE = {
@@ -83,35 +84,10 @@ export const PILLARS = {
     "calculatorTitle": "Simulasikan peluang jualan daripada LIVE",
     "calculatorIntro": "Masukkan anggaran untuk satu sesi LIVE. Tukar angka supaya sepadan dengan bisnes anda.",
     "fields": [
-      {
-        "id": "viewers",
-        "label": "Purata viewers yang relevan",
-        "value": 100,
-        "min": 0
-      },
-      {
-        "id": "conversion",
-        "label": "Kadar pembelian semasa (%)",
-        "value": 2,
-        "min": 0,
-        "max": 100,
-        "step": 0.5
-      },
-      {
-        "id": "orderValue",
-        "label": "Purata nilai setiap order (RM)",
-        "value": 80,
-        "min": 0,
-        "step": 1
-      },
-      {
-        "id": "targetRate",
-        "label": "Kadar pembelian sasaran untuk diuji (%)",
-        "value": 4,
-        "min": 0,
-        "max": 100,
-        "step": 0.5
-      }
+      { "id": "viewers", "label": "Purata viewers yang relevan (orang)", "value": 100, "min": 0 },
+      { "id": "buyers", "label": "Bilangan pembeli semasa (orang)", "value": 2, "min": 0 },
+      { "id": "orderValue", "label": "Purata nilai setiap order (RM)", "value": 80, "min": 0, "step": 1 },
+      { "id": "targetBuyers", "label": "Bilangan pembeli sasaran untuk diuji (orang)", "value": 4, "min": 0 }
     ],
     "exerciseTitle": "Bina pembukaan LIVE 30 saat",
     "exerciseBrief": "Matlamatnya bukan terus menulis skrip sempurna. Bina pembukaan yang memberi sebab kepada pelanggan sasaran untuk berhenti dan terus menonton.",
@@ -271,7 +247,7 @@ export const CLOSING = {
 };
 export const CALC_NOTE = 'Kalkulator ini untuk membantu anda berfikir dan membuat anggaran, bukan ramalan hasil. Semak andaian dan gunakan data sebenar sebelum membuat keputusan.';
 
-export const money = (n) => 'RM' + n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const money = (n) => (n < 0 ? '-RM' : 'RM') + Math.abs(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const n = (v) => Math.max(0, Number(v) || 0);
 
 // The calculator inputs for a pillar: saved values where given, the prototype's defaults otherwise.
@@ -284,11 +260,13 @@ export function calcInputs(pillar, saved = {}) {
 export function calculate(pillar, saved = {}) {
   const v = Object.fromEntries(Object.entries(calcInputs(pillar, saved)).map(([k, x]) => [k, n(x)]));
   if (pillar === 'sales') {
-    const now = (v.viewers * v.conversion) / 100 * v.orderValue;
-    const scenario = (v.viewers * v.targetRate) / 100 * v.orderValue;
+    // Counts of people, not percentages (agreed change from the prototype's % fields).
+    const now = v.buyers * v.orderValue;
+    const scenario = v.targetBuyers * v.orderValue;
+    const tooMany = v.buyers > v.viewers || v.targetBuyers > v.viewers;
     return {
-      lines: [`Anggaran jualan pada kadar semasa: ${money(now)}`, `Senario jika kadar pembelian menjadi ${v.targetRate}%: ${money(scenario)}`],
-      note: `Perbezaan simulasi: ${money(scenario - now)} bagi satu LIVE. Ini bukan ramalan atau jaminan; pastikan viewers relevan dan andaian munasabah.`,
+      lines: [`Anggaran jualan dengan ${v.buyers.toLocaleString('en-MY')} pembeli: ${money(now)}`, `Senario jika ${v.targetBuyers.toLocaleString('en-MY')} pembeli: ${money(scenario)}`],
+      note: `Perbezaan simulasi: ${money(scenario - now)} bagi satu LIVE.${tooMany ? ' Bilangan pembeli melebihi viewers — semak semula angka.' : ''} Ini bukan ramalan atau jaminan; pastikan viewers relevan dan andaian munasabah.`,
       numbers: { now, scenario, diff: scenario - now },
     };
   }

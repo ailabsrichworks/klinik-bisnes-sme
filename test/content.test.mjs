@@ -18,6 +18,7 @@ test('every pillar text is exactly the prototype text', () => {
   assert.deepEqual(PILLAR_KEYS, ['sales', 'marketing', 'money']);
   for (const k of PILLAR_KEYS) {
     for (const [field, value] of Object.entries({ ...proto.data[k], ...proto.workshopData[k] })) {
+      if (k === 'sales' && field === 'fields') continue; // agreed change: buyer counts instead of %
       assert.deepEqual(PILLARS[k][field], JSON.parse(JSON.stringify(value)), `${k}.${field}`); // plain copy: vm objects have another realm's prototypes
     }
     assert.equal(PILLARS[k].issues.length, 10);
@@ -32,12 +33,23 @@ test('intake options are the prototype options', () => {
   }
 });
 
+test('the Sales calculator asks for counts of people, never percentages', () => {
+  const f = PILLARS.sales.fields;
+  assert.deepEqual(f.map((x) => x.id), ['viewers', 'buyers', 'orderValue', 'targetBuyers']);
+  assert.ok(f.every((x) => !/%/.test(x.label)), 'no % in the labels');
+  assert.match(f[1].label, /\(orang\)$/);
+  assert.match(f[3].label, /\(orang\)$/);
+  const r = calculate('sales');
+  assert.ok(![...r.lines, r.note].some((x) => /%/.test(x)), 'no % in the result');
+  assert.match(calculate('sales', { buyers: '120' }).note, /Bilangan pembeli melebihi viewers/);
+});
+
 test('calculators give the prototype numbers on its default values', () => {
   const sales = calculate('sales');
   assert.equal(sales.numbers.now, 160);
   assert.equal(sales.numbers.scenario, 320);
-  assert.equal(sales.lines[0], 'Anggaran jualan pada kadar semasa: RM160.00');
-  assert.equal(sales.lines[1], 'Senario jika kadar pembelian menjadi 4%: RM320.00');
+  assert.equal(sales.lines[0], 'Anggaran jualan dengan 2 pembeli: RM160.00');
+  assert.equal(sales.lines[1], 'Senario jika 4 pembeli: RM320.00');
   assert.match(sales.note, /bukan ramalan atau jaminan/);
 
   const mk = calculate('marketing');
@@ -55,11 +67,12 @@ test('calculators give the prototype numbers on its default values', () => {
 });
 
 test('calculators use saved values, and treat blanks and negatives as 0', () => {
-  assert.equal(calculate('sales', { viewers: '200' }).numbers.now, 320);
+  assert.equal(calculate('sales', { buyers: '3' }).numbers.now, 240);
   assert.equal(calculate('money', { sellingPrice: '' }).numbers.balance, -25);
   assert.equal(calculate('money', { sellingPrice: '0' }).note.slice(0, 41), 'Anggaran margin atas harga jualan: 0.0%. ');
   assert.equal(calculate('marketing', { hoursEach: '-3' }).numbers.current, 0);
-  assert.equal(calcInputs('sales', { viewers: '50' }).conversion, '2');
+  assert.equal(calcInputs('sales', { viewers: '50' }).buyers, '2');
+  assert.equal(calculate('money', { sellingPrice: '10' }).lines[1], 'Baki selepas kos yang disenaraikan: -RM15.00 seunit');
 });
 
 test('the 7-day plan starts from the pillar defaults', () => {
