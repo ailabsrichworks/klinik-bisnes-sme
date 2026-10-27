@@ -9,7 +9,7 @@
 // filter the sheet without the app overwriting the wrong row. Run ONE server instance.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { PILLARS, calculate, calcInputs, pillarAnswers } from '../public/js/content.mjs';
+import { PILLARS, calculate, calcInputs, pillarAnswers, workshopQuestions } from '../public/js/content.mjs';
 export { pillarAnswers };
 
 // The Peserta tab: one column per answer, grouped by the part of the app it comes from. Each
@@ -72,7 +72,8 @@ export const COLUMNS = [
   { key: 'ws_purpose', s: 'work', label: 'Hasil yang dituju' },
   { key: 'ws_steps', s: 'work', label: 'Langkah-langkah' },
   { key: 'ws_example', s: 'work', label: 'Contoh (AI)' },
-  { key: 'workshop_output', s: 'work', label: 'Hasil latihan peserta' },
+  { key: 'ws_answers', s: 'work', label: 'Soalan & jawapan peserta' },
+  { key: 'workshop_output', s: 'work', label: 'Hasil latihan (disusun daripada jawapan)' },
   ...PLAN_COLUMNS,
   { key: 'plan_done', s: 'plan', label: 'Item selesai' },
   { key: 'refl_prepared', s: 'refl', label: 'Sudah difahami / disediakan' },
@@ -103,7 +104,7 @@ const README = [
   ['', 'LANGKAH 1 · MAKLUMAT BISNES: borang pertama. LANGKAH 2 · PILIH CABARAN: Sales / Marketing / Urus Duit dan tiga situasi yang ditanda.'],
   ['', 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN): input kalkulator ("label: nilai"; "contoh, tidak diubah" = angka contoh yang peserta tidak tukar) dan hasilnya, tarikh mula, serta contoh / fail bukti (bukti tidak dihantar kepada AI).'],
   ['', 'LAPORAN · DIAGNOSIS AI: tajuk, ringkasan, isu utama dan sebabnya, kaitan dua isu lain, punca berkemungkinan, impak, bukti untuk disemak. "Dijana oleh" menunjukkan AI (dan model) atau teks tetap jika AI tidak aktif.'],
-  ['', 'LAPORAN · QUICK FIX WORKSHOP: latihan yang dicadangkan AI dan hasil yang ditulis peserta. LAPORAN · PELAN TINDAKAN 7 HARI: A1–A5 tindakan (dengan hari), B1–B5 ukuran kejayaan, C1–C5 bukti; nombor yang sama = aktiviti yang sama. ✓ = peserta tanda selesai.'],
+  ['', 'LAPORAN · QUICK FIX WORKSHOP: latihan yang dicadangkan AI, soalan yang dijawab peserta satu demi satu, dan hasil latihan yang AI susun daripada jawapan itu (peserta boleh ubah). LAPORAN · PELAN TINDAKAN 7 HARI: A1–A5 tindakan (dengan hari), B1–B5 ukuran kejayaan, C1–C5 bukti; nombor yang sama = aktiviti yang sama. ✓ = peserta tanda selesai.'],
   ['', 'LAPORAN · REFLEKSI: apa yang sudah difahami, perlu disahkan, dan perlu bimbingan lanjut. LAPORAN PDF: pautan laporan dalam Drive dan masa peserta memuat turun.'],
   ['Log AI', 'Satu baris setiap panggilan AI (termasuk jana semula): masa, peserta, model, status, token, cabaran, tajuk, isu utama, dan input (request) serta output penuh AI (response).'],
   ['Sesi', 'Kod sesi untuk fasilitator. Isi code (huruf besar), name, session_date dan active_until (kosong = tiada tamat). Pautan: /?c=KOD'],
@@ -160,7 +161,7 @@ const numbered = (a) => (a || []).map((x, i) => `${i + 1}. ${x}`).join('\n');
 function toRow(j) {
   const s = j.state || {};
   const p = s.profile || {};
-  const { pillar, selected, calc, workOutput, plan, ai, planDone } = pillarAnswers(s);
+  const { pillar, selected, calc, workOutput, workAnswers, plan, ai, planDone } = pillarAnswers(s);
   const P = pillar && PILLARS[pillar];
   const ready = selected.length === 3;
   const pastPicking = ready && (j.step ?? 0) >= 2;
@@ -190,6 +191,7 @@ function toRow(j) {
     priority_reason: r?.priority_reason, other_issues: r?.other_issues,
     likely_cause: r?.likely_cause, impact: r?.impact, evidence_to_check: r ? bullets(r.evidence_to_check) : '',
     ws_title: r?.workshop?.title, ws_purpose: r?.workshop?.purpose, ws_steps: r ? numbered(r.workshop?.steps) : '', ws_example: r?.workshop?.example,
+    ws_answers: r ? workshopQuestions(r.workshop).map((x, i) => String(workAnswers[i] ?? '').trim() && `${i + 1}. ${x.question}\n→ ${String(workAnswers[i]).trim()}`).filter(Boolean).join('\n\n') : '',
     workshop_output: r ? workOutput : '',
     ...Object.fromEntries([0, 1, 2, 3, 4].flatMap((i) => {
       const it = items[i];

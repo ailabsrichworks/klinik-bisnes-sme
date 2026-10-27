@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
 import { reportPdf } from './report-pdf.mjs';
 import { pillarAnswers } from './store.mjs';
-import { coach, aiReady, limitReached, countIp, CoachError } from './coach.mjs';
+import { coach, workshop, aiReady, limitReached, countIp, CoachError } from './coach.mjs';
 import { sessionNameOf } from './reports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -166,6 +166,25 @@ export function createApp({ store, reports }) {
     } catch (err) {
       if (err instanceof CoachError) return res.status(err.status).json({ error: err.message });
       console.error('[coach] unexpected', err);
+      res.status(500).json({ error: 'Ralat server. Cuba semula.' });
+    }
+  });
+
+  // The Quick Fix workshop: the browser saves the participant's answers, then this builds the
+  // exercise output from them. The browser keeps the output (the participant can still edit it).
+  api.post('/workshop', ipLimit(60), json, requireJourney, async (req, res) => {
+    const j = req.journey;
+    try {
+      if (aiReady()) {
+        const limit = limitReached(store, j, req.ip);
+        if (limit) return res.status(429).json({ error: limit });
+        countIp(req.ip);
+      }
+      const { source, output, toCheck, model } = await workshop({ store, journey: j });
+      res.json({ source, output, toCheck, model });
+    } catch (err) {
+      if (err instanceof CoachError) return res.status(err.status).json({ error: err.message });
+      console.error('[workshop] unexpected', err);
       res.status(500).json({ error: 'Ralat server. Cuba semula.' });
     }
   });

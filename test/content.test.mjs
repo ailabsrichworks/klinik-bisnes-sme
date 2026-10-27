@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { INTAKE, PILLARS, PILLAR_KEYS, calculate, calcInputs, defaultPlan } from '../public/js/content.mjs';
+import { INTAKE, PILLARS, PILLAR_KEYS, calculate, calcInputs, defaultPlan, workshopQuestions } from '../public/js/content.mjs';
 
 const html = readFileSync(new URL('../original/v4/Business_Quick_Fix_Prototype.html', import.meta.url), 'utf8');
 const proto = (() => {
@@ -79,4 +79,14 @@ test('calculators use saved values, and treat blanks and negatives as 0', () => 
 
 test('the 7-day plan starts from the pillar defaults', () => {
   assert.deepEqual(defaultPlan('money'), { action: proto.workshopData.money.defaultAction, measure: proto.workshopData.money.defaultMeasure, startDate: '', proof: proto.workshopData.money.defaultProof });
+});
+
+test('workshop questions: the AI questions, else the steps, else the parts of the prototype prompt', () => {
+  const qs = [{ question: 'Siapa pelanggan anda?', hint: 'Contoh: ibu bekerja' }];
+  assert.deepEqual(workshopQuestions({ questions: qs, steps: ['a', 'b'] }), qs);
+  assert.deepEqual(workshopQuestions({ steps: ['Langkah satu', 'Langkah dua'] }).map((x) => x.question), ['Langkah satu', 'Langkah dua']);
+  assert.deepEqual(workshopQuestions({ steps: [PILLARS.marketing.exercisePrompt] }).map((x) => x.question),
+    ['Siapa sasaran saya?', 'Masalah atau soalan apa yang mereka ada?', 'Hook yang spesifik', 'Tiga isi yang membantu', 'Bukti atau contoh', 'Satu CTA yang jelas']);
+  assert.equal(workshopQuestions({ steps: [PILLARS.sales.exercisePrompt] }).length, 4);
+  assert.deepEqual(workshopQuestions({ steps: [PILLARS.money.exercisePrompt] }).map((x) => x.question), [PILLARS.money.exercisePrompt]);
 });

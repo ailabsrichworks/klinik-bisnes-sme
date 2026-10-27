@@ -296,6 +296,18 @@ export const AI_NOTE = 'Nota: Diagnosis, latihan dan pelan ini disediakan oleh A
 // Under the report (adapted from the prototype's note, without "prototype").
 export const REPORT_NOTE = 'Nota: Laporan ini berasaskan checklist dan respons berpandukan kategori, bukan AI. Punca ialah hipotesis awal yang perlu disahkan melalui data dan konteks anda. Hasil kalkulator bergantung pada input anda.';
 
+// The Quick Fix questions asked one at a time. Reports written before the AI wrote questions
+// use the workshop steps; the fixed text splits the prototype prompt at its "(1) … (2) …" parts.
+export function workshopQuestions(workshop = {}) {
+  if (workshop.questions?.length) return workshop.questions;
+  const steps = workshop.steps || [];
+  if (steps.length === 1) {
+    const parts = [...steps[0].matchAll(/\((\d)\)\s*([^()]+?)(?=\s*\(\d\)|$)/g)].map((m) => m[2].trim().replace(/[.,;]$/, ''));
+    if (parts.length >= 2) return parts.map((question) => ({ question, hint: '' }));
+  }
+  return steps.map((question) => ({ question, hint: '' }));
+}
+
 // The current pillar's answers (each pillar keeps its own, so switching back loses nothing).
 export function pillarAnswers(state = {}) {
   const pillar = PILLARS[state.pillar] ? state.pillar : null;
@@ -304,6 +316,7 @@ export function pillarAnswers(state = {}) {
     pillar,
     selected: Array.isArray(a.selected) ? a.selected.filter((i) => Number.isInteger(i) && i >= 0 && i < 10).slice(0, 3) : [],
     calc: a.calc || {}, workOutput: a.workOutput || '', plan: a.plan || {},
+    workAnswers: Array.isArray(a.workAnswers) ? a.workAnswers.slice(0, 5).map((x) => String(x ?? '')) : [],
     ai: a.ai?.result ? a.ai : null, // { source: 'ai' | 'fixed', result, at, model, inputKey }
     planDone: Array.isArray(a.planDone) ? a.planDone.map(Boolean) : [],
   };

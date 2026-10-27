@@ -147,9 +147,26 @@
           </section>
           <section class="workshop page" data-step="5" aria-labelledby="exerciseTitle">
             <div class="label">05 · Quick Fix workshop</div><h3 id="exerciseTitle"></h3><p id="exerciseBrief"></p>
-            <ol class="steplist promptbox" id="exerciseSteps"></ol>
-            <label class="fieldlabel" for="workOutput" id="workOutputLabel">Hasil latihan anda</label><textarea id="workOutput" class="grow" rows="5" maxlength="4000" placeholder="Tulis hasil latihan anda di sini..."></textarea>
-            <div class="bottomrow"><span class="counter">Hasil latihan disimpan dalam laporan anda</span><button class="ghost" type="button" id="exampleBtn" aria-expanded="false" aria-controls="exampleBox">Lihat contoh</button></div>
+            <!-- The questions, one at a time; then the AI builds the output from the answers. -->
+            <div class="wsask" id="wsAsk">
+              <div class="wsprogress"><span id="wsCount"></span><span class="wsdots" id="wsDots" aria-hidden="true"></span></div>
+              <label class="wsq" for="wsAnswer" id="wsQuestion"></label>
+              <p class="wshint" id="wsHint"></p>
+              <textarea id="wsAnswer" class="grow" rows="3" maxlength="1500" placeholder="Tulis jawapan anda di sini..."></textarea>
+              <div class="bottomrow"><button class="ghost" type="button" id="wsPrevBtn">← Soalan sebelum</button><button class="primary" type="button" id="wsNextBtn">Seterusnya →</button></div>
+              <button class="linkbtn wsback" type="button" id="wsBackToOutput" hidden>Kembali ke hasil latihan tanpa ubah</button>
+            </div>
+            <div class="wsworking" id="wsWorking" hidden aria-live="polite"><div class="pulse" aria-hidden="true"></div><p>AI sedang menyusun hasil latihan daripada jawapan anda…</p></div>
+            <div class="wsdone" id="wsDone" hidden>
+              <details class="wsanswers"><summary id="wsAnswersTitle">Jawapan anda</summary><ol id="wsAnswerList"></ol></details>
+              <label class="fieldlabel" for="workOutput" id="workOutputLabel">Hasil latihan anda</label>
+              <p class="fineprint" id="wsSource"></p>
+              <textarea id="workOutput" class="grow" rows="6" maxlength="4000"></textarea>
+              <div id="wsToCheck"></div>
+              <div class="bottomrow"><button class="ghost" type="button" id="wsEditBtn">← Ubah jawapan</button><button class="ghost" type="button" data-ws-generate>Susun semula</button></div>
+            </div>
+            <div id="wsMessage" class="message" role="status" aria-live="polite"></div>
+            <div class="bottomrow"><span class="counter">Hasil latihan disimpan dalam laporan anda</span><button class="linkbtn" type="button" id="exampleBtn" aria-expanded="false" aria-controls="exampleBox">Lihat contoh</button></div>
             <div class="example" id="exampleBox" hidden><div class="label">Contoh</div><p id="exampleText"></p></div>
           </section>
           <section class="workshop page" data-step="6" aria-labelledby="planTitle">

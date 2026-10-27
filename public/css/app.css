@@ -281,6 +281,34 @@ textarea.grow { resize: none; overflow: hidden; }
 .revealbtns > * { white-space: nowrap; }
 @media (max-width: 760px) { .revealbtns { width: 100%; } .revealbtns .primary { flex: 1; } }
 
+/* Quick Fix workshop: one question at a time */
+.wsask { margin-top: 14px; padding: 16px; border-radius: 16px; background: #f7f8f2; border-left: 4px solid var(--green); }
+.wsprogress { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #66746c; }
+.wsdots { display: flex; gap: 6px; }
+.wsdots i { width: 9px; height: 9px; border-radius: 50%; background: #d7ddd2; }
+.wsdots i.on { background: var(--green); }
+.wsdots i.answered { background: #9fb8a6; }
+.wsq { display: block; margin: 10px 0 4px; font-family: var(--font-display); font-size: clamp(18px, 2.2vw, 21px); font-weight: 700; line-height: 1.3; color: var(--ink); }
+.wshint { margin: 0 0 10px; font-size: 14px; color: #5d6b63; }
+.wshint:empty { display: none; }
+.wsask textarea { background: #fff; }
+#wsNextBtn { margin-left: auto; }
+.wsworking { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 18px 16px; border-radius: 16px; background: #f7f8f2; }
+.wsworking .pulse { width: 30px; height: 30px; }
+.wsworking p { margin: 0; font-weight: 700; color: var(--green); }
+.wsdone { margin-top: 14px; }
+.wsanswers { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+.wsanswers summary { cursor: pointer; font-weight: 700; color: var(--green); min-height: 28px; display: flex; align-items: center; }
+.wsanswers ol { margin: 10px 0 4px; padding-left: 22px; font-size: 14px; }
+.wsanswers li + li { margin-top: 8px; }
+.wsanswers li b { display: block; }
+.wsanswers li span { white-space: pre-wrap; color: #44524a; }
+#wsSource { margin: 0 0 6px; }
+.wscheck { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: #fff7e8; border: 1px solid #f0dcb4; font-size: 14px; }
+.wscheck p { margin: 0 0 4px; font-weight: 700; }
+.wscheck ul { margin: 0; padding-left: 20px; }
+.wsback { margin-top: 10px; }
+
 /* Warning before switching challenge */
 .dialog { border: 0; border-radius: 20px; padding: 24px; max-width: 460px; width: calc(100% - 32px); color: var(--ink); box-shadow: 0 20px 60px rgba(23, 33, 29, .25); }
 .dialog::backdrop { background: rgba(23, 33, 29, .45); }

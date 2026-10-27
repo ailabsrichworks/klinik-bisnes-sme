@@ -2,7 +2,7 @@
 // → AI coach report (server/coach.mjs; the fixed v4 text when the AI is off). Saved
 // through our API to the participant's row in the Google Sheet. No login: a random key in this browser identifies the participant; a
 // facilitator's ?c=CODE files them under that session.
-import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, defaultPlan, coachInput } from './content.mjs';
+import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, defaultPlan, coachInput, workshopQuestions } from './content.mjs';
 
 (async () => {
   'use strict';
@@ -321,7 +321,8 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     try {
       await saveNow(); // the server builds the AI input from the saved answers
       const r = await KB.api('/api/coach', { method: 'POST', body: {} });
-      Object.assign(answers(), { ai: r.ai, planDone: [], page: 1 });
+      // a new analysis brings new workshop questions, so the workshop starts again
+      Object.assign(answers(), { ai: r.ai, planDone: [], page: 1, workAnswers: [], workStep: 0, workAsking: false, workOutput: '', workGenerated: '', workToCheck: [], workSource: '' });
       reached = 3;
       go(3);
       scrollToEl($('main'));
@@ -334,7 +335,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   }
   $$('[data-regenerate]').forEach((b) => {
     b.onclick = () => {
-      if (!confirm('Jana semula diagnosis, latihan dan pelan dengan angka terkini? Hasil latihan yang anda tulis akan kekal; tanda selesai pada pelan akan dikosongkan.')) return;
+      if (!confirm('Jana semula diagnosis, latihan dan pelan dengan angka terkini? Jawapan dan hasil latihan Quick Fix, serta tanda selesai pada pelan, akan dikosongkan.')) return;
       generate();
     };
   });
@@ -363,14 +364,10 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $('calcSummary').innerHTML = d.fields.map((f) => `<li>${KB.esc(f.label)}: <b>${KB.esc(values[f.id])}</b>${txt(a.calc[f.id]) === '' ? ' <span class="muted">(contoh)</span>' : ''}</li>`).join('');
     $('calcSummaryResult').innerHTML = `${r.lines.map(KB.esc).join('<br>')}<small>${KB.esc(r.note)}</small>`;
     // 05: the workshop
-    $('exerciseTitle').textContent = R.workshop.title;
-    $('exerciseBrief').textContent = R.workshop.purpose;
-    $('exerciseSteps').innerHTML = R.workshop.steps.map((x) => `<li>${KB.esc(x)}</li>`).join('');
-    $('workOutputLabel').textContent = R.workshop.output || 'Hasil latihan anda';
     $('exampleText').textContent = R.workshop.example;
     $('exampleBtn').hidden = !R.workshop.example;
     $('exampleBox').hidden = true; $('exampleBtn').setAttribute('aria-expanded', 'false'); $('exampleBtn').textContent = 'Lihat contoh';
-    $('workOutput').value = a.workOutput;
+    drawWorkshop();
     // 06: the plan
     drawStartDate();
     $('planList').innerHTML = R.plan.map((it, i) => `<li class="planitem${a.planDone[i] ? ' done' : ''}"><label class="plancheck"><input type="checkbox" data-done="${i}" ${a.planDone[i] ? 'checked' : ''}><span class="planday">Hari ${it.day}</span><span class="sr-only"> · item ${i + 1} selesai</span></label><dl><dt>A${i + 1}</dt><dd>${KB.esc(it.action)}</dd><dt>B${i + 1}</dt><dd>${KB.esc(it.measure)}</dd><dt>C${i + 1}</dt><dd>${KB.esc(it.evidence)}</dd></dl></li>`).join('');
@@ -418,6 +415,84 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   $('revealNextBtn').onclick = () => turnTo(page() + 1);
   $('revealPrevBtn').onclick = () => turnTo(page() - 1);
   function drawStale() { show('staleNotice', !!answers().ai && !fresh()); }
+  // ─────────────── 05: Quick Fix workshop, one question at a time ───────────────
+  // The participant answers the AI's questions in turn; then the AI arranges the answers into the
+  // exercise output (POST /api/workshop), which they can still edit.
+  const wsQuestions = () => workshopQuestions(answers().ai?.result?.workshop);
+  const wsStep = () => Math.min(wsQuestions().length - 1, Math.max(0, answers().workStep || 0));
+  let wsBusy = false;
+  function drawWorkshop() {
+    const a = answers(), R = a.ai.result;
+    a.workAnswers ||= [];
+    $('exerciseTitle').textContent = R.workshop.title;
+    $('exerciseBrief').textContent = R.workshop.purpose;
+    $('workOutputLabel').textContent = R.workshop.output || 'Hasil latihan anda';
+    const done = !a.workAsking && txt(a.workOutput) !== '';
+    show('wsWorking', wsBusy);
+    show('wsAsk', !wsBusy && !done);
+    show('wsDone', !wsBusy && done);
+    if (done) drawWsDone(); else drawWsQuestion();
+  }
+  function drawWsQuestion() {
+    const a = answers(), qs = wsQuestions(), i = wsStep(), last = i === qs.length - 1;
+    $('wsCount').textContent = `Soalan ${i + 1} daripada ${qs.length}`;
+    $('wsDots').innerHTML = qs.map((_, k) => `<i class="${k === i ? 'on' : txt(a.workAnswers[k]) ? 'answered' : ''}"></i>`).join('');
+    $('wsQuestion').textContent = qs[i].question;
+    $('wsHint').textContent = qs[i].hint || '';
+    $('wsAnswer').value = a.workAnswers[i] || '';
+    $('wsPrevBtn').hidden = i === 0;
+    $('wsNextBtn').textContent = last ? (txt(a.workOutput) ? 'Susun semula hasil latihan →' : 'Susun hasil latihan saya →') : 'Seterusnya →';
+    $('wsBackToOutput').hidden = !txt(a.workOutput);
+    requestAnimationFrame(() => autoGrow($('wsAnswer')));
+  }
+  function drawWsDone() {
+    const a = answers(), qs = wsQuestions();
+    const answered = qs.some((_, i) => txt(a.workAnswers[i]));
+    $('wsAnswersTitle').textContent = `Jawapan anda (${qs.length} soalan)`;
+    $('wsAnswerList').innerHTML = qs.map((q, i) => `<li><b>${KB.esc(q.question)}</b><span>${KB.esc(txt(a.workAnswers[i]) || '—')}</span></li>`).join('');
+    $('wsAnswerList').closest('details').hidden = !answered;
+    $('wsSource').textContent = a.workSource === 'ai' ? 'Disusun oleh AI daripada jawapan anda. Semak, dan ubah teks ini jika perlu.' : a.workSource === 'fixed' ? 'Jawapan anda, disusun mengikut soalan. Anda boleh ubah teks ini.' : 'Anda boleh ubah teks ini.';
+    $('workOutput').value = a.workOutput;
+    $('wsToCheck').innerHTML = a.workToCheck?.length ? `<div class="wscheck"><p>Semak sebelum guna</p><ul>${a.workToCheck.map((x) => `<li>${KB.esc(x)}</li>`).join('')}</ul></div>` : '';
+    requestAnimationFrame(() => autoGrow($('workOutput')));
+  }
+  function askQuestion(i) {
+    answers().workStep = i;
+    clearFieldErrors();
+    drawWsQuestion(); safeSave();
+    $('wsAnswer').focus({ preventScroll: true });
+  }
+  $('wsAnswer').addEventListener('input', () => {
+    answers().workAnswers[wsStep()] = $('wsAnswer').value;
+    autoGrow($('wsAnswer')); safeSave();
+  });
+  $('wsPrevBtn').onclick = () => askQuestion(wsStep() - 1);
+  $('wsNextBtn').onclick = () => {
+    const a = answers(), i = wsStep();
+    if (!txt(a.workAnswers[i])) return fieldError('wsAnswer', 'Tulis jawapan ringkas dahulu.');
+    if (i < wsQuestions().length - 1) return askQuestion(i + 1);
+    buildWorkOutput();
+  };
+  $('wsEditBtn').onclick = () => { Object.assign(answers(), { workAsking: true, workStep: 0 }); drawWorkshop(); safeSave(); $('wsAnswer').focus({ preventScroll: true }); };
+  $('wsBackToOutput').onclick = () => { answers().workAsking = false; clearFieldErrors(); drawWorkshop(); safeSave(); };
+  $$('[data-ws-generate]').forEach((b) => { b.onclick = () => buildWorkOutput(); });
+  async function buildWorkOutput() {
+    const a = answers();
+    if (wsBusy) return;
+    if (txt(a.workOutput) && a.workOutput !== a.workGenerated && !confirm('Teks hasil latihan yang anda ubah akan diganti dengan versi baharu. Teruskan?')) return;
+    clearFieldErrors(); msg('wsMessage', '');
+    wsBusy = true; drawWorkshop();
+    try {
+      await saveNow(); // the server builds the output from the saved answers
+      const r = await KB.api('/api/workshop', { method: 'POST', body: {} });
+      Object.assign(a, { workOutput: r.output, workGenerated: r.output, workToCheck: r.toCheck || [], workSource: r.source, workAsking: false });
+      saveNow();
+    } catch (err) {
+      msg('wsMessage', `${err.message || 'AI gagal menyusun hasil latihan.'} Tekan butang sekali lagi untuk cuba semula.`, true);
+    } finally {
+      wsBusy = false; drawWorkshop();
+    }
+  }
   $('workOutput').addEventListener('input', () => { answers().workOutput = $('workOutput').value; autoGrow($('workOutput')); safeSave(); });
   $('exampleBtn').onclick = () => {
     const open = $('exampleBox').hidden;

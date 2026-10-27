@@ -16,7 +16,9 @@ import { setClientForTests } from '../server/coach.mjs';
 // A stand-in for Claude that answers with a real earlier answer.
 const sample = JSON.parse(readFileSync(new URL('./fixtures/coach-response.json', import.meta.url), 'utf8'));
 const aiCalls = [];
-setClientForTests({ beta: { messages: { create: async (req) => { aiCalls.push(req); return { model: 'claude-sonnet-5-5', stop_reason: 'end_turn', usage: { input_tokens: 4200, output_tokens: 2000 }, content: [{ type: 'text', text: JSON.stringify(sample) }] }; } } } });
+// The workshop call (its own system prompt) gets a short output instead.
+const answerFor = (req) => (req.system.includes('Build the exercise output') ? { output: 'Draf content untuk ibu bekerja', to_check: [] } : sample);
+setClientForTests({ beta: { messages: { create: async (req) => { aiCalls.push(req); return { model: 'claude-sonnet-5-5', stop_reason: 'end_turn', usage: { input_tokens: 4200, output_tokens: 2000 }, content: [{ type: 'text', text: JSON.stringify(answerFor(req)) }] }; } } } });
 
 let g, store, server, base;
 before(async () => {
@@ -101,6 +103,21 @@ test('switching challenge after an analysis: a deliberate reset really clears it
   const back = (await call('/api/journey', { key: k })).body.state.byPillar.marketing;
   assert.equal(back.ai, undefined, 'the old analysis is not restored');
   assert.equal((await call('/api/report.pdf', { key: k })).status, 409);
+});
+
+test('the workshop output is built from the saved answers', async () => {
+  const k = await start();
+  assert.equal((await call('/api/workshop', { method: 'POST', key: k, body: {} })).status, 409, 'needs a diagnosis first');
+  await diagnose(k);
+  const saved = (await call('/api/journey', { key: k })).body.state;
+  saved.byPillar.marketing.workAnswers = ['Ibu bekerja yang beli kuih untuk anak'];
+  await call('/api/journey', { method: 'PUT', key: k, body: { state: saved, step: 3 } });
+  aiCalls.length = 0;
+  const r = await call('/api/workshop', { method: 'POST', key: k, body: {} });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(aiCalls.length, 1);
+  assert.match(aiCalls[0].messages[0].content, /Ibu bekerja yang beli kuih untuk anak/);
+  assert.equal(r.body.output, 'Draf content untuk ibu bekerja');
 });
 
 test('the optional daily cap per participant is enforced', async () => {

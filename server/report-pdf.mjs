@@ -4,7 +4,7 @@
 import PDFDocument from 'pdfkit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PILLARS, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs } from '../public/js/content.mjs';
+import { PILLARS, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, workshopQuestions } from '../public/js/content.mjs';
 import { pillarAnswers } from './store.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +20,7 @@ const dateMY = (d) => d.toLocaleDateString('ms-MY', { day: 'numeric', month: 'lo
 
 export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
   const p = state.profile || {};
-  const { pillar, selected, calc, workOutput, plan, ai, planDone } = pillarAnswers(state);
+  const { pillar, selected, calc, workOutput, workAnswers, plan, ai, planDone } = pillarAnswers(state);
   if (!pillar || selected.length !== 3 || !ai) throw new Error('report needs a pillar, 3 situations and a diagnosis');
   const P = PILLARS[pillar];
   const R = ai.result;
@@ -132,7 +132,15 @@ export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
 
   section('05 · Quick Fix workshop', R.workshop.title);
   if (R.workshop.purpose) text(R.workshop.purpose, { gap: 6 });
-  box(R.workshop.steps.map((x, i) => `${i + 1}. ${x}`).join('\n'), { bar: C.green, size: 9.5 });
+  // the questions the participant answered, with their answers (else the exercise steps)
+  const qa = workshopQuestions(R.workshop).map((x, i) => ({ q: x.question, a: String(workAnswers[i] ?? '').trim() }));
+  if (qa.some((x) => x.a)) {
+    qa.forEach((x, i) => {
+      room(40);
+      text(`${i + 1}. ${x.q}`, { gap: 1, font: 'Bold', size: 9.5, color: C.green });
+      text(clean(x.a) || '—', { indent: 14, gap: 6, size: 9.5 });
+    });
+  } else box(R.workshop.steps.map((x, i) => `${i + 1}. ${x}`).join('\n'), { bar: C.green, size: 9.5 });
   if (R.workshop.example) box(R.workshop.example, { title: 'Contoh', fill: C.fix, size: 9.5 });
   field(R.workshop.output || 'Hasil latihan anda', clean(workOutput));
 

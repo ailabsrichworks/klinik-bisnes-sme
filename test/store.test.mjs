@@ -60,6 +60,27 @@ test('a tab in the earlier v4 layout is upgraded in place, rows kept', async () 
   assert.equal(g.rows('Peserta').filter((x) => x?.[0]).length, 2, 'no duplicate rows');
 });
 
+test('a tab in the previous sectioned layout gets the new workshop column; rows rewritten in place', async () => {
+  const g = createFakeGoogle();
+  await g.sheets.spreadsheets.batchUpdate({ requestBody: { requests: [{ addSheet: { properties: { title: 'Peserta' } } }] } });
+  // the layout before "Soalan & jawapan peserta" existed (and with the old output label)
+  const prev = PESERTA.filter((h) => h !== HEADER.ws_answers).map((h) => (h === HEADER.workshop_output ? 'LAPORAN · QUICK FIX WORKSHOP\nHasil latihan peserta' : h));
+  const state = { profile, pillar: 'marketing', byPillar: { marketing: { selected: [0, 3, 6], workOutput: 'Draf lama', workAnswers: ['Ibu bekerja', 'Tiada masa masak'], ai: { source: 'ai', model: 'm', at: '2026-10-27T09:00:00.000Z', result: sample } } } };
+  const row = prev.map((h) => ({ [HEADER.id]: 'abc', [HEADER.created_at]: '2026-10-27T07:21:56Z', [HEADER.full_name]: 'Nur Aina', [HEADER.token_hash]: 'f'.repeat(64), [HEADER.state_json]: JSON.stringify({ state, consent: { privacyVersion: 'v5' } }), 'LAPORAN · QUICK FIX WORKSHOP\nHasil latihan peserta': 'Draf lama' }[h] ?? ''));
+  await g.sheets.spreadsheets.values.batchUpdate({ requestBody: { valueInputOption: 'RAW', data: [{ range: "'Peserta'!A1", values: [prev, row] }] } });
+  const s = await open(g);
+  assert.equal(s.tab, 'Peserta');
+  assert.deepEqual(g.rows('Peserta')[0], PESERTA);
+  const r = rowFor(g, 'abc');
+  assert.equal(r.length <= PESERTA.length, true);
+  assert.equal(r[col('full_name')], 'Nur Aina');
+  assert.equal(r[col('created_at')], '2026-10-27T07:21:56Z');
+  assert.equal(r[col('workshop_output')], 'Draf lama');
+  assert.match(r[col('ws_answers')], /^1\. .+\n→ Ibu bekerja\n\n2\. .+\n→ Tiada masa masak$/);
+  assert.equal(r[col('token_hash')], 'f'.repeat(64));
+  assert.equal(g.rows('Peserta').filter((x) => x?.[0]).length, 2, 'no duplicate rows');
+});
+
 test('an empty tab in an older layout gets the new header; one with rows is left alone', async () => {
   const g = createFakeGoogle();
   for (const t of ['Peserta', 'Peserta v4']) await g.sheets.spreadsheets.batchUpdate({ requestBody: { requests: [{ addSheet: { properties: { title: t } } }] } });

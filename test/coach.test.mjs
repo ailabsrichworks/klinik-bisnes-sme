@@ -4,7 +4,7 @@ delete process.env.ANTHROPIC_API_KEY;
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SYSTEM, OUTPUT_SCHEMA, coach, coachInput, normalize, fixedReport, setClientForTests, CoachError } from '../server/coach.mjs';
+import { SYSTEM, OUTPUT_SCHEMA, WORKSHOP_SYSTEM, coach, workshop, workshopInput, coachInput, normalize, fixedReport, setClientForTests, CoachError } from '../server/coach.mjs';
 import { PILLARS } from '../public/js/content.mjs';
 
 const sample = JSON.parse(readFileSync(new URL('./fixtures/coach-response.json', import.meta.url), 'utf8'));
@@ -113,4 +113,46 @@ test('coach(): needs 3 situations; without an AI key it returns the fixed v4 tex
   assert.equal(r.source, 'fixed');
   assert.deepEqual(r.result, fixedReport('sales'));
   assert.equal(r.result.diagnosis_title, PILLARS.sales.titleOut);
+});
+
+test('the workshop questions come back cleaned; older answers without them still pass', () => {
+  const qs = [{ question: 'Siapa pelanggan utama anda?', hint: 'Contoh: ibu bekerja' }, { question: '', hint: 'x' }, { question: 'Apa masalah mereka?', hint: '' }];
+  assert.deepEqual(normalize({ ...sample, workshop: { ...sample.workshop, questions: qs } }).workshop.questions, [qs[0], qs[2]]);
+  assert.deepEqual(normalize(sample).workshop.questions, []);
+  assert.ok(OUTPUT_SCHEMA.properties.workshop.required.includes('questions'));
+});
+
+const withWork = (answers) => {
+  const s = state({ ai: { source: 'ai', result: normalize({ ...sample, workshop: { ...sample.workshop, questions: [{ question: 'S1?', hint: '' }, { question: 'S2?', hint: '' }] } }) } });
+  s.byPillar.sales.workAnswers = answers;
+  return s;
+};
+
+test('workshop(): sends the questions with the answers (no name), returns the output and what to check', async () => {
+  const fake = fakeClient(ok({ output: 'Draf: hook untuk ibu bekerja [isi harga]', to_check: ['Harga jualan'] }));
+  setClientForTests(fake);
+  const store = logStore();
+  const r = await workshop({ store, journey: { id: 'j1', state: withWork(['Ibu bekerja', '']) } });
+  assert.deepEqual(r, { source: 'ai', output: 'Draf: hook untuk ibu bekerja [isi harga]', toCheck: ['Harga jualan'], model: 'claude-sonnet-5-5' });
+  const req = fake.calls[0];
+  assert.equal(req.system, WORKSHOP_SYSTEM);
+  assert.equal(req.output_config.format.type, 'json_schema');
+  const sent = JSON.parse(req.messages[0].content.slice(req.messages[0].content.indexOf('{')));
+  assert.deepEqual(sent.answers, [{ question: 'S1?', answer: 'Ibu bekerja' }, { question: 'S2?', answer: '(tidak dijawab)' }]);
+  assert.ok(!req.messages[0].content.includes('Nur Aina') && !req.messages[0].content.includes('Aina Beauty'));
+  assert.equal(store.logs[0].status, 'ok');
+  assert.match(store.logs[0].title, /^Workshop · /);
+});
+
+test('workshop(): needs a diagnosis and an answer; bad answers are retryable errors; without AI the answers are laid out', async () => {
+  setClientForTests(fakeClient(ok({ output: 'x', to_check: [] })));
+  await assert.rejects(workshop({ store: logStore(), journey: { id: 'j', state: state() } }), (e) => e.status === 409);
+  await assert.rejects(workshop({ store: logStore(), journey: { id: 'j', state: withWork(['  ', '']) } }), (e) => e.status === 400);
+  setClientForTests(fakeClient(ok({ output: '', to_check: [] })));
+  await assert.rejects(workshop({ store: logStore(), journey: { id: 'j', state: withWork(['a']) } }), (e) => e instanceof CoachError && e.status === 502);
+  setClientForTests(null);
+  const r = await workshop({ store: logStore(), journey: { id: 'j', state: withWork(['Ibu bekerja', 'Tiada masa']) } });
+  assert.equal(r.source, 'fixed');
+  assert.equal(r.output, 'S1?\nIbu bekerja\n\nS2?\nTiada masa');
+  assert.equal(workshopInput(state()), null);
 });
