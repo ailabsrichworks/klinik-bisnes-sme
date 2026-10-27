@@ -52,7 +52,7 @@ Medan output:
 - observations: 1–3 perkara yang benar-benar ada dalam bukti
 - unknowns: 1–4 fakta yang belum diketahui atau perlu disahkan
 - strength: "Bukti terhad" atau "Ada input peserta, perlu pengesahan"
-- quickFix: Quick Win di atas, dengan placeholder [ ... ] untuk fakta yang tidak diketahui
+- quickFix: Quick Win di atas, dengan placeholder [ ... ] untuk fakta yang tidak diketahui. Tulis SATU perkara setiap baris (pisahkan baris dengan \n), contohnya baris tajuk, kemudian "Label: nilai" satu baris setiap satu, dan baris QUICK WIN di hujung. Jangan tulis satu perenggan panjang.
 - tasks: TEPAT 7 tugasan tracker, satu untuk setiap hari (lihat di bawah)
 
 Tracker 7 hari (tasks):

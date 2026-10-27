@@ -164,6 +164,32 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   // ─────────────── form <-> state ───────────────
   const message = (s, error = false, target = 'globalMessage') => msg(target, s, error);
   const clearMessage = (target = 'globalMessage') => msg(target, '');
+
+  // Shows an error right below the control that caused it, scrolls it into view and focuses the control.
+  function fieldError(target, text) {
+    clearFieldErrors();
+    const el = typeof target === 'string' ? $(target) : target;
+    const anchor = el.closest('.field, .check-label, .choice-grid, .upload') || el;
+    const m = document.createElement('div');
+    m.className = 'message show error field-error';
+    m.setAttribute('role', 'alert');
+    m.textContent = text;
+    anchor.after(m);
+    m.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.focus({ preventScroll: true });
+  }
+  function clearFieldErrors() { $$('.field-error').forEach((e) => e.remove()); }
+  // Shows a status or error in a message box and makes sure it is on screen.
+  function notice(target, text, error = false) {
+    message(text, error, target);
+    if (text) $(target).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  // Textareas grow with their content instead of scrolling inside the page.
+  // (Only while visible: a hidden textarea has no height to measure.)
+  const autoGrow = (el) => { if (!el?.offsetParent) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight + 2}px`; };
+  const growAll = () => $$('textarea.grow').forEach(autoGrow);
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(growAll, 150); });
   const getPain = () => state.profile.pain || 'unknown';
   const currentPath = () => state.pathway || state.diagnosis?.pathway || 'missing';
 
@@ -211,21 +237,24 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     $('progressPercent').textContent = `${(step + 1) * 20}%`;
     $('progressBar').style.width = `${(step + 1) * 20}%`;
     $('prevBtn').style.visibility = step === 0 ? 'hidden' : 'visible';
-    $('nextBtn').style.display = step === 4 ? 'none' : 'inline-flex';
+    $('nextBtn').style.display = step === 1 || step === 4 ? 'none' : 'inline-flex'; // step 2's action is "Jana Diagnosis Awal"
     $('nextBtn').textContent = step === 2 ? 'Bina Quick Fix →' : 'Seterusnya →';
     if (step === 3) drawBuild();
     if (step === 4) {
       if (!state.trackerStartedAt) state.trackerStartedAt = new Date().toISOString();
       drawTracker(); drawReport();
     }
-    clearMessage();
+    clearMessage(); clearFieldErrors();
+    requestAnimationFrame(growAll);
     safeSave(); pushRemote();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function validProfile() {
     dataFromForm();
-    if (!state.profile.business || !state.profile.product || !state.profile.pain) { message('Lengkapkan nama bisnes, produk utama dan pilih satu isu.', true); return false; }
+    if (!state.profile.business) { fieldError('business', 'Isi nama bisnes anda.'); return false; }
+    if (!state.profile.product) { fieldError('product', 'Isi produk atau servis utama.'); return false; }
+    if (!state.profile.pain) { fieldError(document.querySelector('[name="pain"]'), 'Pilih satu isu yang paling dekat.'); return false; }
     return true;
   }
   const hasCostValues = () => costKeys.some((k) => txt(state.costs[k]) !== '');
@@ -233,12 +262,12 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   function validateStep() {
     dataFromForm();
     if (step === 0) return validProfile();
-    if (step === 1) { message('Tekan “Jana Diagnosis Awal” untuk meneruskan.', true); return false; }
+    if (step === 1) { fieldError('diagnoseBtn', 'Tekan “Jana Diagnosis Awal” untuk meneruskan.'); return false; }
     if (step === 2) {
-      if (!state.diagnosis) { message('Diagnosis belum dijana.', true); return false; }
-      if (!$('confirmDiagnosis').checked) { message('Sahkan bahawa diagnosis ini bersifat awal sebelum membina Quick Fix.', true); return false; }
+      if (!state.diagnosis) { notice('globalMessage', 'Diagnosis belum dijana.', true); return false; }
+      if (!$('confirmDiagnosis').checked) { fieldError('confirmDiagnosis', 'Tandakan ini dahulu: diagnosis ini bersifat awal.'); return false; }
       const chosen = $('pathwaySelect').value;
-      if (chosen === 'live' && state.live.liveExperience !== 'yes') { message('LIVE Sales hanya untuk peserta yang sudah menjual melalui LIVE. Pilih laluan lain, atau sahkan pengalaman LIVE di Langkah 2 dan jana diagnosis semula.', true); return false; }
+      if (chosen === 'live' && state.live.liveExperience !== 'yes') { fieldError('pathwaySelect', 'LIVE Sales hanya untuk peserta yang sudah menjual melalui LIVE. Pilih laluan lain, atau sahkan pengalaman LIVE di Langkah 2 dan jana diagnosis semula.'); return false; }
       const changed = chosen !== state.pathway || !state.tasks?.length;
       state.pathway = chosen; state.confirmed = true;
       if (changed) {
@@ -248,8 +277,9 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       safeSave(); return true;
     }
     if (step === 3) {
-      if (!txt(state.quickFix)) { message('Sediakan dan semak Quick Fix dahulu.', true); return false; }
-      if (state.quality.some((v) => !v)) { message('Tandakan ketiga-tiga semakan kualiti sebelum ke tracker.', true); return false; }
+      if (!txt(state.quickFix)) { fieldError('quickFixEditor', 'Sediakan dan semak Quick Fix dahulu.'); return false; }
+      const unchecked = state.quality.findIndex((v) => !v);
+      if (unchecked >= 0) { fieldError(`quality${unchecked + 1}`, 'Tandakan ketiga-tiga semakan kualiti sebelum ke tracker.'); return false; }
       return true;
     }
     return true;
@@ -284,10 +314,10 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   function drawProgramme() {
     const f = currentFit();
     const show = !!state.diagnosis && f.status !== 'none';
-    ['programmePreview', 'programmeDetails'].forEach((id) => {
-      const el = $(id); el.hidden = !show && id === 'programmePreview'; el.dataset.status = f.status;
-      el.innerHTML = `<h4>Langkah seterusnya (pilihan)</h4><p>${scrub(f.detail)}</p>${f.status === 'ready' || f.status === 'pending' ? '<p class="opt">Tiada kewajipan. Anda boleh teruskan Quick Fix dan tracker sendiri. Pilihan selepas sesi (Langkah 5) tidak menghantar apa-apa secara automatik.</p>' : ''}`;
-    });
+    // Shown once, in Langkah 5, and only when the fit rules allow it.
+    const el = $('programmeDetails');
+    el.hidden = !show; el.dataset.status = f.status;
+    el.innerHTML = `<h4>Langkah seterusnya (pilihan)</h4><p>${scrub(f.detail)}</p>${f.status === 'ready' || f.status === 'pending' ? '<p class="opt">Tiada kewajipan. Anda boleh teruskan Quick Fix dan tracker sendiri. Pilihan di bawah tidak menghantar apa-apa secara automatik.</p>' : ''}`;
   }
 
   // ─────────────── offline rule-based fallback (only when the server has no AI key) ───────────────
@@ -344,10 +374,11 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
   }
 
   async function createDiagnosis() {
-    dataFromForm(); clearMessage('evidenceMessage');
-    if (!validProfile()) { go(0); return; }
-    if (!hasEvidence({ evidenceText: state.evidenceText, costs: state.costs, content: state.content, live: state.live, hasFile: !!(file || state.evidenceFile) })) { message('Tampal sekurang-kurangnya satu bukti, isi angka, atau lampirkan fail terlebih dahulu. Memilih isu sahaja belum cukup.', true, 'evidenceMessage'); return; }
-    if (!$('privacyConfirm').checked) { message('Sahkan privasi dan kebenaran menggunakan bahan sebelum menjana diagnosis.', true, 'evidenceMessage'); return; }
+    dataFromForm(); clearMessage('evidenceMessage'); clearFieldErrors();
+    const p0 = state.profile;
+    if (!p0.business || !p0.product || !p0.pain) { go(0); validProfile(); return; }
+    if (!hasEvidence({ evidenceText: state.evidenceText, costs: state.costs, content: state.content, live: state.live, hasFile: !!(file || state.evidenceFile) })) { fieldError('evidenceText', 'Tampal sekurang-kurangnya satu bukti, isi angka, atau lampirkan fail terlebih dahulu. Memilih isu sahaja belum cukup.'); return; }
+    if (!$('privacyConfirm').checked) { fieldError('privacyConfirm', 'Tandakan pengesahan privasi dan kebenaran ini sebelum menjana diagnosis.'); return; }
     const btn = $('diagnoseBtn'); btn.disabled = true; btn.textContent = 'Menyemak bukti… (sehingga 1 minit)';
     try {
       let result;
@@ -364,7 +395,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       $('confirmDiagnosis').checked = false;
       drawDiagnosis(); drawBuild(); go(2);
     } catch (err) {
-      message(`Diagnosis gagal: ${err.message}`, true, 'evidenceMessage');
+      notice('evidenceMessage', `Diagnosis gagal: ${err.message}`, true);
     } finally {
       btn.disabled = false; btn.textContent = 'Jana Diagnosis Awal →';
     }
@@ -392,6 +423,28 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     $('fixExplanation').textContent = explanation[p];
     $('originalEvidence').textContent = state.evidenceText ? state.evidenceText.slice(0, 750) : (hasCostValues() ? 'Maklumat harga / kos telah dimasukkan pada Langkah 2.' : (state.evidenceFile ? `Lampiran: ${state.evidenceFile.name}` : 'Maklumat berstruktur telah direkod pada Langkah 2.'));
     $('quickFixEditor').value = state.quickFix || (state.diagnosis ? defaultFix(p) : '');
+    autoGrow($('quickFixEditor')); drawPlaceholders();
+  }
+
+  // The [ ... ] slots the participant still has to fill in, with a button that jumps to the next one.
+  const SLOT = /\[[^\]\n]*\]/g;
+  function drawPlaceholders() {
+    const n = ($('quickFixEditor').value.match(SLOT) || []).length;
+    $('placeholderCount').textContent = n ? `${n} tempat kosong [ … ] perlu diisi` : 'Semua tempat kosong [ … ] sudah diisi.';
+    $('placeholderCount').classList.toggle('done', !n);
+    $('nextPlaceholderBtn').hidden = !n;
+  }
+  function nextPlaceholder() {
+    const ed = $('quickFixEditor');
+    const slots = [...ed.value.matchAll(SLOT)];
+    if (!slots.length) return;
+    const m = slots.find((x) => x.index >= ed.selectionEnd) || slots[0];
+    ed.focus({ preventScroll: true });
+    ed.setSelectionRange(m.index, m.index + m[0].length);
+    // The editor grows with its text, so scroll the page to roughly that line.
+    const line = ed.value.slice(0, m.index).split('\n').length - 1;
+    const lh = parseFloat(getComputedStyle(ed).lineHeight) || 24;
+    window.scrollTo({ top: ed.getBoundingClientRect().top + window.scrollY + line * lh - window.innerHeight / 3, behavior: 'smooth' });
   }
 
   // ─────────────── tracker & report ───────────────
@@ -402,7 +455,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     state.tasks.forEach((item, i) => {
       const wrap = document.createElement('div');
       wrap.className = 'task' + (item.status === 'selesai' ? ' done' : '');
-      wrap.innerHTML = `<div class="day">Hari ${i + 1}</div><div class="task-head"><textarea class="task-title" rows="2" maxlength="${TASK_TITLE_MAX}" data-title="${i}" aria-label="Tugasan Hari ${i + 1} (boleh diedit)"></textarea><select aria-label="Status Hari ${i + 1}" data-status="${i}"><option value="belum">Belum mula</option><option value="sedang">Sedang buat</option><option value="selesai">Selesai ✓</option></select></div><label class="proof">Bukti cadangan: <input class="task-proof" maxlength="${TASK_PROOF_MAX}" data-proof="${i}" aria-label="Bukti cadangan Hari ${i + 1} (boleh diedit)"></label><input class="track-note" maxlength="450" data-note="${i}" aria-label="Bukti atau nota Hari ${i + 1}" placeholder="Catat bukti / pautan / angka sebenar (tanpa data customer)">`;
+      wrap.innerHTML = `<div class="day">Hari ${i + 1}</div><div class="task-head"><textarea class="task-title grow" rows="1" maxlength="${TASK_TITLE_MAX}" data-title="${i}" aria-label="Tugasan Hari ${i + 1} (boleh diedit)"></textarea><select aria-label="Status Hari ${i + 1}" data-status="${i}"><option value="belum">Belum mula</option><option value="sedang">Sedang buat</option><option value="selesai">Selesai ✓</option></select></div><label class="proof"><span>Bukti cadangan (boleh diedit)</span><textarea class="task-proof grow" rows="1" maxlength="${TASK_PROOF_MAX}" data-proof="${i}" aria-label="Bukti cadangan Hari ${i + 1} (boleh diedit)"></textarea></label><textarea class="track-note grow" rows="1" maxlength="450" data-note="${i}" aria-label="Bukti atau nota Hari ${i + 1}" placeholder="Catat bukti / pautan / angka sebenar (tanpa data customer)"></textarea>`;
       root.appendChild(wrap);
       wrap.querySelector('[data-status]').value = item.status;
       wrap.querySelector('[data-title]').value = item.title || '';
@@ -410,9 +463,10 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       wrap.querySelector('[data-note]').value = item.note || '';
     });
     $$('#tracker [data-status]').forEach((el) => { el.onchange = () => { state.tasks[+el.dataset.status].status = el.value; saveNow(); drawTracker(); drawReport(); }; });
-    $$('#tracker [data-note]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.note].note = el.value; safeSave(); drawReport(); }; });
-    $$('#tracker [data-title]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.title].title = el.value; safeSave(); drawReport(); }; });
-    $$('#tracker [data-proof]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.proof].proof = el.value; safeSave(); }; });
+    $$('#tracker [data-note]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.note].note = el.value; autoGrow(el); safeSave(); drawReport(); }; });
+    $$('#tracker [data-title]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.title].title = el.value; autoGrow(el); safeSave(); drawReport(); }; });
+    $$('#tracker [data-proof]').forEach((el) => { el.oninput = () => { state.tasks[+el.dataset.proof].proof = el.value; autoGrow(el); safeSave(); }; });
+    $$('#tracker textarea').forEach(autoGrow);
     const done = state.tasks.filter((t) => t.status === 'selesai').length;
     $('completionText').textContent = `${done} daripada 7 selesai`;
     $('completionBar').style.width = `${(100 * done) / 7}%`;
@@ -457,10 +511,10 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      message('PDF dimuat turun.');
+      notice('takeHomeMessage', 'PDF dimuat turun.');
     } catch (err) {
       console.error(err);
-      message('PDF gagal dimuat turun. Gunakan "Save as PDF" dalam paparan cetak.', true);
+      notice('takeHomeMessage', 'PDF gagal dimuat turun. Gunakan "Save as PDF" dalam paparan cetak.', true);
       printReport();
     } finally {
       btn.disabled = false; btn.textContent = 'Muat turun PDF';
@@ -480,9 +534,9 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     if (fileUrl) { URL.revokeObjectURL(fileUrl); fileUrl = null; }
     file = null; $('filePreview').style.display = 'none';
     if (!f) { $('fileStatus').textContent = state.evidenceFile ? `Disimpan: ${state.evidenceFile.name}.` : 'Belum ada fail dipilih.'; return; }
-    if (f.size > 4 * 1024 * 1024) { message('Fail melebihi 4 MB. Pilih fail yang lebih kecil.', true, 'evidenceMessage'); $('fileUpload').value = ''; return; }
+    if (f.size > 4 * 1024 * 1024) { fieldError('fileUpload', 'Fail melebihi 4 MB. Pilih fail yang lebih kecil.'); $('fileUpload').value = ''; return; }
     const okay = ['image/png', 'image/jpeg', 'image/webp', 'text/plain', 'text/csv', 'application/pdf'];
-    if (!okay.includes(f.type) && !/\.(csv|txt|pdf)$/i.test(f.name)) { message('Format fail tidak disokong.', true, 'evidenceMessage'); $('fileUpload').value = ''; return; }
+    if (!okay.includes(f.type) && !/\.(csv|txt|pdf)$/i.test(f.name)) { fieldError('fileUpload', 'Format fail tidak disokong. Guna PNG, JPG, WEBP, PDF, TXT atau CSV.'); $('fileUpload').value = ''; return; }
     file = f; state.evidenceFile = null;
     $('fileStatus').textContent = `Dipilih: ${f.name} (${(f.size / 1024).toFixed(0)} KB). Fail dimuat naik secara peribadi apabila anda menjana diagnosis.`;
     if (f.type.startsWith('image/')) { fileUrl = URL.createObjectURL(f); $('filePreview').src = fileUrl; $('filePreview').style.display = 'block'; }
@@ -516,7 +570,7 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
       KB.setKey(null);
       alert('Data anda telah dipadam.');
       location.href = '/';
-    } catch (err) { message(err.message, true); }
+    } catch (err) { notice('globalMessage', err.message, true); }
   }
 
   // ─────────────── wiring ───────────────
@@ -544,11 +598,14 @@ import { PATH_LABELS as pathLabels, COST_KEYS as costKeys, CONTENT_KEYS, LIVE_KE
     b.onclick = () => {
       const n = Number(b.dataset.go);
       if (n <= step || (n === 1 && validProfile()) || (n === 2 && !!state.diagnosis) || (n === 3 && !!state.confirmed) || (n === 4 && state.confirmed && state.quality.every(Boolean) && !!txt(state.quickFix))) go(n);
-      else message('Lengkapkan langkah sebelumnya dahulu.', true);
+      else notice('globalMessage', 'Lengkapkan langkah sebelumnya dahulu.', true);
     };
   });
   $('downloadBtn').onclick = downloadReport;
-  $('copyBtn').onclick = async () => { dataFromForm(); try { await navigator.clipboard.writeText(reportText()); message('Ringkasan disalin ke clipboard.'); } catch { message('Clipboard tidak tersedia; gunakan butang Muat turun PDF.', true); } };
+  $('quickFixEditor').addEventListener('input', () => { autoGrow($('quickFixEditor')); drawPlaceholders(); });
+  $('reviewNotes').addEventListener('input', () => autoGrow($('reviewNotes')));
+  $('nextPlaceholderBtn').onclick = nextPlaceholder;
+  $('copyBtn').onclick = async () => { dataFromForm(); try { await navigator.clipboard.writeText(reportText()); notice('takeHomeMessage', 'Ringkasan disalin ke clipboard.'); } catch { notice('takeHomeMessage', 'Clipboard tidak tersedia; gunakan butang Muat turun PDF.', true); } };
   $('exportBtn').onclick = exportData;
   $('restartBtn').onclick = restart;
   $('deleteBtn').onclick = deleteAccount;

@@ -164,7 +164,6 @@
               <h3>Sahkan diagnosis anda</h3><div class="field"><label for="pathwaySelect">Pathway yang hendak diperbaiki</label><select id="pathwaySelect"><option value="cost">Cash Flow / Profit · Kos &amp; Harga</option><option value="content">Marketing · Sistem Content</option><option value="live">Sales · LIVE</option><option value="missing">Missing Information</option></select></div>
               <label class="check-label"><input type="checkbox" id="confirmDiagnosis"><span>Saya faham ini diagnosis awal. Saya pilih satu keutamaan berdasarkan bukti saya, bukan jaminan bahawa inilah punca tunggal sales perlahan.</span></label>
               <div class="tip good">Seterusnya: satu Quick Win kecil yang boleh disemak dan digunakan dalam bisnes sebenar.</div>
-              <div class="surface programme" id="programmePreview" hidden></div>
             </div>
           </section>
 
@@ -175,7 +174,7 @@
               <div class="surface"><h4>Bukti asal</h4><p id="originalEvidence"></p></div>
               <div class="surface"><h4>Apa yang perlu diperbaiki</h4><p id="fixExplanation"></p></div>
             </div>
-            <div class="field" style="margin-top:18px"><label for="quickFixEditor">Quick Fix anda <span class="required">*</span></label><textarea id="quickFixEditor" class="editor" maxlength="6000" placeholder="Versi akhir yang siap digunakan"></textarea><div class="hint">Semua placeholder [ ... ] mesti diisi sendiri. AI tidak patut mereka manfaat atau fakta bisnes.</div></div>
+            <div class="field" style="margin-top:18px"><label for="quickFixEditor">Quick Fix anda <span class="required">*</span></label><textarea id="quickFixEditor" class="editor grow" maxlength="6000" rows="6" placeholder="Versi akhir yang siap digunakan" aria-describedby="placeholderCount"></textarea><div class="placeholder-bar"><span id="placeholderCount" class="placeholder-count" aria-live="polite"></span><button type="button" class="btn outline small" id="nextPlaceholderBtn" hidden>Pergi ke tempat kosong →</button></div><div class="hint">Isi sendiri setiap [ ... ]. AI tidak patut mereka manfaat atau fakta bisnes.</div></div>
             <h3>Semakan kualiti sebelum guna</h3>
             <label class="check-label"><input type="checkbox" id="quality1"><span>Saya telah semak fakta, angka dan kesesuaian Quick Fix.</span></label>
             <label class="check-label"><input type="checkbox" id="quality2"><span>Saya tahu kepada siapa / untuk produk mana Quick Fix ini digunakan.</span></label>
@@ -189,15 +188,16 @@
             <div class="tracker" id="tracker" style="margin-top:16px"></div>
             <h3>Hasil sebenar selepas 7 hari</h3><p class="lesson">Isi hanya apabila ada angka atau rekod. Jangan kaitkan semua jualan kepada Quick Fix tanpa bukti.</p>
             <div class="metrics-grid" id="metricsArea"></div>
-            <div class="field" style="margin-top:14px"><label for="reviewNotes">Apa yang berlaku? Apa langkah seterusnya?</label><textarea id="reviewNotes" placeholder="Contoh: 3 daripada 5 pelanggan reply. Masih perlu uji mesej dengan sample lain."></textarea></div>
+            <div class="field" style="margin-top:14px"><label for="reviewNotes">Apa yang berlaku? Apa langkah seterusnya?</label><textarea id="reviewNotes" class="grow" rows="3" placeholder="Contoh: 3 daripada 5 pelanggan reply. Masih perlu uji mesej dengan sample lain."></textarea></div>
+            <details class="summary-box"><summary>Ringkasan</summary><div class="report" id="report"></div></details>
             <hr class="divider">
-            <h3>Ringkasan untuk dibawa pulang</h3>
-            <div class="report" id="report"></div>
-            <div class="row wrap" style="margin-top:14px"><button type="button" class="btn primary" id="downloadBtn">Muat turun PDF</button><button type="button" class="btn outline" id="copyBtn">Copy ringkasan</button></div>
+            <h3>Bawa pulang</h3>
+            <div class="row wrap take-home"><button type="button" class="btn primary" id="downloadBtn">Muat turun PDF</button><button type="button" class="btn outline" id="copyBtn">Copy ringkasan</button></div>
+            <div id="takeHomeMessage" class="message" role="status" aria-live="polite"></div>
             <h3>Selepas sesi ini</h3>
             <div class="surface programme" id="programmeDetails" hidden></div>
             <div class="field"><label for="nextStep">Pilihan anda</label><select id="nextStep"><option value="Bertindak sendiri dahulu">Cuba Quick Fix sendiri dahulu</option><option value="Maklumat programme berkaitan">Mahukan maklumat programme yang relevan</option><option value="Waitlist">Masuk waitlist</option><option value="Belum pasti">Belum pasti</option></select></div>
-            <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju menerima maklumat programme Klinik Bisnes SME melalui emel. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
+            <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju menerima maklumat programme Klinik Bisnes SME. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
           </section>
           <div id="globalMessage" class="message" role="status" aria-live="polite"></div>
           <nav class="footer-actions" aria-label="Navigasi langkah"><button type="button" class="btn secondary" id="prevBtn">← Sebelumnya</button><span class="spacer"></span><button type="button" class="btn primary" id="nextBtn">Seterusnya →</button></nav>

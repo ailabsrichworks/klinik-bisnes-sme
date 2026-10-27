@@ -144,7 +144,18 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 650; letter-spacing:
 .surface.programme[data-status="ready"] { border-left-color: var(--teal); }
 .surface.programme[data-status="pending"] { border-left-color: #e3a77f; }
 .surface.programme .opt { font-size: var(--step--1); color: var(--muted); margin-top: 6px; }
-.editor { min-height: 200px !important; font-size: 15px; line-height: 1.7 !important; }
+.editor { min-height: 180px !important; font-size: 15px; line-height: 1.7 !important; }
+textarea.grow { resize: none; overflow: hidden; }
+.placeholder-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.placeholder-count { font-size: 13.5px; font-weight: 600; color: #8a3423; background: #fdeee8; border-radius: 999px; padding: 4px 12px; }
+.placeholder-count.done { color: #1d6b4f; background: #e6f4ee; }
+.placeholder-count:empty { display: none; }
+.summary-box { margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.summary-box > summary { cursor: pointer; padding: 14px 18px; min-height: 44px; font: 600 15px/1.3 var(--font-display); color: var(--navy); list-style-position: inside; }
+.summary-box[open] > summary { border-bottom: 1px solid var(--line); }
+.summary-box .report { border: 0; margin: 0; border-radius: 0 0 14px 14px; }
+.take-home .btn { flex: 1 1 200px; }
+.field-error { margin: 8px 0 0; }
 
 .costtable { display: grid; grid-template-columns: 1fr 120px; gap: 9px 14px; align-items: center; }
 @media (min-width: 640px) { .costtable { grid-template-columns: 1fr 150px; } }
@@ -160,17 +171,27 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 650; letter-spacing:
 .tracker { display: grid; gap: 10px; }
 .task { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px 12px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #fff; }
 .task.done { background: #f0f9f5; border-color: #c6e4d9; }
-.day { font: 650 13px/1.3 var(--font-display); color: var(--teal); padding-top: 3px; }
+.day { font: 650 13px/1.3 var(--font-display); color: var(--teal); padding-top: 10px; }
+.task-head, .task .proof, .task .track-note { grid-column: 2; }
 .task-head { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .task-head strong { font-size: 14px; color: var(--navy); font-weight: 600; flex: 1 1 180px; }
-.task .task-title { flex: 1 1 180px; min-height: 0; resize: none; font: 600 14px/1.45 var(--font-body); color: var(--navy); border: 1px solid transparent; border-radius: 8px; padding: 4px 6px; margin: -4px 0 0 -6px; background: transparent; field-sizing: content; }
-.task .proof { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
-.task .task-proof { flex: 1 1 160px; font: inherit; color: inherit; border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; background: transparent; min-height: 0; }
+/* Task title and proof read as text but stay editable; they grow with their content and never clip. */
+.task .task-title, .task .task-proof { display: block; width: 100%; min-height: 44px; resize: none; overflow: hidden; border: 1px solid transparent; border-radius: 8px; background: transparent; }
+.task .task-title { flex: 1 1 180px; font: 600 14px/1.45 var(--font-body); color: var(--navy); padding: 10px 8px; margin: 0 0 0 -8px; width: calc(100% + 8px); }
+.task .proof { display: block; font-size: 12px; color: var(--muted); }
+.task .proof > span { display: block; margin-bottom: 2px; }
+.task .task-proof { font: 13px/1.45 var(--font-body); color: var(--ink); padding: 10px 8px; margin-left: -8px; width: calc(100% + 8px); }
 .task .task-title:hover, .task .task-proof:hover { border-color: var(--line); }
 .task .task-title:focus-visible, .task .task-proof:focus-visible { border-color: #c9d7db; background: #fcfdfd; }
-.task .proof { grid-column: 2; font-size: 12px; color: var(--muted); }
-.task .track-note { grid-column: 2; min-height: 42px; padding: 8px 10px; font-size: 13px; border: 1px solid #c9d7db; border-radius: 9px; }
-.task select { border: 1px solid #c9d7db; border-radius: 8px; background: #fff; padding: 6px 8px; font-size: 12.5px; min-height: 36px; }
+.task .track-note { min-height: 44px; padding: 10px; font-size: 13px; line-height: 1.45; border: 1px solid #c9d7db; border-radius: 9px; resize: none; overflow: hidden; }
+.task select { border: 1px solid #c9d7db; border-radius: 8px; background: #fff; padding: 8px 10px; font-size: 13px; min-height: 44px; }
+@media (max-width: 639px) {
+  /* "Hari N" becomes a small label above the task, so the task gets the full width. */
+  .task { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .task-head, .task .proof, .task .track-note { grid-column: 1; }
+  .day { padding-top: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .task-head select { width: 100%; }
+}
 .track-progress { height: 8px; border-radius: 20px; background: #e2eaeb; overflow: hidden; }
 .track-progress > div { height: 100%; background: var(--teal); transition: width .2s; }
 .track-meta { display: flex; justify-content: space-between; color: var(--navy); font-size: 13px; font-weight: 600; margin: 8px 0; }
@@ -234,6 +255,8 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 650; letter-spacing:
 
 /* Once a participant is working, the hero shrinks on phones so the form starts above the fold. */
 @media (max-width: 820px) {
+  /* 16px stops iPhone Safari from zooming into a field on focus. */
+  input, select, textarea, .editor, .task .task-title, .task .task-proof, .task .track-note, .task select, .upload input { font-size: 16px !important; }
   body.in-app .hero { padding: 18px 20px; gap: 0; }
   body.in-app .hero h1 { font-size: 1.6rem; margin-bottom: 0; max-width: none; }
   body.in-app .hero p, body.in-app .formula { display: none; }
