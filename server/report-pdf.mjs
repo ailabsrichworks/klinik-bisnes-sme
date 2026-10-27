@@ -4,8 +4,9 @@
 import PDFDocument from 'pdfkit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PILLARS, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, workshopQuestions } from '../public/js/content.mjs';
+import { PILLARS, NEXT_CLASS, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, workshopQuestions } from '../public/js/content.mjs';
 import { pillarAnswers } from './store.mjs';
+import { config } from './config.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fonts = path.join(here, 'fonts');
@@ -163,7 +164,10 @@ export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
   field('Apa yang sudah anda faham / sediakan', R.reflection.prepared);
   field('Apa yang masih perlu disahkan', R.reflection.to_validate);
   field('Apa yang mungkin perlukan bimbingan lanjut', R.reflection.further_guidance);
-  box(CLOSING.text, { title: CLOSING.title, fill: C.warm, border: C.warmLine, size: 9.5 });
+  // the recommended class for this challenge, as on the last page of the app
+  const N = NEXT_CLASS[pillar], classUrl = N.url || config.classUrl;
+  box([N.lead, N.text, '', `Klinik disyorkan: ${N.name} · ${N.price} · ${N.meta}`, classUrl && `Daftar: ${classUrl}`].filter((x) => x != null && x !== false).join('\n'),
+    { title: `Langkah seterusnya: ${N.title}`, fill: C.nude, size: 9.5 });
 
   doc.y += 4;
   text(ai.source === 'ai' ? AI_NOTE : REPORT_NOTE, { size: 8, color: C.muted });

@@ -2,7 +2,7 @@
 // → AI coach report (server/coach.mjs; the fixed v4 text when the AI is off). Saved
 // through our API to the participant's row in the Google Sheet. No login: a random key in this browser identifies the participant; a
 // facilitator's ?c=CODE files them under that session.
-import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defaultPlan, coachInput, workshopQuestions } from './content.mjs';
+import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, defaultPlan, coachInput, workshopQuestions } from './content.mjs';
 
 (async () => {
   'use strict';
@@ -381,8 +381,16 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
     $('reflPrepared').textContent = R.reflection.prepared;
     $('reflValidate').textContent = R.reflection.to_validate;
     $('reflGuidance').textContent = R.reflection.further_guidance;
-    $('closingTitle').textContent = CLOSING.title;
-    $('closingText').textContent = CLOSING.text;
+    // the recommended class for this challenge
+    const C = NEXT_CLASS[p];
+    $('nextTitle').textContent = C.title;
+    $('nextLead').textContent = C.lead;
+    $('nextText').textContent = C.text;
+    $('className').textContent = C.name;
+    $('classPrice').textContent = C.price;
+    $('classMeta').textContent = C.meta;
+    $('classCtaText').textContent = C.cta;
+    $('classLink').href = C.url || KB.cfg.classUrl || '#';
     $$('[data-regenerate]').forEach((b) => { b.hidden = ai.source !== 'ai' && !KB.cfg.aiReady; });
     drawStale();
     drawPage();
@@ -400,6 +408,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
     $('revealFill').style.width = `${(n / PAGES) * 100}%`;
     $('revealPrevBtn').hidden = n === 1;
     $('revealNextBtn').hidden = n === PAGES;
+    $('revealDone').hidden = n !== PAGES;
     requestAnimationFrame(growAll);
   }
   // Turns to page n: the new page slides in from the side it comes from, the view goes back to the
@@ -528,18 +537,6 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
   $('editNumbersBtn').onclick = () => { go(2); scrollToEl($('main')); };
   $('backToQuestionsBtn').onclick = () => { go(1); scrollToEl($('main')); };
 
-  // The download button is also the call to action: after the PDF, the class page opens in a new
-  // tab. Browsers that block it (the PDF takes a moment, so the click no longer counts) still get
-  // the link right under the button.
-  function openClass() {
-    const url = KB.cfg.classUrl;
-    if (!url) return;
-    $('classLink').href = url;
-    show('classCta', true);
-    const w = window.open(url, '_blank');
-    if (w) w.opener = null;
-  }
-
   // Downloads the report PDF the server builds (the same file kept in Drive). Saves first.
   $('downloadBtn').onclick = async () => {
     const btn = $('downloadBtn'), label = btn.innerHTML;
@@ -554,7 +551,6 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defau
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
       notice('reportMessage', 'Laporan PDF dimuat turun.');
-      openClass();
     } catch (err) {
       console.error(err);
       notice('reportMessage', `PDF gagal dimuat turun: ${err.message}. Cuba lagi.`, true);

@@ -245,6 +245,32 @@ export const CLOSING = {
   title: 'Langkah seterusnya, ikut keperluan anda',
   text: 'Anda sudah ada satu tindakan untuk diuji. Selepas mengumpulkan bukti, semak sama ada masalah utama sudah berkurang atau masih memerlukan proses dan latihan yang lebih mendalam. Jika perlukan bantuan, pilih sesi lanjutan yang paling relevan dengan gap anda. Tiada keperluan untuk membuat keputusan sekarang.',
 };
+// The recommended class at the end of the report (07), one per challenge. Class names from the
+// KBSME programme list; Sales copy as agreed. url: blank = CLASS_URL from the server.
+export const NEXT_CLASS = {
+  sales: {
+    title: 'Viewers Dah Ramai, Tapi Sales Masih Perlahan?',
+    lead: 'Berdasarkan jawapan anda, cabaran utama mungkin terletak pada cara meyakinkan viewers untuk membeli.',
+    text: 'Anda dah ada tindakan pertama untuk dicuba. Nak belajar susun LIVE daripada opening sampai closing? Jom bina flow LIVE selling anda sendiri dengan bimbingan praktikal.',
+    name: 'Live Laris: Dari Viewers ke Buyers', price: 'RM198', meta: '4.5 jam · Kelas praktikal',
+    cta: 'Saya Nak Sertai Klinik Live Laris', url: '',
+  },
+  marketing: {
+    title: 'Dah Selalu Post, Tapi Inquiry Masih Sikit?',
+    lead: 'Berdasarkan jawapan anda, cabaran utama mungkin terletak pada sistem content yang belum tersusun.',
+    text: 'Anda dah ada tindakan pertama untuk dicuba. Nak siapkan content sebulan tanpa pening cari idea setiap hari? Jom bina prompt, idea dan kalendar content anda sendiri dengan bimbingan praktikal.',
+    name: 'Content Sebulan Settle! — Guna ChatGPT', price: 'RM198', meta: 'Kelas praktikal',
+    cta: 'Saya Nak Sertai Klinik Content Sebulan Settle', url: '',
+  },
+  money: {
+    title: 'Jualan Ada, Tapi Untung Masih Kabur?',
+    lead: 'Berdasarkan jawapan anda, cabaran utama mungkin terletak pada kos dan harga yang belum dikira dengan lengkap.',
+    text: 'Anda dah ada tindakan pertama untuk dicuba. Nak tahu harga minimum dan harga sasaran yang betul untuk produk anda? Jom lengkapkan costing anda sendiri dengan bimbingan praktikal.',
+    name: 'Kira Cost Guna AI: Lepas Ni, Kira Harga Sendiri!', price: 'RM198', meta: 'Kelas praktikal',
+    cta: 'Saya Nak Sertai Klinik Kira Cost Guna AI', url: '',
+  },
+};
+
 export const CALC_NOTE = 'Kalkulator ini untuk membantu anda berfikir dan membuat anggaran, bukan ramalan hasil. Semak andaian dan gunakan data sebenar sebelum membuat keputusan.';
 
 export const money = (n) => (n < 0 ? '-RM' : 'RM') + Math.abs(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
