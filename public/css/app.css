@@ -200,6 +200,8 @@ textarea.grow { resize: none; overflow: hidden; }
 
 .account-links { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: 16px; }
 .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 25px; }
+.footer p { margin: 0 0 6px; }
+.footer .footer-brand { color: var(--ink); font-weight: 700; font-size: 13px; }
 
 /* ─── prose pages (privacy notice, 404) ─── */
 .prose { max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 26px 20px; }
