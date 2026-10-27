@@ -277,7 +277,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   }
   $('diagnoseBtn').onclick = () => { if (answers().selected.length === PICK) { go(2); scrollToEl($('main')); } };
 
-  // ─────────────── Langkah 03: optional numbers and start date ───────────────
+  // ─────────────── Langkah 03: optional numbers ───────────────
   function drawEvidence() {
     const p = state.pillar, d = PILLARS[p], a = answers();
     $('calculatorTitle').textContent = d.calculatorTitle;
@@ -287,16 +287,13 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $('calculatorFields').innerHTML = d.fields.map((f) => `<div class="calcfield"><label for="calc_${f.id}">${KB.esc(f.label)}</label><input type="number" inputmode="decimal" id="calc_${f.id}" data-calc="${f.id}" min="${f.min ?? 0}" ${f.max != null ? `max="${f.max}"` : ''} step="${f.step ?? 1}" placeholder="${KB.esc(String(f.value))}" value="${KB.esc(a.calc[f.id] ?? '')}"></div>`).join('');
     $$('[data-calc]').forEach((el) => { el.oninput = () => { a.calc[el.dataset.calc] = el.value; drawCalc(); safeSave(); }; });
     drawCalc();
-    drawStartDate();
     $('reportBtn').textContent = a.ai && fresh() ? 'Lihat laporan saya →' : 'Jana diagnosis AI saya →';
   }
   // Empty boxes show the prototype's example figures, which the calculator uses until the
   // participant enters their own; only their own figures are sent to the AI.
   function drawCalc() {
-    const a = answers(), r = calculate(state.pillar, a.calc);
+    const r = calculate(state.pillar, answers().calc);
     $('calculatorResult').innerHTML = `${r.lines.map(KB.esc).join('<br>')}<small>${KB.esc(r.note)}</small>`;
-    const own = PILLARS[state.pillar].fields.some((f) => txt(a.calc[f.id]) !== '');
-    $('calcOwnNote').textContent = own ? 'Angka anda akan digunakan oleh AI. Kotak kosong guna angka contoh.' : 'Kotak kosong: angka contoh digunakan untuk kiraan sahaja dan tidak dihantar kepada AI.';
   }
   function drawStartDate() { $$('[data-startdate]').forEach((el) => { el.value = answers().plan.startDate || ''; }); }
   $$('[data-startdate]').forEach((el) => el.addEventListener('input', () => {
@@ -309,8 +306,10 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
 
   // ─────────────── the AI coach ───────────────
   // The diagnosis is current while the inputs the AI saw are unchanged (the same function the
-  // server uses builds them).
-  const fresh = () => answers().ai?.inputKey === JSON.stringify(coachInput(state));
+  // server uses builds them). The start date is picked on the plan page after the analysis, so
+  // choosing it does not make the analysis out of date.
+  const inputKey = (input) => JSON.stringify({ ...input, action_start_date: undefined });
+  const fresh = () => { try { return inputKey(JSON.parse(answers().ai.inputKey)) === inputKey(coachInput(state)); } catch { return false; } };
   let generating = false;
   async function generate() {
     if (generating) return;
@@ -322,7 +321,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     try {
       await saveNow(); // the server builds the AI input from the saved answers
       const r = await KB.api('/api/coach', { method: 'POST', body: {} });
-      Object.assign(answers(), { ai: r.ai, planDone: [], revealed: 1 });
+      Object.assign(answers(), { ai: r.ai, planDone: [], page: 1 });
       reached = 3;
       go(3);
       scrollToEl($('main'));
@@ -353,7 +352,7 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     const reasonOf = (n) => R.issue_analysis?.find((x) => x.number === n)?.reason || (n === R.primary_issue ? R.priority_reason : '');
     $('symptomList').innerHTML = a.selected.map((i, k) => {
       const n = k + 1, main = R.primary_issue === n, why = reasonOf(n);
-      return `<div class="issuerow${main ? ' primary' : ''}" role="row"><div class="issuecell" role="cell"><span class="issuenum">${n}</span><div>${main ? '<span class="badge">Isu utama</span>' : ''}<p>${KB.esc(d.issues[i])}</p></div></div><div class="reasoncell" role="cell"><span class="reasonlabel">${main ? 'Kenapa didahulukan' : 'Analisis'}</span><p>${why ? KB.esc(why) : '—'}</p></div></div>`;
+      return `<div class="issuerow${main ? ' primary' : ''}" role="row"><div class="issuecell" role="cell"><span class="issuenum">${n}</span><div>${main ? '<span class="badge">Isu utama</span>' : ''}<p>${KB.esc(d.issues[i])}</p></div></div><div class="reasoncell" role="cell">${main ? '<span class="reasonlabel">Kenapa didahulukan</span>' : ''}<p>${why ? KB.esc(why) : '—'}</p></div></div>`;
     }).join('') + (!R.issue_analysis?.length && R.other_issues ? `<p class="issuenote"><b>Kaitan isu lain:</b> ${KB.esc(R.other_issues)}</p>` : '');
     $('causeText').textContent = R.likely_cause;
     $('impactText').textContent = R.impact;
@@ -385,38 +384,39 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $('reportNote').textContent = ai.source === 'ai' ? AI_NOTE : REPORT_NOTE;
     $$('[data-regenerate]').forEach((b) => { b.hidden = ai.source !== 'ai' && !KB.cfg.aiReady; });
     drawStale();
-    drawReveal();
+    drawPage();
     msg('reportMessage', '');
   }
 
-  // ─────────────── the report, one section at a time ───────────────
-  const SECTIONS = 7;
-  const revealed = () => Math.min(SECTIONS, Math.max(1, answers().revealed || 1));
-  function drawReveal() {
-    const n = revealed();
-    $$('#resultView .reveal').forEach((el) => { el.hidden = +el.dataset.step > n; });
-    show('revealNav', n < SECTIONS);
-    show('reportActions', n >= SECTIONS);
-    $('revealCount').textContent = `${n} / ${SECTIONS}`;
-    $('revealFill').style.width = `${(n / SECTIONS) * 100}%`;
-    $('revealNextBtn').textContent = n === SECTIONS - 1 ? 'Lihat bahagian terakhir →' : 'Seterusnya →';
+  // ─────────────── the report, one page at a time ───────────────
+  const PAGES = 7;
+  const page = () => Math.min(PAGES, Math.max(1, answers().page || answers().revealed || 1));
+  function drawPage() {
+    const n = page();
+    $$('#resultView .page').forEach((el) => { el.hidden = +el.dataset.step !== n; });
+    show('reportActions', n === PAGES);
+    $('revealCount').textContent = `${n} / ${PAGES}`;
+    $('revealFill').style.width = `${(n / PAGES) * 100}%`;
+    $('revealPrevBtn').hidden = n === 1;
+    $('revealNextBtn').hidden = n === PAGES;
     requestAnimationFrame(growAll);
   }
-  function revealTo(n) {
-    const before = revealed();
-    answers().revealed = Math.min(SECTIONS, n);
-    drawReveal(); safeSave();
-    // bring the first newly shown section into view, and move focus to its heading for screen readers
-    const first = $('resultView').querySelector(`.reveal[data-step="${before + 1}"]`);
-    if (first && n > before) {
-      first.classList.add('appear');
-      scrollToEl(first);
-      const h = first.querySelector('h3, h4');
-      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
-    }
+  // Turns to page n: the new page slides in from the side it comes from, the view goes back to the
+  // top of the report, and focus moves to the page heading for screen readers.
+  function turnTo(n) {
+    const before = page();
+    n = Math.min(PAGES, Math.max(1, n));
+    if (n === before) return;
+    answers().page = n;
+    drawPage(); safeSave();
+    const pages = $$(`#resultView .page[data-step="${n}"]`);
+    pages.forEach((el) => { el.classList.remove('turn-next', 'turn-back'); void el.offsetWidth; el.classList.add(n > before ? 'turn-next' : 'turn-back'); });
+    scrollToEl($('resultView'));
+    const h = pages.at(-1)?.querySelector('h3, h4');
+    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
   }
-  $('revealNextBtn').onclick = () => revealTo(revealed() + 1);
-  $('revealAllBtn').onclick = () => revealTo(SECTIONS);
+  $('revealNextBtn').onclick = () => turnTo(page() + 1);
+  $('revealPrevBtn').onclick = () => turnTo(page() - 1);
   function drawStale() { show('staleNotice', !!answers().ai && !fresh()); }
   $('workOutput').addEventListener('input', () => { answers().workOutput = $('workOutput').value; autoGrow($('workOutput')); safeSave(); });
   $('exampleBtn').onclick = () => {

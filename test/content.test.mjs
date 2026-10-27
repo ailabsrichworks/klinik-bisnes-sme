@@ -18,7 +18,7 @@ test('every pillar text is exactly the prototype text', () => {
   assert.deepEqual(PILLAR_KEYS, ['sales', 'marketing', 'money']);
   for (const k of PILLAR_KEYS) {
     for (const [field, value] of Object.entries({ ...proto.data[k], ...proto.workshopData[k] })) {
-      if (k === 'sales' && field === 'fields') continue; // agreed change: buyer counts instead of %
+      if (field === 'fields' && k !== 'money') continue; // agreed changes: Sales in buyer counts, Marketing in minutes
       assert.deepEqual(PILLARS[k][field], JSON.parse(JSON.stringify(value)), `${k}.${field}`); // plain copy: vm objects have another realm's prototypes
     }
     assert.equal(PILLARS[k].issues.length, 10);
@@ -53,10 +53,12 @@ test('calculators give the prototype numbers on its default values', () => {
   assert.match(sales.note, /bukan ramalan atau jaminan/);
 
   const mk = calculate('marketing');
-  assert.equal(mk.numbers.current, 6);
-  assert.equal(mk.numbers.planned, 5);
-  assert.equal(mk.lines[0], 'Masa content semasa: 6 jam seminggu');
-  assert.equal(mk.lines[1], 'Senario perancangan baharu: 5 jam seminggu');
+  assert.equal(mk.numbers.current, 360);
+  assert.equal(mk.numbers.planned, 300);
+  assert.equal(mk.lines[0], 'Masa content semasa: 360 minit seminggu');
+  assert.equal(mk.lines[1], 'Senario perancangan baharu: 300 minit seminggu');
+  assert.equal(mk.note.slice(0, 22), 'Perbezaan masa: 60 min');
+  assert.ok(PILLARS.marketing.fields.every((x) => !/jam/i.test(x.label)), 'no hours in the labels');
 
   const money = calculate('money');
   assert.equal(money.numbers.total, 25);
@@ -70,7 +72,7 @@ test('calculators use saved values, and treat blanks and negatives as 0', () => 
   assert.equal(calculate('sales', { buyers: '3' }).numbers.now, 240);
   assert.equal(calculate('money', { sellingPrice: '' }).numbers.balance, -25);
   assert.equal(calculate('money', { sellingPrice: '0' }).note.slice(0, 41), 'Anggaran margin atas harga jualan: 0.0%. ');
-  assert.equal(calculate('marketing', { hoursEach: '-3' }).numbers.current, 0);
+  assert.equal(calculate('marketing', { minutesEach: '-3' }).numbers.current, 0);
   assert.equal(calcInputs('sales', { viewers: '50' }).buyers, '2');
   assert.equal(calculate('money', { sellingPrice: '10' }).lines[1], 'Baki selepas kos yang disenaraikan: -RM15.00 seunit');
 });

@@ -136,11 +136,11 @@ export const PILLARS = {
         "min": 0
       },
       {
-        "id": "hoursEach",
-        "label": "Jam untuk siapkan satu content",
-        "value": 2,
+        "id": "minutesEach",
+        "label": "Minit untuk siapkan satu content",
+        "value": 120,
         "min": 0,
-        "step": 0.5
+        "step": 5
       },
       {
         "id": "plannedCount",
@@ -149,11 +149,11 @@ export const PILLARS = {
         "min": 0
       },
       {
-        "id": "plannedHours",
-        "label": "Jam sasaran untuk satu content",
-        "value": 1,
+        "id": "plannedMinutes",
+        "label": "Minit sasaran untuk satu content",
+        "value": 60,
         "min": 0,
-        "step": 0.5
+        "step": 5
       }
     ],
     "exerciseTitle": "Tukar satu masalah pelanggan menjadi content",
@@ -271,10 +271,11 @@ export function calculate(pillar, saved = {}) {
     };
   }
   if (pillar === 'marketing') {
-    const current = v.contentCount * v.hoursEach, planned = v.plannedCount * v.plannedHours;
+    // In minutes, not hours (agreed change from the prototype's hour fields).
+    const current = v.contentCount * v.minutesEach, planned = v.plannedCount * v.plannedMinutes;
     return {
-      lines: [`Masa content semasa: ${current.toLocaleString('en-MY')} jam seminggu`, `Senario perancangan baharu: ${planned.toLocaleString('en-MY')} jam seminggu`],
-      note: `Perbezaan masa: ${(current - planned).toLocaleString('en-MY')} jam. Semak kualiti, kesesuaian dan hasil content juga; lebih banyak posting tidak semestinya lebih berkesan.`,
+      lines: [`Masa content semasa: ${current.toLocaleString('en-MY')} minit seminggu`, `Senario perancangan baharu: ${planned.toLocaleString('en-MY')} minit seminggu`],
+      note: `Perbezaan masa: ${(current - planned).toLocaleString('en-MY')} minit. Semak kualiti, kesesuaian dan hasil content juga; lebih banyak posting tidak semestinya lebih berkesan.`,
       numbers: { current, planned, diff: current - planned },
     };
   }

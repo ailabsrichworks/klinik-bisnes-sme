@@ -267,15 +267,18 @@ textarea.grow { resize: none; overflow: hidden; }
   .issuerow.primary .reasoncell { border-left-color: #d5e3c4; }
 }
 
-/* The report, one section at a time */
-#resultView .reveal { margin-top: 16px; }
-.reveal.appear { animation: appear .35s ease-out; }
-@keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .reveal.appear { animation: none; } }
+/* The report, one page at a time */
+#resultView .page { margin-top: 16px; }
+.page.turn-next { animation: turn-next .3s ease-out; }
+.page.turn-back { animation: turn-back .3s ease-out; }
+@keyframes turn-next { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes turn-back { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .page.turn-next, .page.turn-back { animation: none; } }
 .revealnav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--field); border-radius: 16px; background: #fbfcf8; }
 .revealprogress { display: flex; align-items: center; gap: 12px; flex: 1 1 180px; font-size: 14px; font-weight: 700; color: var(--green); }
 .revealprogress .progress { flex: 1; margin: 0; }
-.revealbtns { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.revealbtns { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.revealbtns > * { white-space: nowrap; }
 @media (max-width: 760px) { .revealbtns { width: 100%; } .revealbtns .primary { flex: 1; } }
 
 /* Warning before switching challenge */

@@ -143,7 +143,7 @@ test('saves reach the sheet; bad or oversized saves are refused', async () => {
   assert.equal(at('session_code'), 'KL-NOV26');
   assert.equal(at('pillar'), 'Marketing');
   assert.equal(at('situation_1'), PILLARS.marketing.issues[1]);
-  assert.match(at('calc_result'), /Masa content semasa: 6 jam seminggu/);
+  assert.match(at('calc_result'), /Masa content semasa: 360 minit seminggu/);
   const back = (await call('/api/journey', { key: k })).body;
   assert.equal(back.step, 3);
   assert.equal(back.state.byPillar.marketing.workOutput, 'Hook: Content ada setiap hari?');

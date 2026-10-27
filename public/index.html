@@ -103,18 +103,15 @@
           <div class="bottomrow"><span class="counter" id="counter" aria-live="polite">0 daripada 3 dipilih</span><button class="primary" type="button" id="diagnoseBtn" disabled>Lihat diagnosis saya →</button></div>
         </div>
 
-        <!-- Langkah 03: optional numbers and start date, before the AI report -->
+        <!-- Langkah 03: optional numbers, before the AI report -->
         <div id="evidenceView" hidden>
           <div class="sectionhead"><div><div class="label">Langkah 03 · Angka anda (pilihan)</div><h2>Tambah angka anda sebelum diagnosis.</h2></div><div class="tag">PILIHAN</div></div>
-          <p class="instruction">Semua di bawah ialah pilihan. Jika anda isi angka sendiri dan tarikh mula, AI menggunakannya untuk menyesuaikan diagnosis dan pelan anda.</p>
           <section class="workshop" aria-labelledby="calculatorTitle">
             <div class="label">Kalkulator</div><h3 id="calculatorTitle"></h3><p class="sub" id="calculatorIntro"></p>
             <div id="calculatorFields" class="calcfields"></div>
             <div class="calcresult" id="calculatorResult" aria-live="polite"></div>
             <p class="fineprint" id="calcNote"></p>
-            <p class="fineprint" id="calcOwnNote"></p>
           </section>
-          <div class="field datefield"><label for="startDate">Bila anda akan mula?</label><input id="startDate" type="date" data-startdate></div>
           <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
           <div class="bottomrow"><button class="ghost" type="button" id="evidenceBackBtn">← Kembali</button><button class="primary" type="button" id="reportBtn">Jana diagnosis AI saya →</button></div>
         </div>
@@ -130,38 +127,38 @@
         <!-- The report -->
         <div id="resultView" hidden>
           <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag" id="sourceTag">DIAGNOSIS AI</div></div>
-          <div class="stale" id="staleNotice" hidden><span>Angka atau tarikh mula berubah sejak diagnosis ini dijana.</span><button class="ghost small" type="button" data-regenerate>Jana semula</button></div>
-          <div class="resulttop"><div class="eyebrow" id="diagEyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
-          <!-- The 7 sections are revealed one at a time (Seterusnya), or all at once (Tunjuk semua). -->
-          <section class="resultcard reveal" data-step="1" aria-labelledby="symTitle">
+          <div class="stale" id="staleNotice" hidden><span>Angka berubah sejak diagnosis ini dijana.</span><button class="ghost small" type="button" data-regenerate>Jana semula</button></div>
+          <div class="resulttop page" data-step="1"><div class="eyebrow" id="diagEyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
+          <!-- The report is 7 pages, one shown at a time (Kembali / Seterusnya); the diagnosis summary is on page 1. -->
+          <section class="resultcard page" data-step="1" aria-labelledby="symTitle">
             <div class="label">01 · Simptom</div><h4 id="symTitle">Apa yang sedang berlaku?</h4>
             <div class="issuetable" role="table" aria-label="Situasi yang dipilih dan analisis">
               <div class="issuehead" role="row"><span role="columnheader">Situasi yang anda pilih</span><span role="columnheader">Analisis</span></div>
               <div id="symptomList"></div>
             </div>
           </section>
-          <section class="resultcard reveal" data-step="2" aria-labelledby="causeTitle"><div class="label">02 · Punca berkemungkinan</div><h4 id="causeTitle">Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></section>
-          <section class="resultcard reveal" data-step="3" aria-labelledby="impactTitle"><div class="label">03 · Impak kepada bisnes</div><h4 id="impactTitle">Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><div id="evidenceToCheck"></div></section>
-          <section class="workshop reveal" data-step="4" aria-labelledby="calcSummaryTitle">
+          <section class="resultcard page" data-step="2" aria-labelledby="causeTitle"><div class="label">02 · Punca berkemungkinan</div><h4 id="causeTitle">Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></section>
+          <section class="resultcard page" data-step="3" aria-labelledby="impactTitle"><div class="label">03 · Impak kepada bisnes</div><h4 id="impactTitle">Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><div id="evidenceToCheck"></div></section>
+          <section class="workshop page" data-step="4" aria-labelledby="calcSummaryTitle">
             <div class="label">04 · Kira / semak impak</div><h3 id="calcSummaryTitle"></h3>
             <ul class="calclist" id="calcSummary"></ul>
             <div class="calcresult" id="calcSummaryResult"></div>
             <div class="bottomrow"><span class="counter">Angka dikira oleh sistem, bukan AI.</span><button class="ghost small" type="button" id="editNumbersBtn">Ubah angka</button></div>
           </section>
-          <section class="workshop reveal" data-step="5" aria-labelledby="exerciseTitle">
+          <section class="workshop page" data-step="5" aria-labelledby="exerciseTitle">
             <div class="label">05 · Quick Fix workshop</div><h3 id="exerciseTitle"></h3><p id="exerciseBrief"></p>
             <ol class="steplist promptbox" id="exerciseSteps"></ol>
             <label class="fieldlabel" for="workOutput" id="workOutputLabel">Hasil latihan anda</label><textarea id="workOutput" class="grow" rows="5" maxlength="4000" placeholder="Tulis hasil latihan anda di sini..."></textarea>
             <div class="bottomrow"><span class="counter">Hasil latihan disimpan dalam laporan anda</span><button class="ghost" type="button" id="exampleBtn" aria-expanded="false" aria-controls="exampleBox">Lihat contoh</button></div>
             <div class="example" id="exampleBox" hidden><div class="label">Contoh</div><p id="exampleText"></p></div>
           </section>
-          <section class="workshop reveal" data-step="6" aria-labelledby="planTitle">
+          <section class="workshop page" data-step="6" aria-labelledby="planTitle">
             <div class="label">06 · Pelan tindakan 7 hari</div><h3 id="planTitle">Jangan berhenti setakat faham. Uji dalam bisnes.</h3>
             <div class="field datefield"><label for="actionDate">Bila anda akan mula?</label><input id="actionDate" type="date" data-startdate></div>
             <p class="sub">Setiap item: <b>A</b> tindakan, <b>B</b> ukuran kejayaan, <b>C</b> bukti yang akan disemak. Tandakan apabila selesai.</p>
             <ol class="checklist" id="planList"></ol>
           </section>
-          <section class="workshop nextstep reveal" data-step="7" aria-labelledby="reflectionTitle">
+          <section class="workshop nextstep page" data-step="7" aria-labelledby="reflectionTitle">
             <div class="label">07 · Reflection</div><h3 id="reflectionTitle">Di mana execution gap anda?</h3>
             <div class="cards three">
               <div class="resultcard"><h4>Apa yang sudah anda faham / sediakan</h4><p id="reflPrepared"></p></div>
@@ -172,7 +169,7 @@
           </section>
           <div class="revealnav" id="revealNav">
             <div class="revealprogress"><span id="revealCount">1 / 7</span><div class="progress" aria-hidden="true"><div id="revealFill"></div></div></div>
-            <div class="revealbtns"><button class="linkbtn" type="button" id="revealAllBtn">Tunjuk semua</button><button class="primary" type="button" id="revealNextBtn">Seterusnya →</button></div>
+            <div class="revealbtns"><button class="ghost" type="button" id="revealPrevBtn">← Kembali</button><button class="primary" type="button" id="revealNextBtn">Seterusnya →</button></div>
           </div>
           <p class="fineprint" id="reportNote"></p>
           <div id="reportMessage" class="message" role="status" aria-live="polite"></div>
