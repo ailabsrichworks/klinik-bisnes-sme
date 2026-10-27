@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { PILLARS, CLOSING, CALC_NOTE, REPORT_NOTE, calculate, calcInputs } from '../public/js/content.mjs';
 import { pillarAnswers } from './store.mjs';
 
-const fonts = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fonts');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const fonts = path.join(here, 'fonts');
+// The same logo files as the web header (dark artwork, so they sit on the white strip above the band).
+const LOGOS = { klinik: path.join(here, '..', 'public', 'img', 'klinik-bisnes-sme.png'), rcg: path.join(here, '..', 'public', 'img', 'rcg.png') };
 const C = { green: '#174b3b', lime: '#d7f36b', ink: '#17211d', muted: '#64716b', line: '#e1e6df', soft: '#edf4ef', cream: '#f7f8f2', fix: '#f1f7e4', warm: '#fff9ed', warmLine: '#f0dfbd' };
 
 // Emoji and other symbols outside the fonts would print as boxes.
@@ -68,13 +71,17 @@ export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
     text(value || 'Belum diisi', { color: value ? C.ink : C.muted, gap: 6 });
   };
 
-  // Header band
-  doc.rect(0, 0, doc.page.width, 104).fill(C.green);
-  doc.font('Bold').fontSize(8).fillColor(C.lime).text(`BUSINESS QUICK FIX · ${P.name.toUpperCase()}`, L, 26, { characterSpacing: 1.4, width: W });
-  doc.font('Display').fontSize(22).fillColor('#ffffff').text(clean(p.business) || 'Laporan peserta', L, 42, { width: W });
+  // Logos on a white strip: Klinik Bisnes SME left, RCG right (as on the web page)
+  doc.image(LOGOS.klinik, L, 18, { height: 50 });
+  doc.image(LOGOS.rcg, L + W - 60, 24, { fit: [60, 38], align: 'right' });
+  // Title band
+  const B = 82;
+  doc.rect(0, B, doc.page.width, 98).fill(C.green);
+  doc.font('Bold').fontSize(8).fillColor(C.lime).text(`BUSINESS QUICK FIX · ${P.name.toUpperCase()}`, L, B + 20, { characterSpacing: 1.4, width: W });
+  doc.font('Display').fontSize(22).fillColor('#ffffff').text(clean(p.business) || 'Laporan peserta', L, B + 35, { width: W });
   doc.font('Body').fontSize(9).fillColor('#d9e7df')
-    .text([clean(p.name), dateMY(date), clean(sessionName)].filter(Boolean).join('  ·  '), L, 74, { width: W });
-  doc.y = 122;
+    .text([clean(p.name), dateMY(date), clean(sessionName)].filter(Boolean).join('  ·  '), L, B + 67, { width: W });
+  doc.y = B + 116;
   text([p.industry, p.businessModel, p.businessAge, p.monthlySales && `Jualan: ${p.monthlySales}`].filter(Boolean).join('  ·  '), { size: 8.5, color: C.muted, gap: 10 });
 
   // Diagnosis banner
