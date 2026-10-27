@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Quick Fix | Guided Workshop Prototype</title>
+<style>
+:root{--ink:#17211d;--muted:#64716b;--green:#174b3b;--lime:#d7f36b;--cream:#f7f7f1;--line:#e1e6df;--white:#fff;--orange:#f2a65a;--soft:#edf4ef}
+*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:1080px;margin:auto;padding:28px 18px 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}.brand{display:flex;gap:12px;align-items:center;font-weight:800;letter-spacing:-.03em}.mark{width:42px;height:42px;background:var(--green);color:var(--lime);border-radius:13px;display:grid;place-items:center;font-size:21px}.pill{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:#e8eddf;border-radius:999px;padding:8px 12px;color:var(--green)}
+.hero{background:var(--green);color:white;border-radius:26px;padding:clamp(24px,5vw,48px);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:230px;height:230px;border:1px solid #ffffff25;border-radius:50%;right:-55px;top:-65px;box-shadow:0 0 0 28px #ffffff0a,0 0 0 58px #ffffff08}.eyebrow{color:var(--lime);font-size:12px;letter-spacing:.15em;font-weight:800;text-transform:uppercase}.hero h1{font-size:clamp(32px,5vw,54px);line-height:1.04;letter-spacing:-.05em;margin:14px 0;max-width:650px}.hero p{color:#d9e7df;max-width:650px;margin:0;font-size:17px}.steps{display:flex;gap:8px;margin:24px 0 0;flex-wrap:wrap}.step{border:1px solid #ffffff40;border-radius:999px;padding:7px 11px;font-size:12px;color:#eef4ee}
+.layout{display:grid;grid-template-columns:290px 1fr;gap:22px;margin-top:22px}.panel,.mainpanel{background:var(--white);border:1px solid var(--line);border-radius:22px;padding:22px}.panel h2,.mainpanel h2{margin:0 0 8px;letter-spacing:-.03em}.sub{color:var(--muted);font-size:14px;margin:0 0 18px}.category{display:flex;gap:12px;align-items:flex-start;width:100%;padding:14px;margin:8px 0;border:1px solid var(--line);background:#fff;border-radius:15px;text-align:left;cursor:pointer;color:var(--ink);transition:.15s}.category.active{background:var(--soft);border:2px solid var(--green);padding:13px}.caticon{width:40px;height:40px;border-radius:12px;background:#f0f3eb;display:grid;place-items:center;font-size:20px;flex-shrink:0}.category strong{display:block;font-size:15px}.category small{display:block;color:var(--muted);margin-top:2px;font-size:12px}.meta{margin-top:18px;padding:14px;border-radius:14px;background:#f8f8f3;font-size:13px;color:var(--muted)}.mainpanel{min-height:560px}.sectionhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.sectionhead h2{font-size:26px;line-height:1.15}.tag{font-size:11px;background:#f3f0e5;color:#725a20;border-radius:999px;padding:7px 10px;font-weight:800;white-space:nowrap}.progress{height:6px;background:#edf0e9;border-radius:99px;overflow:hidden;margin:16px 0 20px}.progress div{height:100%;width:0;background:var(--green);transition:.2s}.instruction{color:var(--muted);font-size:14px;margin:0 0 15px}.issues{display:grid;gap:10px}.issue{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;transition:.15s}.issue:hover{border-color:#9fb5a7}.issue.selected{border-color:var(--green);background:#f0f6f0}.issue input{accent-color:var(--green);margin-top:4px;width:17px;height:17px;flex-shrink:0}.issue .num{color:#78867e;font-size:12px;font-weight:800;margin-right:4px}.issue span{font-size:14px}.issue.disabled{opacity:.45;cursor:not-allowed}.bottomrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;flex-wrap:wrap}.counter{font-size:13px;color:var(--muted)}button.primary{border:0;background:var(--green);color:white;padding:13px 18px;border-radius:12px;font-weight:800;cursor:pointer}button.primary:disabled{opacity:.35;cursor:not-allowed}button.ghost{border:1px solid var(--line);background:white;color:var(--ink);padding:11px 15px;border-radius:12px;font-weight:700;cursor:pointer}.results{display:none}.resulttop{background:var(--green);color:white;padding:22px;border-radius:17px;margin:18px 0}.resulttop .eyebrow{font-size:11px}.resulttop h3{font-size:25px;line-height:1.2;letter-spacing:-.03em;margin:7px 0}.resulttop p{color:#dce9e0;margin:0;font-size:14px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.resultcard{border:1px solid var(--line);border-radius:16px;padding:17px}.resultcard h4{margin:0 0 9px;font-size:14px}.resultcard p,.resultcard li{font-size:14px;color:#4f5c55}.resultcard ul{padding-left:18px;margin:6px 0}.wide{grid-column:1/-1}.fix{background:#f1f7e4;border-color:#dbe9bd}.fix h4{color:var(--green)}.label{font-size:10px;letter-spacing:.12em;font-weight:900;color:#738078;text-transform:uppercase;margin-bottom:8px}.closing{margin-top:15px;background:#fff9ed;border:1px solid #f0dfbd;border-radius:16px;padding:18px}.closing h4{margin:0 0 8px}.closing p{margin:0;color:#625641;font-size:14px}.offer{display:flex;align-items:center;justify-content:space-between;gap:18px;background:var(--green);color:white;border-radius:18px;padding:20px;margin-top:14px}.offer h3{margin:0 0 5px;font-size:20px}.offer p{margin:0;color:#d8e6dc;font-size:13px}.price{font-size:29px;font-weight:900;color:var(--lime);white-space:nowrap}.fineprint{font-size:11px;color:var(--muted);margin-top:14px}.footer{text-align:center;color:var(--muted);font-size:12px;margin-top:25px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.panel{padding:17px}.category{display:inline-flex;width:calc(33.333% - 7px);vertical-align:top;flex-direction:column;padding:10px;gap:7px}.category.active{padding:9px}.category small{display:none}.caticon{width:34px;height:34px}.panel .sub{margin-bottom:12px}.mainpanel{padding:17px}.cards{grid-template-columns:1fr}.wide{grid-column:auto}.offer{align-items:flex-start;flex-direction:column}.top{align-items:flex-start}.pill{font-size:10px}}
+@media(max-width:430px){.category{width:100%;flex-direction:row;align-items:center}.category small{display:block}.category .caticon{width:40px;height:40px}}
+
+.intake{background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(20px,4vw,32px);margin-top:22px}.intake h2{margin:0 0 8px;letter-spacing:-.03em}.intake-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.intake-field label{display:block;font-size:13px;font-weight:750;margin-bottom:6px}.intake-field input,.intake-field select{width:100%;border:1px solid #d9e1d9;border-radius:10px;padding:12px;font:inherit;background:white}.intake-note{background:#f7f8f2;border-radius:12px;padding:12px;color:var(--muted);font-size:12px;margin:14px 0}.intake-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}.consent{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--muted);margin-top:14px}.consent input{margin-top:4px;flex-shrink:0}@media(max-width:760px){.intake-grid{grid-template-columns:1fr}}
+.workshop{margin-top:16px;border:1px solid var(--line);border-radius:18px;padding:20px;background:#fff}.workshop h3{margin:0 0 8px;font-size:21px;letter-spacing:-.03em}.workshop>p{font-size:14px;color:#4f5c55}.calcfields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.calcfield{border:1px solid var(--line);border-radius:13px;padding:12px}.calcfield label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.calcfield input{width:100%;border:1px solid #d9e1d9;border-radius:9px;padding:10px;font:inherit}.calcresult{margin-top:12px;border-radius:13px;padding:15px;background:#edf4ef;color:var(--green);font-weight:700}.calcresult small{display:block;font-weight:400;color:#52645a;margin-top:5px}.muted{color:var(--muted)}.small{font-size:12px}.promptbox{background:#f7f8f2;border-left:4px solid var(--green);padding:14px;border-radius:0 12px 12px 0;font-size:14px;margin:12px 0}.fieldlabel{display:block;font-weight:750;font-size:13px;margin:12px 0 6px}.workshop textarea,.workshop input:not([type=date]){width:100%;border:1px solid #d9e1d9;border-radius:10px;padding:12px;font:inherit;resize:vertical;background:white}.planfields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.nextstep{background:#fbfcf8}.nextstep .cards{margin-top:12px}.nextstep .closing{background:#f8f8f3;border-color:var(--line)}
+@media(max-width:760px){.calcfields,.planfields{grid-template-columns:1fr}.workshop{padding:15px}}
+@media print{body{background:white}.wrap{max-width:none;padding:0}.top,.hero,.panel,#questionView,.footer,.bottomrow{display:none!important}.layout{display:block;margin:0}.mainpanel{border:0;padding:0}.results{display:block!important}.workshop,.resultcard,.resulttop{break-inside:avoid}.workshop textarea,.workshop input{border:1px solid #aaa}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><div class="brand"><div class="mark">B</div><div>BISNES SME<br><span style="font-size:11px;color:#68756e;font-weight:600;letter-spacing:.08em">BUSINESS QUICK FIX</span></div></div><div class="pill">Prototype · Demo</div></header>
+  <section class="hero">
+    <div class="eyebrow">Kenal pasti. Faham. Baiki.</div>
+    <h1>Apakah cabaran utama dalam bisnes anda?</h1>
+    <p>Pilih cabaran yang paling dekat dengan keadaan bisnes anda. Kenal pasti kemungkinan punca, fahami kesannya dan siapkan satu tindakan praktikal untuk diuji dalam tujuh hari.</p>
+    <div class="steps"><span class="step">01 Diagnosis</span><span class="step">02 Kira / semak impak</span><span class="step">03 Buat latihan</span><span class="step">04 Pelan 7 hari</span></div>
+  </section>
+  <section class="intake" id="intakeView">
+    <div class="label">Langkah 01 · Maklumat bisnes</div>
+    <h2>Sebelum kita mula, kenali bisnes anda dahulu.</h2>
+    <p class="sub">Maklumat ini membantu kami memahami konteks bisnes anda supaya diagnosis lebih relevan dan rekod penyertaan boleh disemak.</p>
+    <form id="profileForm" onsubmit="startDiagnosis(event)">
+      <div class="intake-grid">
+        <div class="intake-field"><label for="participantName">Nama penuh *</label><input id="participantName" name="participantName" autocomplete="name" required placeholder="Nama anda"></div>
+        <div class="intake-field"><label for="businessName">Nama bisnes *</label><input id="businessName" name="businessName" required placeholder="Nama perniagaan / brand"></div>
+        <div class="intake-field"><label for="industry">Industri bisnes *</label><select id="industry" name="industry" required><option value="">Pilih industri</option><option>F&B / Makanan & Minuman</option><option>Fesyen / Pakaian / Aksesori</option><option>Kecantikan / Kosmetik / Penjagaan diri</option><option>Kesihatan / Wellness / Fitness</option><option>Pendidikan / Training / Coaching</option><option>Servis profesional / Konsultansi</option><option>Perkhidmatan kreatif / Digital</option><option>Retail / Kedai fizikal</option><option>E-commerce / Online seller</option><option>Wholesale / Pemborong / Pengedar</option><option>Pembuatan / Manufacturing</option><option>Pertanian / Agro / Makanan mentah</option><option>Kontraktor / Pembinaan / Renovasi</option><option>Automotif</option><option>Logistik / Pengangkutan</option><option>Hospitaliti / Pelancongan</option><option>Hartanah</option><option>Lain-lain</option></select></div>
+        <div class="intake-field"><label for="businessModel">Model bisnes *</label><select id="businessModel" name="businessModel" required><option value="">Pilih model bisnes</option><option>Jual produk fizikal</option><option>Jual produk digital</option><option>Jual servis</option><option>Produk dan servis</option><option>Retail / Jualan terus kepada pelanggan</option><option>Online seller / E-commerce</option><option>Pengedar / Pemborong</option><option>Reseller / Agent / Dropship</option><option>Pengilang / Manufacturer</option><option>Langganan / Membership</option><option>Lain-lain</option></select></div>
+        <div class="intake-field"><label for="businessAge">Berapa lama bisnes beroperasi? *</label><select id="businessAge" name="businessAge" required><option value="">Pilih tempoh</option><option>Kurang daripada 1 tahun</option><option>1 hingga kurang 3 tahun</option><option>3 hingga kurang 5 tahun</option><option>5 tahun ke atas</option></select></div>
+        <div class="intake-field"><label for="monthlySales">Purata jualan bulanan *</label><select id="monthlySales" name="monthlySales" required><option value="">Pilih julat jualan</option><option>Bawah RM5,000</option><option>RM5,000–RM10,000</option><option>Lebih RM10,000 hingga RM30,000</option><option>RM30,000 ke atas</option><option>Belum ada jualan konsisten</option><option>Tidak pasti</option></select></div>
+      </div>
+      <label class="consent"><input type="checkbox" id="consentData" required><span>Saya bersetuju maklumat ini digunakan untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix. *</span></label>
+      <div class="intake-note">Maklumat bertanda * diperlukan untuk meneruskan. Untuk prototype ini, rekod hanya disimpan pada browser/peranti yang digunakan dan belum dihantar ke database pusat.</div>
+      <div class="bottomrow"><span class="counter">Langkah 1 daripada 2 · Maklumat peserta</span><button class="primary" type="submit">Simpan maklumat & mula →</button></div>
+    </form>
+    <div class="intake-status"><span id="localRecordCount">Rekod demo pada peranti ini: 0</span><button class="ghost" type="button" onclick="exportLocalRecords()">Eksport rekod demo (CSV)</button></div>
+  </section>
+  <div class="layout" id="diagnosticLayout" style="display:none">
+    <aside class="panel">
+      <h2>Pilih cabaran utama anda</h2><p class="sub">Pilih antara tiga cabaran bisnes yang paling utama.</p>
+      <button class="category active" data-cat="sales" onclick="chooseCategory('sales')"><span class="caticon">↗</span><span><strong>Sales (LIVE Sales)</strong><small>Cabaran jualan LIVE & conversion</small></span></button>
+      <button class="category" data-cat="marketing" onclick="chooseCategory('marketing')"><span class="caticon">◉</span><span><strong>Marketing</strong><small>Cabaran content & marketing</small></span></button>
+      <button class="category" data-cat="money" onclick="chooseCategory('money')"><span class="caticon">▤</span><span><strong>Urus Duit</strong><small>Cabaran kos & keuntungan</small></span></button>
+      <div class="meta"><strong>Profil peserta</strong><br><span id="profileSummary">Maklumat bisnes akan dipaparkan di sini.</span><br><br><button class="ghost" type="button" onclick="editProfile()">Edit maklumat</button><br><br><strong>Bagaimana ia berfungsi?</strong><br>Pilih 3 isu yang paling kerap berlaku. Hasil diagnosis ialah panduan awal dan perlu disahkan dengan bukti sebenar.</div>
+    </aside>
+    <main class="mainpanel">
+      <div id="questionView">
+        <div class="sectionhead"><div><div class="label" id="categoryLabel">BAHAGIAN 01 · SALES</div><h2 id="questionTitle">Kenapa sales saya tak berkembang?</h2></div><div class="tag">PILIH 3 ISU</div></div>
+        <div class="progress"><div id="progressFill"></div></div>
+        <p class="instruction" id="questionIntro">Pilih tiga situasi yang paling kerap berlaku dalam bisnes anda. Tiada jawapan betul atau salah.</p>
+        <div class="issues" id="issueList"></div>
+        <div class="bottomrow"><span class="counter" id="counter">0 daripada 3 dipilih</span><button class="primary" id="diagnoseBtn" disabled onclick="showDiagnosis()">Lihat diagnosis saya →</button></div>
+      </div>
+      <div class="results" id="resultView">
+        <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag">DIAGNOSIS + WORKSHOP</div></div>
+        <div class="resulttop"><div class="eyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
+        <div class="cards">
+          <div class="resultcard"><div class="label">01 · Simptom</div><h4>Apa yang sedang berlaku?</h4><ul id="symptomList"></ul></div>
+          <div class="resultcard"><div class="label">02 · Punca berkemungkinan</div><h4>Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></div>
+          <div class="resultcard wide"><div class="label">03 · Impak kepada bisnes</div><h4>Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><p class="muted small" id="impactPrompt"></p></div>
+        </div>
+        <section class="workshop">
+          <div class="label">04 · Kira / semak impak</div><h3 id="calculatorTitle">Letakkan angka bisnes anda</h3><p class="sub" id="calculatorIntro">Gunakan angka sebenar jika ada. Jika belum pasti, masukkan anggaran dan tandakan untuk disahkan.</p>
+          <div id="calculatorFields" class="calcfields"></div>
+          <div class="calcresult" id="calculatorResult" aria-live="polite"></div>
+          <p class="fineprint">Kalkulator ini untuk membantu anda berfikir dan membuat anggaran, bukan ramalan hasil. Semak andaian dan gunakan data sebenar sebelum membuat keputusan.</p>
+        </section>
+        <section class="workshop">
+          <div class="label">05 · Quick Fix workshop</div><h3 id="exerciseTitle">Siapkan satu tindakan sekarang</h3><p id="exerciseBrief"></p>
+          <div id="exercisePrompt" class="promptbox"></div>
+          <label class="fieldlabel" for="workOutput">Hasil latihan anda</label><textarea id="workOutput" rows="5" placeholder="Tulis draf, kiraan atau keputusan anda di sini..."></textarea>
+          <div class="bottomrow"><span class="counter">Simpan hasil latihan anda dalam laporan</span><button class="ghost" onclick="fillExample()">Lihat contoh</button></div>
+        </section>
+        <section class="workshop">
+          <div class="label">06 · Pelan tindakan 7 hari</div><h3>Jangan berhenti setakat faham. Uji dalam bisnes.</h3><p class="sub">Pilih tindakan kecil yang boleh dibuat dan diukur. Anda boleh ubah pelan ini mengikut keadaan sebenar.</p>
+          <div class="planfields">
+            <div><label class="fieldlabel" for="actionPlan">Apa tindakan yang akan dibuat?</label><textarea id="actionPlan" rows="2" placeholder="Contoh: Uji skrip pembukaan baharu untuk satu LIVE..."></textarea></div>
+            <div><label class="fieldlabel" for="successMeasure">Apa ukuran kejayaan?</label><input id="successMeasure" placeholder="Contoh: inquiry, order, masa menyiapkan content, margin..." /></div>
+            <div><label class="fieldlabel" for="actionDate">Bila anda akan mula?</label><input id="actionDate" type="date" /></div>
+            <div><label class="fieldlabel" for="proofToCheck">Bukti apa yang akan disemak selepas 7 hari?</label><textarea id="proofToCheck" rows="2" placeholder="Contoh: rekod jualan, data LIVE, 5 content, senarai kos..."></textarea></div>
+          </div>
+        </section>
+        <section class="workshop nextstep">
+          <div class="label">07 · Reflection</div><h3>Di mana execution gap anda?</h3><p id="reflectionText"></p>
+          <div class="cards">
+            <div class="resultcard"><h4>Apa yang sudah anda dapat hari ini</h4><p id="takeawayText"></p></div>
+            <div class="resultcard"><h4>Apa yang masih perlu dikuasai</h4><p id="gapText"></p></div>
+          </div>
+          <div class="closing"><h4>Langkah seterusnya, ikut keperluan anda</h4><p>Anda sudah ada satu tindakan untuk diuji. Selepas mengumpulkan bukti, semak sama ada masalah utama sudah berkurang atau masih memerlukan proses dan latihan yang lebih mendalam. Jika perlukan bantuan, pilih sesi lanjutan yang paling relevan dengan gap anda. Tiada keperluan untuk membuat keputusan sekarang.</p></div>
+        </section>
+        <p class="fineprint">Nota: Ini prototype berasaskan checklist dan respons berpandukan kategori, bukan AI live. Punca ialah hipotesis awal yang perlu disahkan melalui data dan konteks peserta. Hasil kalkulator bergantung pada input pengguna.</p>
+        <div class="bottomrow"><button class="ghost" onclick="backToQuestions()">← Kembali edit pilihan</button><button class="primary" onclick="window.print()">Cetak / Simpan laporan</button></div>
+      </div>
+    </main>
+  </div>
+  <div class="footer">Business Quick Fix · Prototype untuk perbincangan dan pengujian flow. Data dalam versi ini tidak dihantar ke database pusat.</div>
+</div>
+<script>
+const data = {
+ sales:{
+  label:"BAHAGIAN 01 · SALES (LIVE SALES)",
+  title:"Apa yang menghalang jualan anda daripada meningkat?",
+  intro:"Pilih tiga situasi yang paling kerap berlaku ketika anda menjual. Fokus pada cara anda menarik minat, meyakinkan pelanggan dan menukar minat kepada pembelian.",
+  issues:[
+   "Saya buat LIVE tetapi viewers keluar selepas beberapa saat atau minit.",
+   "Viewers tengok sahaja dan sangat sedikit yang komen atau berinteraksi.",
+   "Saya tidak tahu bagaimana nak kekalkan momentum dan perhatian semasa LIVE.",
+   "Saya menerangkan produk tetapi viewers masih tidak nampak sebab untuk membeli.",
+   "Ramai bertanya harga tetapi tidak meneruskan pembelian.",
+   "Saya tidak tahu bagaimana nak menjawab bantahan atau keraguan pelanggan.",
+   "Tawaran dan sebab untuk membeli sekarang tidak cukup jelas.",
+   "Saya tidak menyebut cara untuk order atau CTA dengan jelas.",
+   "Saya sudah lama menjual atau buat LIVE tetapi jumlah order masih rendah.",
+   "Saya tidak menyemak data jualan atau LIVE untuk mengetahui bahagian yang perlu dibaiki."
+  ],
+  titleOut:"Kemungkinan terdapat jurang dalam proses menukar perhatian dan minat kepada pembelian.",
+  introOut:"Pilihan anda menunjukkan cabaran mungkin berlaku pada tarikan awal, penerangan nilai produk, cara menjawab keraguan atau proses closing. Ini diagnosis awal; punca sebenar perlu disahkan melalui contoh dan data jualan.",
+  cause:"Kemungkinan proses menjual belum cukup tersusun dari awal hingga akhir. Contohnya, pelanggan tertarik tetapi belum nampak nilai, belum yakin, atau tidak jelas bagaimana hendak membeli. Jika cabaran berlaku ketika LIVE, rakaman dan data LIVE boleh membantu mengenal pasti bahagian yang paling lemah.",
+  impact:"Prospek mungkin hilang sebelum membeli walaupun sudah menunjukkan minat. Masa dan usaha menjual tidak semestinya menghasilkan order, dan sukar untuk mengetahui tindakan mana yang benar-benar meningkatkan conversion.",
+  fix:"Pilih satu produk untuk sesi jualan atau LIVE seterusnya. Gunakan struktur ringkas: (1) sebut masalah pelanggan, (2) tunjukkan bagaimana produk membantu dan buktikan manfaatnya, (3) terangkan tawaran dan langkah order dengan jelas. Rekod jumlah pertanyaan dan order untuk dibandingkan dengan sesi sebelumnya.",
+  evidence:"Semak satu rakaman LIVE atau sekurang-kurangnya 10 rekod pertanyaan/jualan. Catat pertanyaan, bantahan, masa respons, CTA dan hasil akhir. Jangan anggap semua masalah berpunca daripada closing tanpa melihat bukti.",
+  reflection:"Di bahagian mana pelanggan paling kerap berhenti sebelum membeli? Apa yang anda boleh semak untuk mengesahkan sama ada masalah itu berpunca daripada perhatian, keyakinan, tawaran atau proses closing?"
+ },
+ marketing:{
+  label:"BAHAGIAN 02 · MARKETING",
+  title:"Apa yang menghalang marketing anda daripada menarik pelanggan?",
+  intro:"Pilih tiga situasi yang paling menggambarkan cara anda merancang dan menghasilkan content untuk bisnes.",
+  issues:[
+   "Saya selalu buntu dan tidak tahu content apa yang patut dipost.",
+   "Saya post hanya apabila ada masa; tiada perancangan content yang konsisten.",
+   "Content saya banyak bercerita tentang produk tetapi terasa berulang.",
+   "Content saya tidak cukup menarik untuk membuat orang berhenti scroll.",
+   "Saya tidak pasti masalah atau keperluan pelanggan yang patut dijadikan idea content.",
+   "Saya sukar menulis hook atau opening yang menarik perhatian.",
+   "Saya mengambil masa terlalu lama untuk menyiapkan satu content.",
+   "Saya tidak tahu cara menyusun content supaya mesej mudah difahami.",
+   "Content mendapat views atau likes tetapi kurang inquiry atau tindakan daripada bakal pelanggan.",
+   "Saya tidak tahu cara menggunakan ChatGPT untuk menghasilkan content yang relevan dengan pelanggan dan brand saya."
+  ],
+  titleOut:"Kemungkinan sistem perancangan dan penghasilan content anda belum cukup jelas atau konsisten.",
+  introOut:"Pilihan anda menunjukkan cabaran boleh berlaku ketika mencari idea, membina mesej, menghasilkan content atau menghubungkan content kepada tindakan pelanggan. Kita perlu menyemak contoh content sebenar untuk menentukan punca utama.",
+  cause:"Kemungkinan belum ada proses yang mudah diulang untuk mengenal pasti masalah pelanggan, membina idea, menulis hook, menyampaikan mesej dan meletakkan CTA. Menggunakan AI tanpa konteks pelanggan, produk dan brand juga boleh menghasilkan content yang generik.",
+  impact:"Masa mungkin banyak dihabiskan untuk memikirkan idea dan menyiapkan posting. Content menjadi tidak konsisten, mesej sukar dibina secara berterusan dan aktiviti marketing sukar dinilai berdasarkan hasil yang relevan.",
+  fix:"Pilih satu produk dan satu kumpulan pelanggan. Senaraikan tiga soalan atau masalah yang kerap mereka hadapi. Tukarkan satu masalah kepada content dengan empat elemen: hook yang spesifik, penerangan yang membantu, contoh atau bukti, dan satu CTA. Anda boleh gunakan ChatGPT untuk menghasilkan draf, kemudian semak ketepatan fakta dan kesesuaian dengan brand.",
+  evidence:"Semak lima content terkini. Untuk setiap satu, kenal pasti sasaran pelanggan, hook, masalah yang disentuh, CTA dan hasilnya. Bezakan metrik perhatian seperti views/likes daripada tindakan seperti inquiry, klik atau order.",
+  reflection:"Apa yang paling menghalang anda menghasilkan content yang konsisten: idea, masa, kemahiran menulis atau tiada proses? Apakah bukti yang menunjukkan cabaran itu paling besar?"
+ },
+ money:{
+  label:"BAHAGIAN 03 · URUS DUIT",
+  title:"Adakah anda tahu kos sebenar dan keuntungan produk anda?",
+  intro:"Pilih tiga situasi yang paling kerap berlaku ketika anda mengira kos, menetapkan harga dan menilai keuntungan.",
+  issues:[
+   "Saya tidak pasti jumlah kos sebenar untuk satu unit produk.",
+   "Saya menetapkan harga berdasarkan pesaing atau agak-agak sahaja.",
+   "Saya tidak memasukkan semua kos berkaitan ketika mengira harga jualan.",
+   "Saya tidak pasti berapa baki untung bagi setiap unit selepas kos produk ditolak.",
+   "Saya memberi diskaun tetapi tidak tahu kesannya kepada margin.",
+   "Saya tidak tahu produk mana yang memberikan margin lebih baik.",
+   "Kos pembungkusan, caj platform atau caj transaksi sering terlepas daripada kiraan.",
+   "Saya keliru antara jumlah sales, duit yang diterima dan keuntungan.",
+   "Saya tidak tahu berapa unit perlu dijual untuk mencapai sasaran keuntungan.",
+   "Saya masih mengira kos dan harga secara manual dan sukar menyemak andaian pengiraan."
+  ],
+  titleOut:"Kemungkinan pengiraan kos penuh dan margin produk belum cukup jelas.",
+  introOut:"Pilihan anda menunjukkan ada kos atau kaedah pengiraan yang mungkin belum lengkap. Kita tidak boleh menyimpulkan produk rugi atau harga salah tanpa menyemak angka sebenar.",
+  cause:"Kemungkinan sebahagian kos langsung atau caj berkaitan jualan tidak dimasukkan, atau harga ditetapkan tanpa mengetahui margin yang diperlukan. Semakan perlu dibuat berdasarkan kos sebenar, kuantiti, harga jualan dan caj yang berkaitan dengan produk.",
+  impact:"Jika kos tidak lengkap, margin boleh kelihatan lebih tinggi daripada keadaan sebenar. Diskaun atau peningkatan jualan juga mungkin tidak menghasilkan keuntungan yang dijangka. Kesan sebenar bergantung pada struktur kos dan angka bisnes anda.",
+  fix:"Pilih satu produk yang paling kerap dijual. Senaraikan kos produk, pembungkusan, caj platform/transaksi, subsidi penghantaran jika ditanggung bisnes dan kos langsung lain yang berkaitan. Kira jumlah kos seunit, harga jualan dan baki kasar sebelum membuat keputusan harga. Elakkan mengira kos yang sama dua kali.",
+  evidence:"Sediakan invois pembekal, kos pembungkusan, caj platform/transaksi, kos penghantaran yang ditanggung dan harga jualan sebenar. Semak unit serta kuantiti. Bezakan margin kasar daripada keuntungan bersih kerana kos operasi lain mungkin belum dimasukkan.",
+  reflection:"Jika anda tahu kos seunit dan margin produk dengan lebih tepat, keputusan apa yang akan menjadi lebih jelas: harga, diskaun, pilihan produk atau sasaran jualan?"
+ }
+};
+const workshopData={
+ sales:{
+  impactPrompt:"Fikirkan berapa ramai penonton yang benar-benar relevan, berapa orang bertanya dan berapa order berlaku. Jangan anggap semua viewers ialah bakal pembeli.",
+  calculatorTitle:"Simulasikan peluang jualan daripada LIVE", calculatorIntro:"Masukkan anggaran untuk satu sesi LIVE. Tukar angka supaya sepadan dengan bisnes anda.",
+  fields:[{id:"viewers",label:"Purata viewers yang relevan",value:100,min:0},{id:"conversion",label:"Kadar pembelian semasa (%)",value:2,min:0,max:100,step:0.5},{id:"orderValue",label:"Purata nilai setiap order (RM)",value:80,min:0,step:1},{id:"targetRate",label:"Kadar pembelian sasaran untuk diuji (%)",value:4,min:0,max:100,step:0.5}],
+  exerciseTitle:"Bina pembukaan LIVE 30 saat",exerciseBrief:"Matlamatnya bukan terus menulis skrip sempurna. Bina pembukaan yang memberi sebab kepada pelanggan sasaran untuk berhenti dan terus menonton.",
+  exercisePrompt:"Lengkapkan empat bahagian ini: (1) Siapa pelanggan yang anda bantu? (2) Apakah masalah spesifik mereka? (3) Apa yang akan mereka dapat jika terus menonton? (4) Apakah bukti atau contoh yang boleh anda tunjukkan?",
+  example:"Untuk pemilik kulit sensitif yang selalu tersalah pilih pencuci muka, dalam LIVE ini saya akan tunjuk tiga perkara pada label yang patut anda semak sebelum membeli. Saya juga akan bandingkan contoh produk supaya anda nampak apa yang perlu diperhatikan.",
+  takeaway:"Anda telah memetakan kemungkinan titik kebocoran jualan dan membina satu pembukaan LIVE untuk diuji.",gap:"Menguji pembukaan sahaja belum menjamin conversion. Anda masih perlu menghubungkan penerangan nilai, tawaran, jawapan kepada bantahan dan CTA, kemudian membandingkan data setiap sesi.",
+  defaultAction:"Uji pembukaan baharu dalam satu LIVE dan catat viewers relevan, pertanyaan serta order.",defaultMeasure:"Bandingkan pertanyaan dan order dengan satu LIVE sebelumnya yang hampir sama.",defaultProof:"Rakaman LIVE, pertanyaan pelanggan, CTA yang digunakan dan jumlah order."
+ },
+ marketing:{
+  impactPrompt:"Nilai masa yang digunakan untuk mencari idea dan menyiapkan content, kemudian bandingkan dengan tindakan pelanggan yang benar-benar berlaku. Views sahaja tidak menunjukkan keseluruhan hasil marketing.",
+  calculatorTitle:"Kira masa yang boleh disusun semula",calculatorIntro:"Anggarkan masa kerja content anda sekarang. Ini membantu menunjukkan beban proses, bukan menjanjikan pertambahan jualan.",
+  fields:[{id:"contentCount",label:"Bilangan content seminggu",value:3,min:0},{id:"hoursEach",label:"Jam untuk siapkan satu content",value:2,min:0,step:0.5},{id:"plannedCount",label:"Bilangan content sasaran seminggu",value:5,min:0},{id:"plannedHours",label:"Jam sasaran untuk satu content",value:1,min:0,step:0.5}],
+  exerciseTitle:"Tukar satu masalah pelanggan menjadi content",exerciseBrief:"Pilih satu produk dan satu kumpulan pelanggan. Bina satu content yang membantu, bukan sekadar menyenaraikan ciri produk.",
+  exercisePrompt:"Lengkapkan: (1) Siapa sasaran saya? (2) Masalah atau soalan apa yang mereka ada? (3) Hook yang spesifik. (4) Tiga isi yang membantu. (5) Bukti atau contoh. (6) Satu CTA yang jelas.",
+  example:"Sasaran: pemilik bisnes kecil yang selalu post tetapi kurang inquiry. Hook: “Content ada setiap hari, tapi pelanggan masih senyap?” Isi: semak sama ada content bercakap tentang masalah pelanggan, beri contoh penyelesaian, dan ajak mereka buat satu tindakan yang jelas. CTA: “Komen CONTENT jika anda mahu checklist semakan.”",
+  takeaway:"Anda telah menukar satu masalah pelanggan menjadi rangka content yang boleh disiapkan dan diuji.",gap:"Satu content belum membentuk sistem. Anda masih perlu mengulang proses untuk beberapa masalah pelanggan, menjaga konsistensi brand dan menilai content berdasarkan inquiry atau tindakan.",
+  defaultAction:"Siapkan dan terbitkan tiga content daripada masalah pelanggan yang berbeza.",defaultMeasure:"Rekod masa menyiapkan content, inquiry dan tindakan yang diterima.",defaultProof:"Tiga content yang diterbitkan, CTA dan hasil setiap content."
+ },
+ money:{
+  impactPrompt:"Kos yang tertinggal boleh membuat margin nampak lebih tinggi daripada keadaan sebenar. Gunakan satu produk dan angka yang boleh disahkan; asingkan kos seunit daripada kos operasi bulanan.",
+  calculatorTitle:"Semak kos dan margin satu produk",calculatorIntro:"Masukkan angka seunit. Kalkulator ini mengira anggaran baki selepas kos yang disenaraikan sahaja, bukan keuntungan bersih penuh.",
+  fields:[{id:"sellingPrice",label:"Harga jualan seunit (RM)",value:50,min:0,step:0.01},{id:"productCost",label:"Kos produk seunit (RM)",value:20,min:0,step:0.01},{id:"packCost",label:"Pembungkusan / kos langsung lain seunit (RM)",value:3,min:0,step:0.01},{id:"fees",label:"Caj platform / transaksi seunit (RM)",value:2,min:0,step:0.01}],
+  exerciseTitle:"Bina senarai kos yang tidak boleh tertinggal",exerciseBrief:"Pilih satu produk yang kerap dijual. Lengkapkan kosnya sebelum membuat keputusan harga atau diskaun.",
+  exercisePrompt:"Senaraikan kos produk, pembungkusan, caj platform/transaksi, subsidi penghantaran jika ditanggung bisnes, komisen jualan dan kos langsung lain. Catat sumber angka atau dokumen yang boleh mengesahkannya. Asingkan kos operasi bulanan untuk semakan keuntungan bersih.",
+  example:"Produk: set penjagaan diri. Kos produk RM20, pembungkusan RM2, caj transaksi RM1.50, subsidi penghantaran RM3. Jumlah kos yang disenaraikan RM26.50. Jika harga jualan RM50, baki sebelum kos operasi lain ialah RM23.50. Semak sama ada semua angka tepat dan tiada kos dikira dua kali.",
+  takeaway:"Anda telah mula menyemak harga berbanding kos yang disenaraikan dan mengenal pasti data yang masih perlu dicari.",gap:"Baki selepas kos langsung bukan semestinya keuntungan bersih. Anda masih perlu menyemak kos operasi, volume jualan, diskaun, pulangan barang dan aliran tunai sebelum membuat keputusan besar.",
+  defaultAction:"Lengkapkan senarai kos sebenar untuk satu produk dan semak semua angka dengan dokumen.",defaultMeasure:"Pastikan setiap kos utama mempunyai angka, unit dan sumber bukti.",defaultProof:"Invois pembekal, caj platform, kos pembungkusan, penghantaran dan harga jualan sebenar."
+ }
+};
+let current="sales", selected=[];
+let participantProfile=null;
+function getLocalRecords(){try{return JSON.parse(localStorage.getItem("bqf_demo_records")||"[]")}catch(e){return []}}
+function refreshLocalCount(){document.getElementById("localRecordCount").textContent="Rekod demo pada peranti ini: "+getLocalRecords().length}
+function startDiagnosis(event){
+ event.preventDefault();
+ const form=document.getElementById("profileForm");if(!form.reportValidity())return;
+ participantProfile={name:document.getElementById("participantName").value.trim(),business:document.getElementById("businessName").value.trim(),industry:document.getElementById("industry").value,model:document.getElementById("businessModel").value,businessAge:document.getElementById("businessAge").value,monthlySales:document.getElementById("monthlySales").value,consent:true,startedAt:new Date().toISOString(),status:"Started diagnosis"};
+ const records=getLocalRecords();records.push(participantProfile);try{localStorage.setItem("bqf_demo_records",JSON.stringify(records))}catch(e){}
+ document.getElementById("profileSummary").textContent=participantProfile.name+" · "+participantProfile.business+" · "+participantProfile.industry+" · Jualan: "+participantProfile.monthlySales;
+ document.getElementById("intakeView").style.display="none";document.getElementById("diagnosticLayout").style.display="grid";refreshLocalCount();
+ window.scrollTo({top:document.querySelector(".hero").getBoundingClientRect().top+window.scrollY,behavior:"smooth"});
+}
+function editProfile(){document.getElementById("intakeView").style.display="block";document.getElementById("diagnosticLayout").style.display="none";window.scrollTo({top:document.getElementById("intakeView").getBoundingClientRect().top+window.scrollY-10,behavior:"smooth"})}
+function exportLocalRecords(){const records=getLocalRecords();if(!records.length){alert("Belum ada rekod demo pada peranti ini.");return}const headers=["name","business","industry","model","businessAge","monthlySales","startedAt","status"];const csv=[headers.join(","),...records.map(r=>headers.map(k=>'"'+String(r[k]??"").replace(/"/g,'""')+'"').join(","))].join("\r\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="business-quick-fix-demo-records.csv";a.click();URL.revokeObjectURL(url)}
+function chooseCategory(cat){
+ current=cat;selected=[];
+ document.querySelectorAll(".category").forEach(b=>b.classList.toggle("active",b.dataset.cat===cat));
+ document.getElementById("questionView").style.display="block";document.getElementById("resultView").style.display="none";
+ renderIssues();
+}
+function renderIssues(){
+ const d=data[current];
+ document.getElementById("categoryLabel").textContent=d.label;
+ document.getElementById("questionTitle").textContent=d.title;
+ document.getElementById("questionIntro").textContent=d.intro;
+ const list=document.getElementById("issueList");list.innerHTML="";
+ d.issues.forEach((issue,i)=>{
+  const label=document.createElement("label");label.className="issue"+(selected.includes(i)?" selected":"")+(selected.length>=3&&!selected.includes(i)?" disabled":"");
+  const input=document.createElement("input");input.type="checkbox";input.checked=selected.includes(i);input.disabled=selected.length>=3&&!selected.includes(i);
+  input.addEventListener("change",()=>{if(input.checked&&selected.length<3)selected.push(i);else selected=selected.filter(x=>x!==i);renderIssues();});
+  const text=document.createElement("span");text.innerHTML='<span class="num">'+String(i+1).padStart(2,"0")+'</span> '+issue;
+  label.append(input,text);list.append(label);
+ });
+ document.getElementById("counter").textContent=selected.length+" daripada 3 dipilih";
+ document.getElementById("diagnoseBtn").disabled=selected.length!==3;
+ document.getElementById("progressFill").style.width=(selected.length/3*100)+"%";
+}
+function showDiagnosis(){
+ if(selected.length!==3)return;const d=data[current], w=workshopData[current];
+ document.getElementById("questionView").style.display="none";document.getElementById("resultView").style.display="block";
+ document.getElementById("resultCategory").textContent=d.label+" · BUSINESS QUICK FIX REPORT";
+ document.getElementById("diagnosisTitle").textContent=d.titleOut;
+ document.getElementById("diagnosisIntro").textContent=d.introOut;
+ const ul=document.getElementById("symptomList");ul.innerHTML="";
+ selected.forEach(i=>{const li=document.createElement("li");li.textContent=d.issues[i];ul.append(li)});
+ document.getElementById("causeText").textContent=d.cause;
+ document.getElementById("impactText").textContent=d.impact;
+ document.getElementById("impactPrompt").textContent=w.impactPrompt;
+ document.getElementById("reflectionText").textContent=d.reflection;
+ document.getElementById("takeawayText").textContent=w.takeaway;
+ document.getElementById("gapText").textContent=w.gap;
+ document.getElementById("calculatorTitle").textContent=w.calculatorTitle;
+ document.getElementById("calculatorIntro").textContent=w.calculatorIntro;
+ document.getElementById("exerciseTitle").textContent=w.exerciseTitle;
+ document.getElementById("exerciseBrief").textContent=w.exerciseBrief;
+ document.getElementById("exercisePrompt").textContent=w.exercisePrompt;
+ document.getElementById("workOutput").value="";
+ document.getElementById("actionPlan").value=w.defaultAction;
+ document.getElementById("successMeasure").value=w.defaultMeasure;
+ document.getElementById("proofToCheck").value=w.defaultProof;
+ document.getElementById("actionDate").value="";
+ const fields=document.getElementById("calculatorFields");fields.innerHTML="";
+ w.fields.forEach(f=>{const wrap=document.createElement("div");wrap.className="calcfield";const label=document.createElement("label");label.htmlFor="calc_"+f.id;label.textContent=f.label;const input=document.createElement("input");input.type="number";input.id="calc_"+f.id;input.min=f.min??0;input.max=f.max??'';input.step=f.step??1;input.value=f.value;input.addEventListener("input",updateCalculator);wrap.append(label,input);fields.append(wrap)});
+ updateCalculator();
+ window.scrollTo({top:document.querySelector(".mainpanel").getBoundingClientRect().top+window.scrollY-15,behavior:"smooth"});
+}
+function num(id){return Math.max(0,Number(document.getElementById("calc_"+id)?.value)||0)}
+function money(n){return "RM"+n.toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function updateCalculator(){
+ const out=document.getElementById("calculatorResult");if(current==="sales"){
+  const v=num("viewers"),c=num("conversion"),p=num("orderValue"),t=num("targetRate");const now=v*c/100*p,scenario=v*t/100*p,diff=scenario-now;
+  out.innerHTML=`Anggaran jualan pada kadar semasa: ${money(now)}<br>Senario jika kadar pembelian menjadi ${t}%: ${money(scenario)}<small>Perbezaan simulasi: ${money(diff)} bagi satu LIVE. Ini bukan ramalan atau jaminan; pastikan viewers relevan dan andaian munasabah.</small>`;
+ }else if(current==="marketing"){
+  const n=num("contentCount"),h=num("hoursEach"),pn=num("plannedCount"),ph=num("plannedHours");const currentHours=n*h,plannedHours=pn*ph;
+  out.innerHTML=`Masa content semasa: ${currentHours.toLocaleString("en-MY")} jam seminggu<br>Senario perancangan baharu: ${plannedHours.toLocaleString("en-MY")} jam seminggu<small>Perbezaan masa: ${(currentHours-plannedHours).toLocaleString("en-MY")} jam. Semak kualiti, kesesuaian dan hasil content juga; lebih banyak posting tidak semestinya lebih berkesan.</small>`;
+ }else{
+  const price=num("sellingPrice"),cost=num("productCost"),pack=num("packCost"),fees=num("fees"),total=cost+pack+fees,bal=price-total,margin=price?bal/price*100:0;
+  out.innerHTML=`Jumlah kos yang disenaraikan: ${money(total)} seunit<br>Baki selepas kos yang disenaraikan: ${money(bal)} seunit<small>Anggaran margin atas harga jualan: ${margin.toFixed(1)}%. Belum tentu keuntungan bersih; kos operasi lain mungkin belum dimasukkan.</small>`;
+ }
+}
+function fillExample(){document.getElementById("workOutput").value=workshopData[current].example;}
+
+function backToQuestions(){document.getElementById("questionView").style.display="block";document.getElementById("resultView").style.display="none";window.scrollTo({top:document.querySelector(".mainpanel").getBoundingClientRect().top+window.scrollY-15,behavior:"smooth"});}
+renderIssues();refreshLocalCount();
+</script>
+</body>
+</html>

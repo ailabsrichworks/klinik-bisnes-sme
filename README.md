@@ -1,27 +1,30 @@
 # KBSME Business Quick Fix
 
-Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: business profile → evidence → AI diagnosis → one Quick Fix → 7-day tracker.
+Participant tool for Klinik Bisnes SME sessions (v4): the participant tells us about their business, picks one of three challenges (**Sales (LIVE Sales)**, **Marketing**, **Urus Duit**), ticks the **3** situations out of 10 that happen most often, can optionally share an example, and gets a one-page report: diagnosis, likely cause, impact, a calculator, a Quick Fix workshop, a 7-day action plan and a reflection, downloadable as a PDF.
 
-The tool is **public, with no login**. Accepting the privacy notice starts a journey: the server returns a random id + secret token that the browser keeps in `localStorage` and sends with every call (`X-Journey-Id` / `X-Journey-Token`; only a hash of the token is stored). A facilitator's link `/?c=CODE` files the participant under that session; the code is optional, and an unknown or expired code offers to continue without one.
+**No AI.** Every word of the report is fixed text per challenge, taken word for word from the v4 prototype (`original/v4/Business_Quick_Fix_Prototype.html`) into `public/js/content.mjs`, which the browser, the server (PDF, Sheet rows) and the tests share. The calculators use the prototype's fields, defaults and formulas (`calculate()`); `test/content.test.mjs` checks the text and the numbers against the prototype file. The earlier AI versions are in git history.
 
-**Data lives in Google:** one Google Sheet (one row per participant, readable by the team; the Sheet *is* the trainer view) and a Drive folder for uploaded evidence. The server reaches them through a small **Apps Script pasted into the Sheet** (`apps-script/Code.gs`, simplest: no Google Cloud project), or through the Google APIs with a service account. The browser only ever talks to our server; the script's secret and the Claude key stay server-side.
+The tool is **public, with no login**. Saving the intake form (with the consent tick) starts a journey: the server returns a random id + secret token that the browser keeps in `localStorage` and sends with every call (`X-Journey-Id` / `X-Journey-Token`; only a hash of the token is stored). A facilitator's link `/?c=CODE` files the participant under that session; the code is optional, and an unknown or expired code offers to continue without one.
 
-The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_Gap_AI_v3_Developer_Spec.md`): pathways `cost` (Cash Flow / Profit), `content` (Marketing), `live` (Sales) and the `missing` fallback. Deterministic rules live in `public/js/rules.mjs` and are shared by the browser and the server: cost and LIVE maths, the evidence check, the LIVE guard (never `live` without LIVE experience and real LIVE evidence) and RM198 programme fit. Programme fit is decided by these rules only, never by the model; for RM30K+ participants it shows a neutral line, and no class duration is shown anywhere.
-
-**Departure from spec §4 (agreed):** the 7-day tracker tasks are written by the model in the same call as the diagnosis (`tasks`: 7 × `{title, proof}`, naming the participant's own product, costs, questions or LIVE numbers). The server validates them (`normalizeTasks`: exactly 7, none empty, long text shortened at a word boundary) and falls back to the v3 prototype templates (`TASK_TEMPLATES`) when they are unusable, when AI is off, when the LIVE guard changes the pathway, or when the participant picks a different pathway. Participants can edit each task and its proof in the tracker.
+**Data lives in Google:** one Google Sheet (one row per participant, readable by the team; the Sheet *is* the trainer view) and a Drive folder for optional evidence files and report PDFs. The server reaches them through a small **Apps Script pasted into the Sheet** (`apps-script/Code.gs`, simplest: no Google Cloud project), or through the Google APIs with a service account. The browser only ever talks to our server; the script's secret stays server-side.
 
 - **App:** Node 20+ / Express (`server/`) serving static pages (`public/`)
 - **Data:** Google Sheets + Google Drive (`server/store.mjs`), via the Apps Script web app (`server/apps-script.mjs`) or a service account
-- **AI:** Claude via the Anthropic API (`server/diagnose.mjs`)
+- **Report PDF:** pdfkit (`server/report-pdf.mjs`), Inter + Bricolage Grotesque from `server/fonts` (OFL)
 - **Hosting:** Railway, **one instance** (the server keeps the participant index in memory)
 
-`original/` holds the v2 prototype package this was built from.
+## The flow
+
+1. **Langkah 01 · Maklumat bisnes:** full name, business name, industry, business model, years running, monthly sales, consent. "Simpan maklumat & mula" creates the participant's row.
+2. **Pilih cabaran:** three pillar buttons (a side panel on desktop, buttons above the content on phones) with the profile summary and "Edit maklumat". For the chosen pillar, 10 situations; exactly 3 can be ticked (the rest lock at 3), with a counter and progress bar. "Lihat diagnosis saya" is enabled only at 3. Each pillar keeps its own answers, so switching back loses nothing.
+3. **Bukti (pilihan):** paste an example and/or attach one file (PNG/JPG/WEBP/PDF/TXT/CSV, 4 MB). Stored for trainers; **not analysed**, and the screen says so.
+4. **Laporan:** 01 Simptom (the 3 ticks), 02 Punca, 03 Impak, 04 calculator, 05 Quick Fix workshop (with "Lihat contoh"), 06 the 7-day plan (prefilled with the pillar's defaults), 07 Reflection. "Cetak / Simpan laporan (PDF)" downloads the PDF.
 
 ## Pages
 
 | Path | What |
 |---|---|
-| `/` or `/?c=CODE` | The five-step tool, open to anyone. `?c=` files the participant under a session. `?step=5` opens the tracker. `?demo` shows sample-data buttons (always on localhost). |
+| `/` or `/?c=CODE` | The tool, open to anyone. `?c=` files the participant under a session. `?demo` shows sample-data buttons (always on localhost). |
 | `/privacy` | Privacy notice (**draft — fill the `[ ]` placeholders and get it approved**) |
 
 ## The Google Sheet
@@ -30,16 +33,17 @@ Created by the app on first start (header rows are bold, frozen and protected wi
 
 | Tab | Who writes | What |
 |---|---|---|
-| **Peserta** | the app | One row per participant: session code, dates, step, business fields, issue, evidence text, Drive link to the uploaded file, cost/content/LIVE inputs, provisional balance, diagnosis, pathway, Quick Fix, the 7 tasks with status, tasks done, Day 7 metrics, next step, programme fit, marketing and privacy consent. `token_hash` and `state_json` are hidden; don't edit them. |
-| **Sesi** | trainers, by hand | Session codes: `code`, `name`, `session_date`, `active_until` (blank = never expires). Re-read every minute. The link to share is `https://klinik.richworks.com/?c=CODE`. |
-| **Log AI** | the app | One row per AI call: time, journey id, model, status, input/output tokens. Used for the optional daily caps. |
+| **Peserta** | the app | One row per participant: session code, created/updated, step reached (`1 · Maklumat bisnes` … `4 · Laporan`), full name, business, industry, business model, years running, monthly sales, pillar, `situation_1`–`3`, evidence text + file + Drive link, calculator inputs and result, workshop output, the 4 plan fields, report link/time, when the PDF was downloaded, consent time and notice version. The report columns fill in once the participant reaches the report. `token_hash` and `state_json` are hidden; don't edit them. |
+| **Sesi** | trainers, by hand | Session codes: `code`, `name`, `session_date`, `active_until` (blank = never expires). Re-read every minute. The link to share is `https://<your domain>/?c=CODE`. |
 | **README** | the app | Column notes for the team. |
+
+**Upgrading a Sheet used by the earlier AI version:** its Peserta tab is left exactly as it is, and v4 rows go to a new **Peserta v4** tab (the server logs this at start). To use the name Peserta again, rename or delete the old tab and restart. The old **Log AI** tab is no longer used.
 
 **To sort or filter Peserta, use a Filter view** (Data → Filter views), not Data → Sort. The app finds each row by its id before writing, so sorting doesn't break anything, but filter views keep the sheet tidy for everyone.
 
-Writes are batched: the server keeps journeys in memory and writes changed rows every 5 seconds (one read + up to three writes per batch), retrying on Google's quota errors (429) with backoff. That stays within the Sheets limit of 60 requests a minute even with a full class. Participant text is written as plain text (`RAW`), never as formulas. The browser saves on each step change, after the diagnosis, on tracker status changes, 20 seconds after typing stops, and when the page is hidden or closed; it also keeps a copy locally.
+Writes are batched: the server keeps journeys in memory and writes changed rows every 5 seconds (one read + up to two writes per batch), retrying on Google's quota errors (429) with backoff. That stays within the Sheets limit of 60 requests a minute even with a full class. Participant text is written as plain text, never as formulas (the Apps Script checks this at every start). The browser saves on each step, 20 seconds after typing stops, and when the page is hidden or closed; it also keeps a copy locally.
 
-**Report PDFs:** when a participant reaches Langkah 5, the server builds their report as a PDF (`server/report-pdf.mjs`, IBM Plex Sans from `server/fonts`, OFL) and saves it in the same Drive folder, linked in `report_link`. It waits 15 seconds after the last change, keeps one file per participant, and replaces it only when their answers change (tracker status, notes, Day 7 results). Participants download the same file with "Muat turun PDF" (`GET /api/report.pdf`); if that fails, the browser's print view opens instead.
+**Report PDFs:** when a participant reaches the report, the server builds it as a PDF and saves it in the Drive folder, linked in `report_link`. It waits 15 seconds after the last change, keeps one file per participant, and replaces it only when the report changes (calculator, workshop, plan). The participant downloads the same report with "Cetak / Simpan laporan (PDF)" (`GET /api/report.pdf`, which also records `report_downloaded_at`).
 
 "Padam data saya" (delete my data) clears the participant's row and deletes their Drive files (evidence and report).
 
@@ -49,15 +53,16 @@ All participant endpoints need `X-Journey-Id` and `X-Journey-Token`, except wher
 
 | Endpoint | Notes |
 |---|---|
-| `GET /api/config` | no key · notice version, whether AI is on |
+| `GET /api/config` | no key · the privacy notice version |
 | `GET /api/session/:code` | no key · checks a session code |
 | `POST /api/journey` | no key · `{ acceptNotice, code? }` → `{ id, token, … }` |
-| `GET /api/journey` | the participant's saved state, consent and file name |
-| `PUT /api/journey` | `{ state, step }` |
-| `POST /api/consent` | `{ kind: privacy \| marketing \| ai_processing, granted }` |
-| `POST /api/upload` | raw file body, `X-File-Name` header; PNG/JPG/WEBP/PDF/TXT/CSV checked by content, max 4 MB; stored in Drive |
-| `POST /api/diagnose` | diagnosis inputs + `use_file`; per-IP burst limit, optional daily caps, logged to Log AI |
-| `DELETE /api/me` | clears the row and deletes the Drive file |
+| `GET /api/journey` | the participant's saved state, consent and evidence file name |
+| `PUT /api/journey` | `{ state, step }` (step reached: 0–3) |
+| `POST /api/consent` | `{ acceptNotice }` when the notice version changed |
+| `POST /api/upload` | optional evidence: raw file body, `X-File-Name` header; PNG/JPG/WEBP/PDF/TXT/CSV checked by content, max 4 MB; stored in Drive |
+| `DELETE /api/upload` | removes the evidence file |
+| `GET /api/report.pdf` | the report as a PDF (needs 3 ticked situations) |
+| `DELETE /api/me` | clears the row and deletes the Drive files |
 | `GET /healthz` | Railway health check |
 
 ## One-time setup
@@ -107,24 +112,15 @@ npm run dev            # http://localhost:3000
 
 New service from this repo → set the variables from `.env.example` → health check path `/healthz` → **one replica** → add the custom domain → set `PUBLIC_URL` and `CANONICAL_HOST` to it. On redeploy, Railway's SIGTERM makes the server write any pending changes before it exits.
 
-## Cost guard
-
-Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-sonnet-5-5` at `medium` effort; Sonnet would otherwise default to `high`), about US$0.02. The site is public and the daily caps are **off by default**; set `DAILY_AI_LIMIT_PER_USER`, `DAILY_AI_LIMIT_PER_IP` and/or `DAILY_AI_LIMIT_GLOBAL` to cap calls per rolling 24 hours (the per-IP count is kept in memory only). The per-IP burst limiter always applies, sized so a whole class on one venue Wi-Fi isn't blocked. **Set a spend limit in the Anthropic console**: with no caps it is the only cost guard. Usage per call is in the Log AI tab.
-
 ## Tests
 
 ```bash
-npm test                                         # rules, the store, the API, and Code.gs itself, against in-process stand-ins for Google (no network)
-node --env-file=.env test/acceptance.mjs         # spec §7 T01–T12 against the real AI (~11 Claude calls; server must be running)
-node --env-file=.env test/acceptance.mjs T05 T08 # a subset
-node --env-file=.env test/stress.mjs             # 10 diagnoses at once: time per report; cost too when Google is configured
+npm test   # the content against the prototype, the store, the API, and Code.gs itself, against in-process stand-ins for Google (no network)
 ```
 
-The acceptance and stress runners start journeys through the API like a participant and delete them afterwards with "Delete my data". Point the server at a real Sheet to check the full path; the rows they create are cleared again.
-
-`test/fixtures/sample-responses.json` has example `/api/diagnose` responses per pathway and the error messages, for UI work without AI calls.
+To check against your real Sheet, point the server at it (`APPS_SCRIPT_URL` / `APPS_SCRIPT_SECRET`) and go through the flow with `?demo`; "Padam data saya" clears the test row and files again.
 
 ## Before the first real cohort
 - Privacy notice approved, placeholders filled, retention periods decided.
-- Rehearse with at least 5 different cases, including image and PDF evidence, on a phone.
+- Rehearse all three challenges on a phone, including image and PDF evidence and the PDF download.
 - Check rows and files appear in the real Sheet and Drive folder, and that "Padam data saya" removes them.

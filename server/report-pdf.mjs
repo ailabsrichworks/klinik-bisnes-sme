@@ -1,123 +1,133 @@
-// The participant's report as a PDF (A4), built on the server so a copy can be kept in Drive.
-// Same content as the on-screen report in Langkah 5. Fonts: IBM Plex Sans (OFL, server/fonts).
+// The participant's Business Quick Fix report as a PDF (A4): the same seven sections as the
+// report page, with the fixed text for their pillar. Fonts: Inter + Bricolage Grotesque (OFL).
 import PDFDocument from 'pdfkit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PATH_LABELS, METRIC_LABELS, programmeFit } from '../public/js/rules.mjs';
+import { PILLARS, CLOSING, CALC_NOTE, REPORT_NOTE, calculate, calcInputs } from '../public/js/content.mjs';
+import { pillarAnswers } from './store.mjs';
 
 const fonts = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fonts');
-const C = { navy: '#102f4a', teal: '#087f79', ink: '#172b3a', muted: '#5b6c78', line: '#c9d7db', wash: '#f3f7f9' };
-const STATUS = { belum: 'Belum', sedang: 'Sedang', selesai: 'Selesai' };
+const C = { green: '#174b3b', lime: '#d7f36b', ink: '#17211d', muted: '#64716b', line: '#e1e6df', soft: '#edf4ef', cream: '#f7f8f2', fix: '#f1f7e4', warm: '#fff9ed', warmLine: '#f0dfbd' };
 
-// Emoji and other symbols outside the font would print as boxes.
+// Emoji and other symbols outside the fonts would print as boxes.
 const clean = (s) => String(s ?? '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\r/g, '')
   .replace(/[ \t]+([.,;:!?])/g, '$1').replace(/[ \t]{2,}/g, ' ').trim();
+const dateMY = (d) => d.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' });
 
 export function reportPdf({ state = {}, sessionName = '', date = new Date() }) {
   const p = state.profile || {};
-  const d = state.diagnosis;
-  const path_ = state.pathway || d?.pathway || 'missing';
-  const fit = programmeFit({ profile: p, live: state.live || {}, pathway: path_, diagnosedPathway: d?.pathway });
-  const labels = METRIC_LABELS[path_] || METRIC_LABELS.missing;
+  const { pillar, selected, calc, workOutput, plan } = pillarAnswers(state);
+  if (!pillar || selected.length !== 3) throw new Error('report needs a pillar and 3 situations');
+  const P = PILLARS[pillar];
+  const result = calculate(pillar, calc);
+  const inputs = calcInputs(pillar, calc);
 
   const doc = new PDFDocument({ size: 'A4', margins: { top: 50, bottom: 50, left: 52, right: 52 }, info: { Title: `Business Quick Fix — ${clean(p.business) || 'Peserta'}`, Author: 'Klinik Bisnes SME' } });
-  doc.registerFont('Plex', path.join(fonts, 'IBMPlexSans-Regular.ttf'));
-  doc.registerFont('Plex-Bold', path.join(fonts, 'IBMPlexSans-SemiBold.ttf'));
-  const W = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  doc.registerFont('Body', path.join(fonts, 'Inter-Regular.woff'));
+  doc.registerFont('Bold', path.join(fonts, 'Inter-Bold.woff'));
+  doc.registerFont('Display', path.join(fonts, 'BricolageGrotesque-Bold.woff'));
+  const L = doc.page.margins.left, W = doc.page.width - L - doc.page.margins.right;
+  const bottom = () => doc.page.height - doc.page.margins.bottom;
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
   const finished = new Promise((resolve, reject) => { doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject); });
 
-  const text = (s, { size = 10, bold = false, color = C.ink, gap = 4, indent = 0 } = {}) => {
-    doc.font(bold ? 'Plex-Bold' : 'Plex').fontSize(size).fillColor(color)
-      .text(clean(s) || '—', doc.page.margins.left + indent, doc.y, { width: W - indent, lineGap: 1.5 });
+  const text = (s, { size = 10, font = 'Body', color = C.ink, gap = 4, indent = 0, width = W - indent } = {}) => {
+    doc.font(font).fontSize(size).fillColor(color).text(clean(s) || '—', L + indent, doc.y, { width, lineGap: 1.6 });
     doc.y += gap;
   };
-  const heading = (s) => {
-    if (doc.y > doc.page.height - 140) doc.addPage();
-    doc.y += 8;
-    doc.font('Plex-Bold').fontSize(12.5).fillColor(C.navy).text(s, doc.page.margins.left, doc.y, { width: W });
-    const y = doc.y + 3;
-    doc.moveTo(doc.page.margins.left, y).lineTo(doc.page.margins.left + W, y).lineWidth(0.7).strokeColor(C.line).stroke();
-    doc.y = y + 7;
+  const room = (h) => { if (doc.y + h > bottom()) doc.addPage(); };
+  const section = (label, title) => {
+    room(90);
+    doc.y += 10;
+    doc.font('Bold').fontSize(7.5).fillColor('#738078').text(label.toUpperCase(), L, doc.y, { characterSpacing: 1.2, width: W });
+    doc.y += 3;
+    doc.font('Display').fontSize(14).fillColor(C.ink).text(clean(title), L, doc.y, { width: W });
+    doc.y += 6;
+  };
+  // A tinted box around a block of text (falls back to plain text if it would not fit on the page).
+  const box = (s, { fill = C.cream, border = null, size = 10, font = 'Body', color = C.ink, bar = null, title = '' } = {}) => {
+    const t = clean(s) || '—', pad = 11, inner = W - 2 * pad - (bar ? 4 : 0);
+    doc.font('Display').fontSize(11);
+    const th = title ? doc.heightOfString(title, { width: inner }) + 4 : 0;
+    doc.font(font).fontSize(size);
+    const h = th + doc.heightOfString(t, { width: inner, lineGap: 1.6 }) + 2 * pad;
+    room(Math.min(h, 200));
+    if (doc.y + h > bottom()) return text(t, { size, font, color });
+    const y = doc.y;
+    doc.roundedRect(L, y, W, h, 8).fill(fill);
+    if (border) doc.roundedRect(L, y, W, h, 8).lineWidth(0.8).strokeColor(border).stroke();
+    if (bar) doc.rect(L, y, 4, h).fill(bar);
+    if (title) doc.font('Display').fontSize(11).fillColor(C.ink).text(title, L + pad + (bar ? 4 : 0), y + pad, { width: inner });
+    doc.font(font).fontSize(size).fillColor(color).text(t, L + pad + (bar ? 4 : 0), y + pad + th, { width: inner, lineGap: 1.6 });
+    doc.y = y + h + 8;
   };
   const field = (label, value) => {
-    if (!clean(value)) return;
-    doc.font('Plex-Bold').fontSize(9.5).fillColor(C.muted).text(`${label}: `, doc.page.margins.left, doc.y, { continued: true, width: W });
-    doc.font('Plex').fillColor(C.ink).text(clean(value), { lineGap: 1.5 });
-    doc.y += 2;
-  };
-  const bullets = (items) => {
-    const list = (items || []).map(clean).filter(Boolean);
-    if (!list.length) return text('—');
-    for (const item of list) text(`•  ${item}`, { indent: 4, gap: 2 });
-    doc.y += 2;
+    room(34);
+    text(label, { size: 8.5, font: 'Bold', color: C.muted, gap: 1 });
+    text(value || 'Belum diisi', { color: value ? C.ink : C.muted, gap: 6 });
   };
 
   // Header band
-  doc.rect(0, 0, doc.page.width, 92).fill(C.navy);
-  doc.font('Plex-Bold').fontSize(9).fillColor('#9fd8d2').text('KLINIK BISNES SME · BUSINESS QUICK FIX', 52, 26, { characterSpacing: 0.8 });
-  doc.font('Plex-Bold').fontSize(19).fillColor('#ffffff').text(clean(p.business) || 'Laporan peserta', 52, 42, { width: W });
-  doc.font('Plex').fontSize(9).fillColor('#d7e3ea')
-    .text([date.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' }), clean(sessionName), clean(p.participant)].filter(Boolean).join('  ·  '), 52, 68, { width: W });
-  doc.y = 112;
+  doc.rect(0, 0, doc.page.width, 104).fill(C.green);
+  doc.font('Bold').fontSize(8).fillColor(C.lime).text(`BUSINESS QUICK FIX · ${P.name.toUpperCase()}`, L, 26, { characterSpacing: 1.4, width: W });
+  doc.font('Display').fontSize(22).fillColor('#ffffff').text(clean(p.business) || 'Laporan peserta', L, 42, { width: W });
+  doc.font('Body').fontSize(9).fillColor('#d9e7df')
+    .text([clean(p.name), dateMY(date), clean(sessionName)].filter(Boolean).join('  ·  '), L, 74, { width: W });
+  doc.y = 122;
+  text([p.industry, p.businessModel, p.businessAge, p.monthlySales && `Jualan: ${p.monthlySales}`].filter(Boolean).join('  ·  '), { size: 8.5, color: C.muted, gap: 10 });
 
-  heading('Bisnes');
-  field('Produk / servis', p.product);
-  field('Customer utama', p.customer);
-  field('Channel', p.channel);
-  field('Revenue sebulan', p.revenue);
-
-  heading('Diagnosis awal');
-  if (d) {
-    text(d.title, { size: 11.5, bold: true, gap: 2 });
-    text(`${PATH_LABELS[path_] || path_}  ·  ${d.strength || ''}  ·  ${d.origin === 'ai' ? 'Dibantu AI, disemak peserta' : 'Simulasi rule-based'}`, { size: 8.5, color: C.teal, gap: 6 });
-    text(d.reason);
-    text('Perkara yang diperhatikan', { size: 9.5, bold: true, color: C.muted, gap: 2 });
-    bullets(d.observations);
-    text('Belum tahu / perlu disahkan', { size: 9.5, bold: true, color: C.muted, gap: 2 });
-    bullets(d.unknowns);
-  } else {
-    text('Belum dijana.');
+  // Diagnosis banner
+  {
+    const pad = 14;
+    doc.font('Display').fontSize(13);
+    const h1 = doc.heightOfString(P.titleOut, { width: W - 2 * pad });
+    doc.font('Body').fontSize(9.5);
+    const h2 = doc.heightOfString(P.introOut, { width: W - 2 * pad, lineGap: 1.6 });
+    const y = doc.y, h = pad + 12 + h1 + 6 + h2 + pad;
+    doc.roundedRect(L, y, W, h, 10).fill(C.green);
+    doc.font('Bold').fontSize(7.5).fillColor(C.lime).text('DIAGNOSIS AWAL', L + pad, y + pad, { characterSpacing: 1.2 });
+    doc.font('Display').fontSize(13).fillColor('#ffffff').text(P.titleOut, L + pad, y + pad + 12, { width: W - 2 * pad });
+    doc.font('Body').fontSize(9.5).fillColor('#dce9e0').text(P.introOut, L + pad, doc.y + 6, { width: W - 2 * pad, lineGap: 1.6 });
+    doc.y = y + h + 4;
   }
 
-  heading('Quick Fix');
-  const qf = clean(state.quickFix);
-  const qfTop = doc.y;
-  doc.font('Plex').fontSize(10);
-  const qfHeight = doc.heightOfString(qf || '—', { width: W - 20, lineGap: 1.5 });
-  if (qfTop + qfHeight + 16 < doc.page.height - doc.page.margins.bottom) {
-    doc.rect(doc.page.margins.left, qfTop, W, qfHeight + 16).fill(C.wash);
-    doc.fillColor(C.ink).text(qf || '—', doc.page.margins.left + 10, qfTop + 8, { width: W - 20, lineGap: 1.5 });
-    doc.y = qfTop + qfHeight + 22;
-  } else {
-    text(qf); // too long for one box: let it flow across pages
-  }
+  section('01 · Simptom', 'Apa yang sedang berlaku?');
+  for (const i of selected) text(`•  ${P.issues[i]}`, { indent: 2, gap: 3 });
 
-  heading('Pelan 7 hari');
-  const tasks = state.tasks || [];
-  const done = tasks.filter((t) => t.status === 'selesai').length;
-  text(`${done} daripada ${tasks.length || 7} selesai`, { size: 9, color: C.muted, gap: 6 });
-  tasks.forEach((t, i) => {
-    if (doc.y > doc.page.height - 110) doc.addPage();
-    const status = STATUS[t.status] || 'Belum';
-    doc.font('Plex-Bold').fontSize(10).fillColor(t.status === 'selesai' ? C.teal : C.ink)
-      .text(`Hari ${t.day || i + 1}  ·  ${status}`, doc.page.margins.left, doc.y, { width: W });
-    text(t.title, { gap: 1 });
-    if (clean(t.proof)) text(`Bukti untuk direkod: ${t.proof}`, { size: 9, color: C.muted, gap: 1 });
-    if (clean(t.note)) text(`Bukti sebenar: ${t.note}`, { size: 9, gap: 1 });
-    doc.y += 5;
-  });
+  section('02 · Punca berkemungkinan', 'Apa yang mungkin menjadi punca?');
+  text(P.cause);
 
-  heading('Hasil Hari 7');
-  labels.forEach((l, i) => field(l, state.metrics?.[i] || 'Belum direkod'));
-  if (clean(state.reviewNotes)) { doc.y += 2; field('Review', state.reviewNotes); }
+  section('03 · Impak kepada bisnes', 'Kenapa masalah ini patut diberi perhatian?');
+  text(P.impact);
+  text(P.impactPrompt, { size: 9, color: C.muted });
 
-  heading('Langkah seterusnya (pilihan)');
-  text(fit.detail);
+  section('04 · Kira / semak impak', P.calculatorTitle);
+  text(P.calculatorIntro, { size: 9, color: C.muted, gap: 6 });
+  for (const f of P.fields) text(`${f.label}: ${inputs[f.id]}`, { size: 9.5, gap: 2 });
+  doc.y += 4;
+  box(`${result.lines.join('\n')}\n${result.note}`, { fill: C.soft, color: C.green, font: 'Bold', size: 10 });
+  text(CALC_NOTE, { size: 8, color: C.muted });
 
-  doc.y += 10;
-  text('Nota kerja peserta. Bukan diagnosis muktamad, bukan pengiraan untung penuh dan bukan jaminan peningkatan jualan.', { size: 8.5, color: C.muted });
+  section('05 · Quick Fix workshop', P.exerciseTitle);
+  text(P.exerciseBrief, { gap: 6 });
+  box(P.exercisePrompt, { bar: C.green, size: 9.5 });
+  field('Hasil latihan anda', clean(workOutput));
+
+  section('06 · Pelan tindakan 7 hari', 'Jangan berhenti setakat faham. Uji dalam bisnes.');
+  field('Apa tindakan yang akan dibuat?', clean(plan.action));
+  field('Apa ukuran kejayaan?', clean(plan.measure));
+  field('Bila anda akan mula?', plan.startDate ? dateMY(new Date(`${plan.startDate}T00:00:00+08:00`)) : '');
+  field('Bukti apa yang akan disemak selepas 7 hari?', clean(plan.proof));
+
+  section('07 · Reflection', 'Di mana execution gap anda?');
+  text(P.reflection, { gap: 6 });
+  field('Apa yang sudah anda dapat hari ini', P.takeaway);
+  field('Apa yang masih perlu dikuasai', P.gap);
+  box(CLOSING.text, { title: CLOSING.title, fill: C.warm, border: C.warmLine, size: 9.5 });
+
+  doc.y += 4;
+  text(REPORT_NOTE, { size: 8, color: C.muted });
   doc.end();
   return finished;
 }

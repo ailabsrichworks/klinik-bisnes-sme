@@ -2,8 +2,8 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
-import { diagnose, limitReached, countIp, DiagnoseError } from './diagnose.mjs';
 import { reportPdf } from './report-pdf.mjs';
+import { pillarAnswers } from './store.mjs';
 import { sessionNameOf } from './reports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -22,7 +22,7 @@ const csp = [
 ].join('; ');
 
 const MAX_FILE = 4 * 1024 * 1024;
-const STATE_MAX = 60_000; // characters of JSON; the sheet cell limit is 50,000 and evidence text is capped at 9,500
+const STATE_MAX = 45_000; // characters of JSON; the whole state is kept in one sheet cell (limit 50,000)
 
 // Checks the file's first bytes, not just the name the browser sent.
 function sniff(bytes, name) {
@@ -43,7 +43,7 @@ const view = (j, store) => ({
   id: j.id,
   state: j.state,
   step: j.step,
-  consent: { privacyVersion: j.consent.privacyVersion || null, marketing: !!j.consent.marketing },
+  consent: { privacyVersion: j.consent.privacyVersion || null },
   evidenceFile: j.evidence ? { name: j.evidence.name, size: j.evidence.size, at: j.evidence.at } : null,
   session: j.sessionCode ? store.sessionByCode(j.sessionCode) || { code: j.sessionCode, name: j.sessionCode } : null,
   createdAt: j.createdAt,
@@ -101,7 +101,7 @@ export function createApp({ store, reports }) {
   api.use(sameOrigin);
 
   api.get('/config', (_req, res) => {
-    res.set('Cache-Control', 'no-store').json({ noticeVersion: config.noticeVersion, aiReady: Boolean(config.anthropicKey) });
+    res.set('Cache-Control', 'no-store').json({ noticeVersion: config.noticeVersion });
   });
 
   // Session code lookup for facilitator links (/?c=CODE). The code is optional.
@@ -130,20 +130,21 @@ export function createApp({ store, reports }) {
   api.put('/journey', ipLimit(600), json, requireJourney, (req, res) => {
     const { state, step } = req.body || {};
     if (!state || typeof state !== 'object' || Array.isArray(state)) return res.status(400).json({ error: 'Data tidak sah.' });
+    if (state.evidenceText != null && String(state.evidenceText).length > 9500) return res.status(413).json({ error: 'Teks bukti terlalu panjang (maksimum 9,500 aksara).' });
     if (JSON.stringify(state).length > STATE_MAX) return res.status(413).json({ error: 'Data terlalu besar. Ringkaskan teks bukti atau Quick Fix.' });
-    store.update(req.journey, { state, step: Number.isInteger(step) && step >= 0 && step <= 4 ? step : req.journey.step });
-    if (reports && req.journey.step === 4) reports.schedule(req.journey); // Langkah 5: keep a copy of the report in Drive
+    store.update(req.journey, { state, step: Number.isInteger(step) && step >= 0 && step <= 3 ? step : req.journey.step });
+    if (reports && req.journey.step === 3) reports.schedule(req.journey); // the report step: keep a copy of the report in Drive
     res.json({ saved: true });
   });
 
+  // Accepting a newer privacy notice.
   api.post('/consent', ipLimit(30), json, requireJourney, (req, res) => {
-    const { kind, granted } = req.body || {};
-    if (!['privacy', 'marketing', 'ai_processing'].includes(kind)) return res.status(400).json({ error: 'Jenis persetujuan tidak sah.' });
-    store.setConsent(req.journey, kind, granted !== false, config.noticeVersion);
+    if (req.body?.acceptNotice !== config.noticeVersion) return res.status(400).json({ error: 'Sila terima notis privasi terlebih dahulu.' });
+    store.setConsent(req.journey, config.noticeVersion);
     res.json({ consent: view(req.journey, store).consent });
   });
 
-  // Raw file body; the name comes in a header. Stored in the Shared Drive folder.
+  // Optional evidence: raw file body, the name in a header. Stored in Drive for trainers; never analysed.
   api.post('/upload', ipLimit(60), requireJourney, express.raw({ type: () => true, limit: MAX_FILE }), async (req, res) => {
     const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
     if (!bytes.length) return res.status(400).json({ error: 'Fail kosong.' });
@@ -160,26 +161,25 @@ export function createApp({ store, reports }) {
     }
   });
 
-  api.post('/diagnose', ipLimit(60), json, requireJourney, async (req, res) => {
+
+  api.delete('/upload', ipLimit(30), requireJourney, async (req, res) => {
     try {
-      const limit = limitReached(store, req.journey, req.ip);
-      if (limit) return res.status(429).json({ error: limit });
-      countIp(req.ip);
-      res.json(await diagnose({ store, journey: req.journey, body: req.body || {} }));
+      await store.removeEvidenceFile(req.journey);
+      res.json({ evidenceFile: null });
     } catch (err) {
-      if (err instanceof DiagnoseError) return res.status(err.status).json({ error: err.message });
-      console.error('[diagnose] unexpected', err);
-      res.status(500).json({ error: 'Ralat server. Cuba semula.' });
+      console.error('[upload delete]', err?.message);
+      res.status(502).json({ error: 'Fail gagal dibuang. Cuba lagi.' });
     }
   });
 
   // The participant's report as a PDF download (the same file that is kept in Drive).
   api.get('/report.pdf', ipLimit(60), requireJourney, async (req, res) => {
     const j = req.journey;
-    if (!j.state?.diagnosis) return res.status(409).json({ error: 'Jana diagnosis dahulu sebelum memuat turun laporan.' });
+    if (pillarAnswers(j.state).selected.length !== 3) return res.status(409).json({ error: 'Pilih tiga situasi dahulu sebelum memuat turun laporan.' });
     try {
       const bytes = await reportPdf({ state: j.state, sessionName: sessionNameOf(store, j) });
-      if (reports && j.step === 4) reports.schedule(j);
+      store.update(j, { reportDownloadedAt: new Date().toISOString() });
+      if (reports && j.step === 3) reports.schedule(j);
       const slug = String(j.state.profile?.business || 'Peserta').normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'Peserta';
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="Laporan-Quick-Fix-${slug}.pdf"`, 'Cache-Control': 'no-store' }).send(bytes);
     } catch (err) {

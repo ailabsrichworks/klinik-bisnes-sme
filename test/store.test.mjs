@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFakeGoogle } from '../server/google-fake.mjs';
 import { Store, PESERTA } from '../server/store.mjs';
+import { PILLARS } from '../public/js/content.mjs';
 
 const open = async (g) => {
   const s = new Store({ sheets: g.sheets, drive: g.drive, sheetId: 'sheet', folderId: 'folder' });
@@ -11,176 +12,136 @@ const open = async (g) => {
   clearInterval(s.timer); clearInterval(s.sesiTimer);
   return s;
 };
-const rowFor = (g, id) => g.rows('Peserta').find((r) => r?.[0] === id);
+const rowFor = (g, id, tab = 'Peserta') => g.rows(tab).find((r) => r?.[0] === id);
 const col = (name) => PESERTA.indexOf(name);
+const profile = { name: 'Nur Aina', business: 'Aina Frozen Food', industry: 'F&B / Makanan & Minuman', businessModel: 'Jual produk fizikal', businessAge: '1 hingga kurang 3 tahun', monthlySales: 'RM5,000–RM10,000' };
 
-test('first run creates the tabs and header rows', async () => {
+test('first run creates the tabs and header rows (no AI log)', async () => {
   const g = createFakeGoogle();
   await open(g);
   assert.deepEqual(g.rows('Peserta')[0], PESERTA);
   assert.equal(g.rows('Sesi')[0][0], 'code');
-  assert.equal(g.rows('Log AI')[0][0], 'time');
   assert.match(g.rows('README')[0][0], /KBSME/);
-  // A second start does not rewrite anything.
+  assert.equal(g.rows('Log AI').length, 0);
   const before = g.calls.length;
   await open(g);
-  assert.ok(!g.calls.slice(before).some((c) => c.startsWith('values.batchUpdate')));
+  assert.ok(!g.calls.slice(before).some((c) => c.startsWith('values.batchUpdate')), 'a second start rewrites nothing');
 });
 
-test('journeys survive a restart, and the token is checked', async () => {
+test('a Peserta tab from the AI version is left alone; rows go to "Peserta v4"', async () => {
+  const g = createFakeGoogle();
+  await g.sheets.spreadsheets.batchUpdate({ requestBody: { requests: [{ addSheet: { properties: { title: 'Peserta' } } }] } });
+  g.setCell('Peserta', 0, 0, 'id'); g.setCell('Peserta', 0, 1, 'diagnosis_pathway'); g.setCell('Peserta', 1, 0, 'old-row');
+  const s = await open(g);
+  assert.equal(s.tab, 'Peserta v4');
+  const { journey } = s.create({ privacyVersion: 'v4' });
+  await s.flush();
+  assert.ok(rowFor(g, journey.id, 'Peserta v4'));
+  assert.deepEqual(g.rows('Peserta')[1], ['old-row'], 'old data untouched');
+});
+
+test('every answer has its own readable column; the token is checked', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
-  const { journey, token } = s.create({ sessionCode: '', privacyVersion: 'v1' });
-  s.update(journey, { step: 1, state: { profile: { business: 'Ain Tudung', pain: 'cost' }, costs: { sellingPrice: '25', materialCost: '12' }, evidenceText: '=HYPERLINK("http://x")' } });
+  const { journey, token } = s.create({ sessionCode: 'KL-NOV26', privacyVersion: 'v4' });
+  s.update(journey, { step: 3, state: {
+    profile, pillar: 'money', evidenceText: '=HYPERLINK("http://x")',
+    byPillar: { money: { selected: [0, 3, 6], calc: { productCost: '22' }, workOutput: 'Kos produk RM22', plan: { action: 'Lengkapkan kos', measure: 'Ada sumber', startDate: '2026-11-03', proof: 'Invois' } }, sales: { selected: [1] } },
+  } });
   await s.flush();
-  const row = rowFor(g, journey.id);
-  assert.equal(row[col('business')], 'Ain Tudung');
-  assert.equal(row[col('provisional_balance')], '13.00');
-  assert.equal(row[col('evidence_text')], '=HYPERLINK("http://x")');
+  const r = rowFor(g, journey.id);
+  const at = (c) => r[col(c)];
+  assert.equal(at('step'), '4 · Laporan');
+  assert.equal(at('full_name'), 'Nur Aina');
+  assert.equal(at('years_running'), '1 hingga kurang 3 tahun');
+  assert.equal(at('pillar'), 'Urus Duit');
+  assert.equal(at('situation_1'), PILLARS.money.issues[0]);
+  assert.equal(at('situation_3'), PILLARS.money.issues[6]);
+  assert.equal(at('evidence_text'), '=HYPERLINK("http://x")');
+  assert.match(at('calc_inputs'), /Kos produk seunit \(RM\): 22/);
+  assert.match(at('calc_result'), /^Jumlah kos yang disenaraikan: RM27\.00 seunit\nBaki selepas kos yang disenaraikan: RM23\.00 seunit/);
+  assert.equal(at('workshop_output'), 'Kos produk RM22');
+  assert.equal(at('plan_start_date'), '2026-11-03');
+  assert.equal(at('privacy_notice_version'), 'v4');
   assert.ok(g.calls.every((c) => !c.includes(':USER_ENTERED')), 'participant text must be written RAW');
-  assert.ok(!row.includes(token), 'the token itself is never stored');
+  assert.ok(!r.includes(token), 'the token itself is never stored');
 
   const s2 = await open(g);
-  assert.equal(s2.verify(journey.id, token)?.state.profile.business, 'Ain Tudung');
+  const back = s2.verify(journey.id, token);
+  assert.equal(back.state.byPillar.money.calc.productCost, '22');
+  assert.equal(back.step, 3);
   assert.equal(s2.verify(journey.id, 'wrong'), null);
-  assert.equal(s2.verify('nope', token), null);
+});
+
+test('the report columns stay empty until the participant reaches the report', async () => {
+  const g = createFakeGoogle();
+  const s = await open(g);
+  const { journey } = s.create({ privacyVersion: 'v4' });
+  s.update(journey, { step: 1, state: { profile, pillar: 'sales', byPillar: { sales: { selected: [0, 1, 2] } } } });
+  await s.flush();
+  const r = rowFor(g, journey.id);
+  assert.equal(r[col('step')], '2 · Pilih cabaran');
+  assert.equal(r[col('situation_2')], PILLARS.sales.issues[1]);
+  assert.equal(r[col('calc_result')], '');
+  assert.equal(r[col('plan_action')], '');
 });
 
 test('rows moved by hand are still updated in the right place', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
-  const a = s.create({ privacyVersion: 'v1' }).journey;
-  const b = s.create({ privacyVersion: 'v1' }).journey;
+  const a = s.create({ privacyVersion: 'v4' }).journey;
+  const b = s.create({ privacyVersion: 'v4' }).journey;
   await s.flush();
-  g.swapRows('Peserta', 1, 2); // a trainer sorts the sheet
-  s.update(a, { state: { profile: { business: 'A baru' } } });
+  g.swapRows('Peserta', 1, 2);
+  s.update(a, { state: { profile: { ...profile, business: 'A baru' } } });
   await s.flush();
   assert.equal(rowFor(g, a.id)[col('business')], 'A baru');
   assert.equal(rowFor(g, b.id)[col('business')], '');
-  assert.equal(g.rows('Peserta').filter((r) => r?.[0]).length, 3); // header + 2, no duplicate
+  assert.equal(g.rows('Peserta').filter((r) => r?.[0]).length, 3);
 });
 
-test('quota errors are retried and nothing is lost', async () => {
+test('quota errors are retried; a failed flush keeps the changes', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
-  const { journey } = s.create({ privacyVersion: 'v1' });
+  const { journey } = s.create({ privacyVersion: 'v4' });
   g.failNext('values.append', 429);
   await s.flush();
   assert.ok(rowFor(g, journey.id));
-});
-
-test('a failed flush keeps the changes for next time', async () => {
-  const g = createFakeGoogle();
-  const s = await open(g);
-  const { journey } = s.create({ privacyVersion: 'v1' });
-  g.failNext('values.get', 400); // not retryable
+  const two = s.create({ privacyVersion: 'v4' }).journey;
+  g.failNext('values.get', 400);
   await assert.rejects(s.flush());
-  assert.equal(rowFor(g, journey.id), undefined);
   await s.flush();
-  assert.ok(rowFor(g, journey.id));
+  assert.ok(rowFor(g, two.id));
 });
 
-test('evidence goes to Drive; deleting clears the row and the file', async () => {
+test('evidence and report files go to Drive and are deleted with the participant', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
-  const { journey, token } = s.create({ privacyVersion: 'v1' });
+  const { journey, token } = s.create({ privacyVersion: 'v4' });
   await s.saveFile(journey, { name: 'kos.pdf', mime: 'application/pdf', bytes: Buffer.from('%PDF-1.4 a') });
   const first = journey.evidence.fileId;
   await s.saveFile(journey, { name: 'kos2.pdf', mime: 'application/pdf', bytes: Buffer.from('%PDF-1.4 b') });
-  assert.equal(g.files.size, 1, 'replacing a file deletes the old one');
-  assert.ok(!g.files.has(first));
-  const [f] = g.files.values();
-  assert.deepEqual(f.parents, ['folder']);
+  assert.ok(!g.files.has(first), 'replacing a file deletes the old one');
+  await s.saveReport(journey, Buffer.from('%PDF-report'), 'h1');
+  assert.equal(g.files.size, 2);
   await s.flush();
   assert.match(rowFor(g, journey.id)[col('evidence_link')], /^https:\/\/drive/);
-
-  s.fileCache.clear();
-  assert.equal((await s.readFile(journey)).bytes.toString(), '%PDF-1.4 b');
-
+  assert.match(rowFor(g, journey.id)[col('report_link')], /^https:\/\/drive/);
+  await s.removeEvidenceFile(journey);
+  assert.equal(g.files.size, 1);
   await s.remove(journey);
   assert.equal(g.files.size, 0);
   assert.equal(rowFor(g, journey.id), undefined);
-  assert.ok(g.rows('Peserta').slice(1).every((r) => r.every((v) => v === '')), 'row is cleared');
   assert.equal((await open(g)).verify(journey.id, token), null);
 });
 
 test('session codes: case-insensitive, expiry honoured, blank = never expires', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
-  g.setCell('Sesi', 1, 0, 'KL-NOV26'); g.setCell('Sesi', 1, 1, 'Sesi KL'); g.setCell('Sesi', 1, 2, '2026-11-20');
+  g.setCell('Sesi', 1, 0, 'KL-NOV26'); g.setCell('Sesi', 1, 1, 'Sesi KL');
   g.setCell('Sesi', 2, 0, 'OLD'); g.setCell('Sesi', 2, 3, '2020-01-01');
-  g.setCell('Sesi', 3, 0, 'SOON'); g.setCell('Sesi', 3, 3, new Date(Date.now() + 3600e3).toISOString());
   await s.loadSessions();
   assert.equal(s.sessionByCode(' kl-nov26 ')?.name, 'Sesi KL');
   assert.equal(s.sessionByCode('OLD'), null);
-  assert.equal(s.sessionByCode('SOON')?.code, 'SOON');
-  assert.equal(s.sessionByCode('NOPE'), null);
   assert.equal(s.sessionByCode(''), null);
-});
-
-test('AI calls are logged and counted, also after a restart', async () => {
-  const g = createFakeGoogle();
-  const s = await open(g);
-  s.logAi({ journeyId: 'j1', model: 'm', status: 'ok', input: 10, output: 20 });
-  s.logAi({ journeyId: 'j2', model: 'm', status: 'error' });
-  assert.deepEqual(s.aiCount('j1'), { mine: 1, all: 2 });
-  await s.flush();
-  assert.equal(g.rows('Log AI').length, 3);
-  assert.deepEqual((await open(g)).aiCount('j1'), { mine: 1, all: 2 });
-});
-
-test('every answer and every AI result has its own column', async () => {
-  const g = createFakeGoogle();
-  const s = await open(g);
-  const { journey } = s.create({ privacyVersion: 'v3' });
-  const diagnosis = {
-    origin: 'ai', at: '2026-10-27T03:00:00.000Z', pathway: 'live', title: 'Semak 4 claim', reason: 'Sebab belum diketahui.',
-    observations: ['12 claims', '8 paid'], unknowns: ['Sebab tidak bayar'], strength: 'Bukti terhad', quickFix: 'AI QUICK FIX',
-    tasks: [{ title: 'Kumpul claim log', proof: 'Log' }], tasksSource: 'ai',
-  };
-  s.update(journey, { step: 4, state: {
-    profile: { business: 'Butik Ain', businessActive: 'yes', ownerAuthority: 'yes', revenue: 'RM3,000 – bawah RM10,000', pain: 'live' },
-    costs: { sellingPrice: '25', platformCost: '2.5' }, content: { postsWeek: '3', hasContentPlan: 'no' },
-    live: { liveExperience: 'yes', liveViewers: '180', liveClaims: '12', livePaid: '8', invoiceTiming: 'next_day' },
-    diagnosis, pathway: 'live', confirmed: true, quickFix: 'Versi saya', quality: [true, true, false],
-    tasks: [{ title: 'Kumpul claim log', proof: 'Log', status: 'selesai', note: 'siap' }], metrics: ['12', '', 'ya'],
-  } });
-  await s.flush();
-  const r = rowFor(g, journey.id);
-  const at = (c) => r[col(c)];
-  assert.equal(at('step'), '5');
-  assert.equal(at('cost_selling_price'), '25');
-  assert.equal(at('cost_platform'), '2.5');
-  assert.equal(at('content_posts_week'), '3');
-  assert.equal(at('content_has_plan'), 'tidak');
-  assert.equal(at('live_viewers'), '180');
-  assert.equal(at('live_unpaid_rate'), '4 (33.3%)');
-  assert.equal(at('live_invoice_timing'), 'hari berikutnya / lewat');
-  assert.equal(at('diagnosis_at'), '2026-10-27T03:00:00.000Z');
-  assert.equal(at('diagnosis_observations'), '• 12 claims\n• 8 paid');
-  assert.equal(at('diagnosis_unknowns'), '• Sebab tidak bayar');
-  assert.equal(at('ai_quick_fix'), 'AI QUICK FIX');
-  assert.equal(at('ai_tasks'), '1. Kumpul claim log — bukti: Log');
-  assert.equal(at('quick_fix'), 'Versi saya');
-  assert.equal(at('quick_fix_edited'), 'ya');
-  assert.equal(at('quality_checks'), '2/3');
-  assert.match(at('tasks'), /\[selesai\] Kumpul claim log — bukti: Log — nota: siap/);
-  assert.equal(at('day7_result_1'), 'Claims disahkan: 12');
-  assert.equal(at('day7_result_2'), '');
-  assert.equal(at('day7_result_3'), 'Invoice timestamp direkod: ya');
-  assert.equal(at('programme'), 'ready · live');
-});
-
-test('the AI log keeps what was sent and what came back', async () => {
-  const g = createFakeGoogle();
-  const s = await open(g);
-  s.logAi({ journeyId: 'j1', model: 'm', status: 'ok', input: 1, output: 2, file: 'chat.png', request: { pasted_evidence: 'RM25' }, response: { pathway: 'live', title: 'T' }, result: { pathway: 'missing', title: 'Sahkan data LIVE dahulu', guard: 'live_blocked', tasksSource: 'template' } });
-  await s.flush();
-  const [head, row] = g.rows('Log AI');
-  const at = (c) => row[head.indexOf(c)];
-  assert.equal(at('evidence_file'), 'chat.png');
-  assert.equal(at('pathway'), 'missing');
-  assert.equal(at('guard'), 'live_blocked');
-  assert.deepEqual(JSON.parse(at('request')), { pasted_evidence: 'RM25' });
-  assert.equal(JSON.parse(at('response')).pathway, 'live');
 });

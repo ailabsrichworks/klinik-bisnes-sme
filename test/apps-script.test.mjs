@@ -149,19 +149,19 @@ test('first start creates the tabs, headers, protection and hidden columns', asy
   assert.deepEqual(p.hidden, [col('token_hash') + 1, col('state_json') + 1]);
   assert.match(tab(fake, 'README').cells[0][0], /KBSME/);
   await open(fetchImpl); // a second start changes nothing
-  assert.equal(fake.sheets.length, 4);
+  assert.deepEqual(fake.sheets.map((x) => x.name), ['Peserta', 'Sesi', 'README']);
 });
 
 test('journeys save as text, survive a restart, and follow a sorted sheet', async () => {
   const { fake, fetchImpl } = loadScript();
   const s = await open(fetchImpl);
-  const a = s.create({ privacyVersion: 'v3' });
-  const b = s.create({ privacyVersion: 'v3' });
-  s.update(a.journey, { state: { profile: { business: 'Ain Tudung' }, costs: { sellingPrice: '25', materialCost: '12' }, evidenceText: '=IMPORTXML("http://x")' } });
+  const a = s.create({ privacyVersion: 'v4' });
+  const b = s.create({ privacyVersion: 'v4' });
+  s.update(a.journey, { step: 3, state: { profile: { business: 'Ain Tudung' }, pillar: 'money', byPillar: { money: { selected: [0, 1, 2], calc: {} } }, evidenceText: '=IMPORTXML("http://x")' } });
   await s.flush();
   let row = rowFor(fake, a.journey.id);
   assert.equal(row[col('evidence_text')], '=IMPORTXML("http://x")');
-  assert.equal(row[col('provisional_balance')], '13.00');
+  assert.match(row[col('calc_result')], /^Jumlah kos yang disenaraikan: RM25\.00 seunit/);
   const p = tab(fake, 'Peserta');
   [p.cells[1], p.cells[2]] = [p.cells[2], p.cells[1]]; // a trainer sorts the sheet
   s.update(a.journey, { state: { profile: { business: 'Ain Tudung Baru' } } });
@@ -177,36 +177,36 @@ test('participant text is stored exactly as typed, never as a formula', async ()
   const c = appsScriptClients({ url: 'u', secret: 's3cret', fetchImpl });
   const s = await open(fetchImpl);
   assert.deepEqual(await c.selfTest(), []);
-  const { journey } = s.create({ privacyVersion: 'v3' });
-  s.update(journey, { state: { evidenceText: '=IMPORTXML("http://x")', profile: { business: '+60 Kedai', product: '0012', customer: 'TRUE' }, costs: { sellingPrice: '25.50' } } });
+  const { journey } = s.create({ privacyVersion: 'v4' });
+  s.update(journey, { step: 3, state: { evidenceText: '=IMPORTXML("http://x")', profile: { name: '-Aina', business: '+60 Kedai', industry: 'TRUE' }, pillar: 'money', byPillar: { money: { selected: [0, 1, 2], calc: { sellingPrice: '25.50' }, workOutput: '@kos 0012' } } } });
   await s.flush();
   const row = rowFor(fake, journey.id);
   assert.equal(row[col('evidence_text')], '=IMPORTXML("http://x")');
+  assert.equal(row[col('full_name')], '-Aina');
   assert.equal(row[col('business')], '+60 Kedai');
-  assert.equal(row[col('product')], '0012');
-  assert.equal(row[col('customer')], 'TRUE');
-  assert.equal(row[col('cost_selling_price')], '25.50');
-  assert.equal(row[col('provisional_balance')], '');
-  assert.equal((await open(fetchImpl)).journeys.get(journey.id).state.profile.product, '0012');
+  assert.equal(row[col('industry')], 'TRUE');
+  assert.equal(row[col('workshop_output')], '@kos 0012');
+  assert.match(row[col('calc_inputs')], /Harga jualan seunit \(RM\): 25\.50/);
+  assert.equal((await open(fetchImpl)).journeys.get(journey.id).state.byPillar.money.workOutput, '@kos 0012');
 });
 
 test('evidence files: upload, read back, replace, delete with the participant', async () => {
   const { fake, fetchImpl } = loadScript();
   const s = await open(fetchImpl);
-  const { journey, token } = s.create({ privacyVersion: 'v3' });
+  const { journey, token } = s.create({ privacyVersion: 'v4' });
   const png = readFileSync(new URL('./fixtures/whatsapp-chat.png', import.meta.url));
   await s.saveFile(journey, { name: 'chat.png', mime: 'image/png', bytes: png });
   const first = journey.evidence.fileId;
   assert.match(journey.evidence.link, /^https:\/\/drive\.google\.com\/file\/d\//);
-  s.fileCache.clear();
-  assert.ok((await s.readFile(journey)).bytes.equals(png), 'bytes survive the base64 round trip');
+  const c = appsScriptClients({ url: 'u', secret: 's3cret', fetchImpl });
+  assert.ok(Buffer.from((await c.drive.files.get({ fileId: first })).data).equals(png), 'bytes survive the base64 round trip');
   await s.saveFile(journey, { name: 'kos.pdf', mime: 'application/pdf', bytes: Buffer.from('%PDF-1.4 x') });
   assert.equal(fake.files.get(first).trashed, true, 'the replaced file is binned');
   await s.flush();
   await s.remove(journey);
   assert.ok([...fake.files.values()].every((f) => f.trashed));
   assert.equal(rowFor(fake, journey.id), undefined);
-  await assert.rejects(s.readFile({ id: 'x', evidence: { fileId: first, mime: 'image/png' } }), (e) => e.code === 404);
+  await assert.rejects(c.drive.files.get({ fileId: first }), (e) => e.code === 404);
   await s.deleteFile(first); // already in the bin: no error
   assert.equal((await open(fetchImpl)).verify(journey.id, token), null);
 });
@@ -227,13 +227,15 @@ test('session codes typed by hand, including real date cells', async () => {
   assert.equal(s.sessionByCode('TODAY')?.code, 'TODAY');
 });
 
-test('AI log rows are appended and counted after a restart', async () => {
+test('a Peserta tab from the AI version is left alone through the script too', async () => {
   const { fake, fetchImpl } = loadScript();
+  const c = appsScriptClients({ url: 'u', secret: 's3cret', fetchImpl });
+  await c.sheets.spreadsheets.batchUpdate({ requestBody: { requests: [{ addSheet: { properties: { title: 'Peserta' } } }] } });
+  await c.sheets.spreadsheets.values.batchUpdate({ requestBody: { valueInputOption: 'RAW', data: [{ range: "'Peserta'!A1", values: [['id', 'diagnosis_pathway'], ['lama', 'cost']] }] } });
   const s = await open(fetchImpl);
-  s.logAi({ journeyId: 'j1', model: 'claude-sonnet-5-5', status: 'ok', input: 1200, output: 900 });
-  await s.flush();
-  assert.equal(tab(fake, 'Log AI').cells[1][1], 'j1');
-  assert.deepEqual((await open(fetchImpl)).aiCount('j1'), { mine: 1, all: 1 });
+  assert.equal(s.tab, 'Peserta v4');
+  assert.deepEqual(tab(fake, 'Peserta').cells[1], ['lama', 'cost']);
+  assert.deepEqual(tab(fake, 'Peserta v4').cells[0], PESERTA);
 });
 
 test('a script error page or quota error becomes a retryable error', async () => {

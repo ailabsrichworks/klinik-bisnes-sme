@@ -3,215 +3,177 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#102f4a">
-  <meta name="description" content="Klinik Bisnes SME — Business Quick Fix: satu masalah, satu Quick Fix, tujuh hari tindakan.">
+  <meta name="theme-color" content="#174b3b">
+  <meta name="description" content="Business Quick Fix — kenal pasti cabaran bisnes anda, fahami kesannya dan siapkan satu tindakan untuk diuji dalam tujuh hari.">
   <title>Business Quick Fix · Klinik Bisnes SME</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23102f4a'/%3E%3Ctext x='16' y='21.5' font-family='Arial' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3EKB%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23174b3b'/%3E%3Ctext x='16' y='21.5' font-family='Arial' font-weight='700' font-size='13' fill='%23d7f36b' text-anchor='middle'%3EKB%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-  <div class="shell">
+  <!-- Icons used by the pillar buttons and a few controls -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-sales" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-marketing" viewBox="0 0 24 24"><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16.5" cy="14.5" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <div class="wrap">
     <header class="top">
-      <a class="brand" href="/"><span class="logo" aria-hidden="true">KB</span><span><strong>Klinik Bisnes SME</strong><small>Richworks X Academy · Business Quick Fix</small></span></a>
+      <a class="brand" href="/"><span class="mark" aria-hidden="true">KB</span><span>KLINIK BISNES SME<small>BUSINESS QUICK FIX</small></span></a>
+      <div class="pill" id="sessionPill">Richworks X Academy</div>
     </header>
 
-    <section class="hero" aria-labelledby="heroTitle">
-      <div>
-        <div class="eyebrow" id="cohortLabel">Dah Promote. Mana Sales? · Sesi kerja 2 jam</div>
-        <h1 id="heroTitle">Satu masalah. Satu Quick Fix. Tujuh hari.</h1>
-        <p>Tunjukkan contoh sebenar bisnes anda, semak diagnosis awal, siapkan satu pembetulan kecil, kemudian rekod apa yang betul-betul berlaku.</p>
-        <p class="fine">Ini bukan diagnosis bisnes penuh dan bukan jaminan sales naik. Buang data customer sebelum berkongsi.</p>
-      </div>
-      <div class="formula" aria-label="Formula sesi">
-        <div><b>1</b><span>isu yang paling dekat</span></div>
-        <div><b>1</b><span>pembetulan yang boleh diguna</span></div>
-        <div><b>7</b><span>hari untuk menguji</span></div>
-      </div>
+    <section class="hero">
+      <div class="eyebrow">Kenal pasti. Faham. Baiki.</div>
+      <h1>Apakah cabaran utama dalam bisnes anda?</h1>
+      <p>Pilih cabaran yang paling dekat dengan keadaan bisnes anda. Kenal pasti kemungkinan punca, fahami kesannya dan siapkan satu tindakan praktikal untuk diuji dalam tujuh hari.</p>
+      <ol class="steps" aria-label="Aliran sesi"><li>01 Diagnosis</li><li>02 Kira / semak impak</li><li>03 Buat latihan</li><li>04 Pelan 7 hari</li></ol>
     </section>
 
-    <!-- ─── session code: optional, shown only when a code in the link is not recognised ─── -->
-    <section class="gate" id="codeGate" hidden aria-labelledby="codeTitle">
-      <div class="kicker">Kod sesi</div>
+    <div class="demo-bar" id="demoBar" hidden>
+      <span>Isi data contoh (ujian):</span>
+      <button type="button" class="linkbtn" data-demo="sales">Sales</button>
+      <button type="button" class="linkbtn" data-demo="marketing">Marketing</button>
+      <button type="button" class="linkbtn" data-demo="money">Urus Duit</button>
+    </div>
+
+    <div class="card gate" id="loadingGate" aria-live="polite"><p>Memuatkan…</p></div>
+
+    <section class="card gate" id="codeGate" hidden aria-labelledby="codeTitle">
+      <div class="label">Kod sesi</div>
       <h2 id="codeTitle">Kod sesi ini tidak dijumpai.</h2>
-      <p>Semak kod daripada fasilitator anda, atau teruskan tanpa kod. Tiada emel atau password diperlukan.</p>
+      <p class="sub">Semak kod daripada fasilitator anda, atau teruskan tanpa kod.</p>
       <form id="codeForm" novalidate>
         <div class="field"><label for="codeInput">Kod sesi</label><input id="codeInput" autocomplete="off" autocapitalize="characters" maxlength="24" placeholder="Contoh: KL-NOV26"></div>
-        <div class="row wrap"><button type="submit" class="btn primary" id="codeBtn">Masuk sesi</button><button type="button" class="btn outline" id="noCodeBtn">Teruskan tanpa kod</button></div>
+        <div class="bottomrow"><button type="button" class="ghost" id="noCodeBtn">Teruskan tanpa kod</button><button type="submit" class="primary">Masuk sesi →</button></div>
       </form>
       <div id="codeMessage" class="message" role="status" aria-live="polite"></div>
-      <p class="small-print">Dengan meneruskan, anda bersetuju dengan <a href="/privacy">notis privasi</a> kami.</p>
     </section>
 
-    <!-- ─── privacy notice consent (first visit per notice version) ─── -->
-    <section class="gate" id="consentGate" hidden aria-labelledby="consentTitle">
-      <div class="kicker">Sebelum mula</div>
-      <h2 id="consentTitle">Bagaimana data anda digunakan.</h2>
-      <div class="notice-box">
-        <p><b>Ringkasan notis privasi</b></p>
-        <ul>
-          <li>Tiada emel, nombor telefon atau password diperlukan. Sesi anda disimpan tanpa nama dalam browser ini.</li>
-          <li>Kami simpan maklumat bisnes, bukti dan tracker yang anda isi dalam Google Sheet dan Google Drive Richworks, untuk sesi ini dan semakan Hari 7.</li>
-          <li>Apabila anda tekan “Jana Diagnosis”, bukti dihantar kepada penyedia AI (Anthropic) untuk dianalisis.</li>
-          <li>Pasukan Klinik Bisnes SME dan fasilitator sesi boleh melihat jawapan anda untuk membantu anda.</li>
-          <li>Anda boleh muat turun atau padam semua data anda pada bila-bila masa.</li>
-        </ul>
-        <p><a href="/privacy" target="_blank" rel="noopener">Baca notis privasi penuh</a></p>
-      </div>
-      <label class="check-label"><input type="checkbox" id="noticeAccept"><span>Saya telah membaca notis privasi dan bersetuju data saya diproses seperti diterangkan.</span></label>
-      <button type="button" class="btn primary" id="consentBtn">Teruskan</button>
-      <div id="consentMessage" class="message" role="status" aria-live="polite"></div>
+    <!-- Langkah 01 -->
+    <section class="card intake" id="intakeView" hidden aria-labelledby="intakeTitle">
+      <div class="label">Langkah 01 · Maklumat bisnes</div>
+      <h2 id="intakeTitle">Sebelum kita mula, kenali bisnes anda dahulu.</h2>
+      <p class="sub">Maklumat ini membantu kami memahami konteks bisnes anda supaya diagnosis lebih relevan dan rekod penyertaan boleh disemak.</p>
+      <form id="profileForm" novalidate>
+        <div class="intake-grid">
+          <div class="field"><label for="participantName">Nama penuh *</label><input id="participantName" autocomplete="name" maxlength="100" placeholder="Nama anda"></div>
+          <div class="field"><label for="businessName">Nama bisnes *</label><input id="businessName" autocomplete="organization" maxlength="100" placeholder="Nama perniagaan / brand"></div>
+          <div class="field"><label for="industry">Industri bisnes *</label><select id="industry"></select></div>
+          <div class="field"><label for="businessModel">Model bisnes *</label><select id="businessModel"></select></div>
+          <div class="field"><label for="businessAge">Berapa lama bisnes beroperasi? *</label><select id="businessAge"></select></div>
+          <div class="field"><label for="monthlySales">Purata jualan bulanan *</label><select id="monthlySales"></select></div>
+        </div>
+        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini (nama, profil bisnes, pilihan cabaran dan bukti yang saya kongsi) disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
+        <p class="intake-note">Maklumat bertanda * diperlukan untuk meneruskan. Jawapan anda disimpan dalam rekod Klinik Bisnes SME (Google Sheet Richworks) dan boleh dipadam bila-bila masa dengan butang "Padam data saya".</p>
+        <div class="bottomrow"><span class="counter">Langkah 1 daripada 2 · Maklumat peserta</span><button class="primary" type="submit" id="profileBtn">Simpan maklumat &amp; mula →</button></div>
+        <div id="intakeMessage" class="message" role="status" aria-live="polite"></div>
+      </form>
     </section>
 
-    <div id="loadingGate" class="gate" aria-live="polite"><p>Memuatkan…</p></div>
-
-    <!-- ─── the five-step app ─── -->
-    <div class="main-layout" id="app" hidden>
-      <nav class="side" aria-label="Lima langkah">
-        <div class="side-title">5 langkah</div>
-        <button type="button" class="step-tab active" data-go="0"><span class="n">1</span><b>Bisnes Anda</b></button>
-        <button type="button" class="step-tab" data-go="1"><span class="n">2</span><b>Bukti Sebenar</b></button>
-        <button type="button" class="step-tab" data-go="2"><span class="n">3</span><b>Diagnosis</b></button>
-        <button type="button" class="step-tab" data-go="3"><span class="n">4</span><b>Quick Fix</b></button>
-        <button type="button" class="step-tab" data-go="4"><span class="n">5</span><b>Tracker 7 Hari</b></button>
-        <div class="side-bottom"><p id="saveState">Disimpan.</p></div>
-      </nav>
-      <main class="workspace">
-        <div class="row wrap demo-bar" id="demoBar" hidden>
-          <span class="subtle">Isi data contoh (ujian):</span>
-          <button type="button" class="link-btn" data-demo="cost">Kos</button>
-          <button type="button" class="link-btn" data-demo="content">Content</button>
-          <button type="button" class="link-btn" data-demo="live">LIVE</button>
-          <button type="button" class="link-btn" data-demo="unknown">Belum pasti</button>
+    <div class="layout" id="diagnosticLayout" hidden>
+      <aside class="panel" aria-labelledby="pillarTitle">
+        <h2 id="pillarTitle">Pilih cabaran utama anda</h2>
+        <p class="sub">Pilih antara tiga cabaran bisnes yang paling utama.</p>
+        <div class="categories" role="group" aria-label="Cabaran utama">
+          <button type="button" class="category" data-cat="sales" aria-pressed="false"><span class="caticon"><svg><use href="#i-sales"/></svg></span><span><strong>Sales (LIVE Sales)</strong><small>Cabaran jualan LIVE &amp; conversion</small></span></button>
+          <button type="button" class="category" data-cat="marketing" aria-pressed="false"><span class="caticon"><svg><use href="#i-marketing"/></svg></span><span><strong>Marketing</strong><small>Cabaran content &amp; marketing</small></span></button>
+          <button type="button" class="category" data-cat="money" aria-pressed="false"><span class="caticon"><svg><use href="#i-money"/></svg></span><span><strong>Urus Duit</strong><small>Cabaran kos &amp; keuntungan</small></span></button>
         </div>
-        <div class="progress"><div><strong id="progressLabel">Langkah 1 / 5</strong><br><small id="progressDesc">Kenali bisnes</small></div><div class="bar"><div id="progressBar" class="bar-in"></div></div><strong id="progressPercent">20%</strong></div>
-        <div class="card">
-          <section class="panel active" id="panel0">
-            <div class="kicker">Langkah 01 · Ringkasan</div><h2>Bisnes anda, secara ringkas.</h2><p class="intro">Fokus pada satu produk atau servis utama sahaja. Nama customer, nombor telefon dan password tidak diperlukan.</p>
-            <div class="form-grid">
-              <div class="field"><label for="business">Nama bisnes <span class="required">*</span></label><input id="business" maxlength="100" placeholder="Contoh: Aina Frozen Food" autocomplete="organization"></div>
-              <div class="field"><label for="product">Produk / servis utama <span class="required">*</span></label><input id="product" maxlength="140" placeholder="Contoh: Frozen food ready-to-cook"></div>
-              <div class="field"><label for="customer">Customer utama</label><input id="customer" maxlength="160" placeholder="Contoh: Ibu bekerja sekitar Bangi"></div>
-              <div class="field"><label for="channel">Channel jualan utama</label><select id="channel"><option value="">Pilih channel</option><option>WhatsApp</option><option>TikTok / LIVE</option><option>Facebook / Instagram</option><option>Shopee / Marketplace</option><option>Kedai / Booth</option><option>Referral</option><option>Lain-lain</option></select></div>
-              <div class="field"><label for="revenue">Purata revenue sebulan</label><select id="revenue"><option value="">Pilih jika tahu</option><option>Pre-revenue</option><option>Bawah RM3,000</option><option>RM3,000 – bawah RM10,000</option><option>RM10,000 – bawah RM30,000</option><option>RM30,000 ke atas</option></select></div>
-              <div class="field"><label for="participant">Nama anda (untuk laporan)</label><input id="participant" maxlength="100" placeholder="Nama panggilan pun boleh" autocomplete="name"></div>
-              <div class="field"><label for="businessActive">Bisnes aktif sekarang?</label><select id="businessActive"><option value="">Belum dipilih</option><option value="yes">Ya, sedang berniaga</option><option value="no">Belum / tidak aktif</option></select></div>
-              <div class="field"><label for="ownerAuthority">Anda boleh buat keputusan bisnes?</label><select id="ownerAuthority"><option value="">Belum dipilih</option><option value="yes">Ya, owner / decision-maker</option><option value="no">Bukan decision-maker</option></select></div>
-            </div>
-            <h3>Apakah isu yang paling dekat sekarang?</h3>
-            <div class="choice-grid" id="painChoices" role="radiogroup" aria-label="Isu utama">
-              <label class="choice"><input type="radio" name="pain" value="cost"><span class="choice-body"><strong>Sales ada, untung tidak jelas</strong><small>Harga, kos, fee atau baki satu jualan belum pasti.</small></span></label>
-              <label class="choice"><input type="radio" name="pain" value="content"><span class="choice-body"><strong>Content tak konsisten atau makan masa</strong><small>Tiada rutin, tiada jadual, atau tak pernah semak hasil post.</small></span></label>
-              <label class="choice"><input type="radio" name="pain" value="live"><span class="choice-body"><strong>Saya dah LIVE, tapi claim tak jadi bayar</strong><small>Untuk yang sudah menjual melalui LIVE sahaja.</small></span></label>
-              <label class="choice"><input type="radio" name="pain" value="unknown"><span class="choice-body"><strong>Saya belum pasti</strong><small>Kita tentukan bukti apa yang perlu dilihat dahulu.</small></span></label>
-            </div>
-            <div class="tip neutral">Pilih satu isu untuk sesi ini. Jika isu sebenar berbeza, anda boleh tukar selepas membaca diagnosis.</div>
-          </section>
-
-          <section class="panel" id="panel1">
-            <div class="kicker">Langkah 02 · Bukti</div><h2>Tunjukkan satu contoh sebenar.</h2><p class="intro">Tampal caption, mesej yang sudah dipadam identiti, atau angka kos. Anda juga boleh lampirkan satu screenshot atau fail. Fokus kepada satu bukti, bukan semua masalah bisnes.</p>
-            <div class="field"><label for="evidenceText">Copy-paste bukti atau terangkan keadaan</label><textarea id="evidenceText" maxlength="9500" style="min-height:160px" placeholder="Contoh: Customer tanya ‘Berapa harga?’ Saya balas ‘RM89 sis, berminat?’ Lepas itu tiada reply."></textarea><p class="hint">Buang nama penuh, telefon, alamat, nombor akaun dan data pelanggan lain sebelum tampal.</p></div>
-            <div class="upload"><strong>Atau lampirkan bukti anda</strong><p>PNG, JPG, WEBP, TXT, CSV atau PDF · maksimum 4MB · satu fail</p><input id="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,text/plain,text/csv,application/pdf,.txt,.csv,.pdf" aria-label="Lampirkan fail bukti"><div id="fileStatus" class="subtle" style="margin-top:9px">Belum ada fail dipilih.</div><img class="preview" id="filePreview" alt="Pratonton imej yang dilampirkan"></div>
-            <div id="costInputs" hidden>
-              <hr class="divider"><h3>Maklumat harga & kos</h3><p class="subtle">Masukkan nilai yang diketahui. Biarkan kosong jika tidak tahu — kos kosong tidak dianggap RM0.</p>
-              <div class="costtable">
-                <label for="sellingPrice">Harga jualan / unit (RM)</label><input id="sellingPrice" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-                <label for="materialCost">Kos bahan / produk (RM)</label><input id="materialCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-                <label for="packagingCost">Packaging (RM)</label><input id="packagingCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-                <label for="deliveryCost">Delivery ditanggung (RM)</label><input id="deliveryCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-                <label for="platformCost">Fee / komisen (RM)</label><input id="platformCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-                <label for="promotionCost">Promotion per sale (RM)</label><input id="promotionCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-                <label for="otherCost">Kos langsung lain (RM)</label><input id="otherCost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Belum tahu">
-              </div>
-              <div class="resultbox"><div><small>Anggaran baki sementara</small><div style="font-size:12px;opacity:.85">Bukan net profit</div></div><b id="provisionalBalance">Belum boleh dikira</b></div>
-              <div class="subtle" id="missingCosts"></div>
-            </div>
-            <div id="contentInputs" hidden>
-              <hr class="divider"><h3>Rutin content anda</h3><p class="subtle">Isi apa yang anda tahu tentang tujuh hari lepas. Biarkan kosong jika tidak pasti.</p>
-              <div class="form-grid">
-                <div class="field"><label for="postsWeek">Post diterbitkan (7 hari lepas)</label><input id="postsWeek" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
-                <div class="field"><label for="hoursWeek">Jam untuk content seminggu</label><input id="hoursWeek" type="number" inputmode="decimal" min="0" step="0.5" placeholder="Belum tahu"></div>
-                <div class="field"><label for="hasContentPlan">Ada kalendar / jadual content?</label><select id="hasContentPlan"><option value="">Belum tahu</option><option value="yes">Ya</option><option value="no">Tiada</option></select></div>
-                <div class="field"><label for="tracksContent">Semak reach / save / enquiry?</label><select id="tracksContent"><option value="">Belum tahu</option><option value="yes">Ya</option><option value="no">Tidak</option></select></div>
-              </div>
-            </div>
-            <div id="liveInputs" hidden>
-              <hr class="divider"><h3>Rekod LIVE anda</h3><p class="subtle">Claims dan paid orders mesti dari sesi LIVE dan tempoh pemantauan yang sama.</p>
-              <div class="form-grid">
-                <div class="field"><label for="liveExperience">Pernah menjual melalui LIVE?</label><select id="liveExperience"><option value="">Pilih jawapan</option><option value="yes">Ya, saya sudah LIVE menjual</option><option value="no">Belum pernah LIVE menjual</option></select></div>
-                <div class="field"><label for="invoiceTiming">Bila invoice / payment link dihantar?</label><select id="invoiceTiming"><option value="">Belum direkod</option><option value="during">Semasa LIVE / segera</option><option value="same_day">Pada hari yang sama</option><option value="next_day">Hari berikutnya / lewat</option></select></div>
-                <div class="field"><label for="liveViewers">Unique viewers (satu sesi)</label><input id="liveViewers" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
-                <div class="field"><label for="liveClaims">Claims (sesi yang sama)</label><input id="liveClaims" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
-                <div class="field"><label for="livePaid">Paid orders (cohort yang sama)</label><input id="livePaid" type="number" inputmode="numeric" min="0" step="1" placeholder="Belum tahu"></div>
-              </div>
-              <div class="tip neutral" id="liveSnapshot">Data belum mencukupi.</div>
-            </div>
-            <label class="check-label"><input type="checkbox" id="privacyConfirm"><span>Saya telah membuang maklumat customer yang boleh dikenal pasti, saya berhak menggunakan bahan ini, dan saya benarkan ia dihantar kepada AI untuk dianalisis.</span></label>
-            <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
-            <button type="button" class="btn navy" id="diagnoseBtn">Jana Diagnosis Awal →</button>
-          </section>
-
-          <section class="panel" id="panel2">
-            <div class="kicker">Langkah 03 · Diagnosis</div><h2>Ini isu yang perlu diuji dahulu.</h2><p class="intro">AI memberi diagnosis <b>awal</b> berdasarkan input anda. Anda yang sahkan sama ada ia sesuai dengan keadaan bisnes sebenar.</p>
-            <div id="diagnosticEmpty" class="tip neutral">Belum ada diagnosis. Lengkapkan bukti pada Langkah 2 dan tekan “Jana Diagnosis Awal”.</div>
-            <div id="diagnosticContent" hidden>
-              <div class="row wrap"><span id="diagMode" class="status">AI · semak semula</span><span id="diagStrength" class="status warn">Bukti terhad</span></div>
-              <div class="diagnosis"><div class="kicker">Keutamaan cadangan</div><div class="big" id="diagTitle"></div><p id="diagReason" style="font-size:14px;margin:8px 0 0"></p>
-                <div class="two-col" style="margin-top:16px"><div class="surface"><h4>Perkara yang diperhatikan</h4><ul id="diagObserved"></ul></div><div class="surface"><h4>Belum tahu / perlu disahkan</h4><ul id="diagUnknown"></ul></div></div>
-              </div>
-              <h3>Sahkan diagnosis anda</h3><div class="field"><label for="pathwaySelect">Pathway yang hendak diperbaiki</label><select id="pathwaySelect"><option value="cost">Cash Flow / Profit · Kos &amp; Harga</option><option value="content">Marketing · Sistem Content</option><option value="live">Sales · LIVE</option><option value="missing">Missing Information</option></select></div>
-              <label class="check-label"><input type="checkbox" id="confirmDiagnosis"><span>Saya faham ini diagnosis awal. Saya pilih satu keutamaan berdasarkan bukti saya, bukan jaminan bahawa inilah punca tunggal sales perlahan.</span></label>
-              <div class="tip good">Seterusnya: satu Quick Win kecil yang boleh disemak dan digunakan dalam bisnes sebenar.</div>
-            </div>
-          </section>
-
-          <section class="panel" id="panel3">
-            <div class="kicker">Langkah 04 · Bina</div><h2>Siapkan satu Quick Fix.</h2><p class="intro">Semak dan edit hasil supaya sesuai dengan pelanggan, offer, harga dan bukti bisnes sendiri.</p>
-            <div class="row wrap"><span class="status" id="fixPath">Pathway</span><span class="subtle">Hasil ini boleh diedit.</span></div>
-            <div class="two-col" style="margin-top:14px">
-              <div class="surface"><h4>Bukti asal</h4><p id="originalEvidence"></p></div>
-              <div class="surface"><h4>Apa yang perlu diperbaiki</h4><p id="fixExplanation"></p></div>
-            </div>
-            <div class="field" style="margin-top:18px"><label for="quickFixEditor">Quick Fix anda <span class="required">*</span></label><textarea id="quickFixEditor" class="editor grow" maxlength="6000" rows="6" placeholder="Versi akhir yang siap digunakan" aria-describedby="placeholderCount"></textarea><div class="placeholder-bar"><span id="placeholderCount" class="placeholder-count" aria-live="polite"></span><button type="button" class="btn outline small" id="nextPlaceholderBtn" hidden>Pergi ke tempat kosong →</button></div><div class="hint">Isi sendiri setiap [ ... ]. AI tidak patut mereka manfaat atau fakta bisnes.</div></div>
-            <h3>Semakan kualiti sebelum guna</h3>
-            <label class="check-label"><input type="checkbox" id="quality1"><span>Saya telah semak fakta, angka dan kesesuaian Quick Fix.</span></label>
-            <label class="check-label"><input type="checkbox" id="quality2"><span>Saya tahu kepada siapa / untuk produk mana Quick Fix ini digunakan.</span></label>
-            <label class="check-label"><input type="checkbox" id="quality3"><span>Saya tahu bukti apa yang hendak direkod selepas digunakan.</span></label>
-            <div class="tip neutral">Quick Fix yang siap bukan bukti sales sudah naik. Kita semak hasil selepas tindakan sebenar.</div>
-          </section>
-
-          <section class="panel" id="panel4">
-            <div class="kicker">Langkah 05 · Laksana</div><h2>Tracker tindakan tujuh hari.</h2><p class="intro">Tujuh langkah kecil untuk menguji <b>satu</b> Quick Fix, bukan tujuh projek baharu. Edit mana-mana tugasan atau bukti supaya sesuai dengan bisnes anda. Buka semula pautan sesi dalam browser yang sama pada Hari 7 untuk isi hasil.</p>
-            <div class="track-meta"><span>Progress pelaksanaan</span><span id="completionText">0 daripada 7 selesai</span></div><div class="track-progress"><div id="completionBar" style="width:0%"></div></div>
-            <div class="tracker" id="tracker" style="margin-top:16px"></div>
-            <h3>Hasil sebenar selepas 7 hari</h3><p class="lesson">Isi hanya apabila ada angka atau rekod. Jangan kaitkan semua jualan kepada Quick Fix tanpa bukti.</p>
-            <div class="metrics-grid" id="metricsArea"></div>
-            <div class="field" style="margin-top:14px"><label for="reviewNotes">Apa yang berlaku? Apa langkah seterusnya?</label><textarea id="reviewNotes" class="grow" rows="3" placeholder="Contoh: 3 daripada 5 pelanggan reply. Masih perlu uji mesej dengan sample lain."></textarea></div>
-            <details class="summary-box"><summary>Ringkasan</summary><div class="report" id="report"></div></details>
-            <hr class="divider">
-            <h3>Bawa pulang</h3>
-            <div class="row wrap take-home"><button type="button" class="btn primary" id="downloadBtn">Muat turun PDF</button><button type="button" class="btn outline" id="copyBtn">Copy ringkasan</button></div>
-            <div id="takeHomeMessage" class="message" role="status" aria-live="polite"></div>
-            <h3>Selepas sesi ini</h3>
-            <div class="surface programme" id="programmeDetails" hidden></div>
-            <div class="field"><label for="nextStep">Pilihan anda</label><select id="nextStep"><option value="Bertindak sendiri dahulu">Cuba Quick Fix sendiri dahulu</option><option value="Maklumat programme berkaitan">Mahukan maklumat programme yang relevan</option><option value="Waitlist">Masuk waitlist</option><option value="Belum pasti">Belum pasti</option></select></div>
-            <label class="check-label"><input type="checkbox" id="marketingConsent"><span>Saya bersetuju menerima maklumat programme Klinik Bisnes SME. Ini pilihan, dan boleh ditarik balik bila-bila masa.</span></label>
-          </section>
-          <div id="globalMessage" class="message" role="status" aria-live="polite"></div>
-          <nav class="footer-actions" aria-label="Navigasi langkah"><button type="button" class="btn secondary" id="prevBtn">← Sebelumnya</button><span class="spacer"></span><button type="button" class="btn primary" id="nextBtn">Seterusnya →</button></nav>
+        <div class="meta">
+          <strong>Profil peserta</strong>
+          <p id="profileSummary">Maklumat bisnes akan dipaparkan di sini.</p>
+          <button class="ghost small" type="button" id="editProfileBtn">Edit maklumat</button>
+          <div class="howto"><strong class="meta-gap">Bagaimana ia berfungsi?</strong>
+          <p>Pilih 3 isu yang paling kerap berlaku. Hasil diagnosis ialah panduan awal dan perlu disahkan dengan bukti sebenar.</p></div>
         </div>
-        <div class="row wrap" style="margin-top:14px">
-          <button type="button" class="link-btn" id="exportBtn">Muat turun semua data saya (JSON)</button>
-          <button type="button" class="link-btn" id="restartBtn">Mula semula</button>
-          <button type="button" class="link-btn danger" id="deleteBtn">Padam data saya</button>
-          <span class="spacer"></span><a class="link-btn" href="/privacy">Notis privasi</a>
+      </aside>
+
+      <main class="mainpanel" id="main">
+        <!-- Langkah 02: pick 3 situations -->
+        <div id="questionView">
+          <div class="sectionhead"><div><div class="label" id="categoryLabel"></div><h2 id="questionTitle"></h2></div><div class="tag">PILIH 3 ISU</div></div>
+          <div class="progress" aria-hidden="true"><div id="progressFill"></div></div>
+          <p class="instruction" id="questionIntro"></p>
+          <fieldset class="issues" id="issueList"><legend class="sr-only" id="issueLegend">Pilih tiga situasi</legend></fieldset>
+          <div class="bottomrow"><span class="counter" id="counter" aria-live="polite">0 daripada 3 dipilih</span><button class="primary" type="button" id="diagnoseBtn" disabled>Lihat diagnosis saya →</button></div>
+        </div>
+
+        <!-- Optional evidence, before the report -->
+        <div id="evidenceView" hidden>
+          <div class="sectionhead"><div><div class="label">Bukti tambahan · Pilihan</div><h2>Ada contoh sebenar untuk dikongsi?</h2></div><div class="tag">PILIHAN</div></div>
+          <p class="instruction">Anda boleh langkau langkah ini. Jika ada, contoh sebenar membantu fasilitator memahami situasi anda dengan lebih tepat.</p>
+          <div class="promptbox" id="evidenceHint"></div>
+          <div class="notice"><strong>Penting:</strong> bukti ini <strong>tidak dianalisis</strong> oleh app dan tidak mengubah laporan anda. Ia disimpan dalam rekod Klinik Bisnes SME (Google Sheet dan Google Drive Richworks) supaya fasilitator boleh menyemaknya. Buang nama, nombor telefon dan maklumat pelanggan sebelum berkongsi.</div>
+          <div class="field"><label for="evidenceText">Tampal contoh (pilihan)</label><textarea id="evidenceText" class="grow" rows="4" maxlength="9500" placeholder="Contoh: perbualan dengan pelanggan, caption, angka jualan atau kos…"></textarea></div>
+          <div class="upload">
+            <label for="fileUpload" class="upload-label"><svg aria-hidden="true"><use href="#i-upload"/></svg><span><strong>Lampirkan satu fail (pilihan)</strong><small>PNG, JPG, WEBP, PDF, TXT atau CSV · maksimum 4 MB</small></span></label>
+            <input id="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,text/plain,text/csv,application/pdf,.txt,.csv,.pdf">
+            <div class="filestatus"><span id="fileStatus">Belum ada fail.</span><button type="button" class="linkbtn danger" id="removeFileBtn" hidden>Buang fail</button></div>
+          </div>
+          <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
+          <div class="bottomrow"><button class="ghost" type="button" id="evidenceBackBtn">← Kembali</button><button class="primary" type="button" id="reportBtn">Lihat laporan saya →</button></div>
+        </div>
+
+        <!-- The report -->
+        <div id="resultView" hidden>
+          <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag">DIAGNOSIS + WORKSHOP</div></div>
+          <div class="resulttop"><div class="eyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
+          <div class="cards">
+            <div class="resultcard"><div class="label">01 · Simptom</div><h4>Apa yang sedang berlaku?</h4><ul id="symptomList"></ul></div>
+            <div class="resultcard"><div class="label">02 · Punca berkemungkinan</div><h4>Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></div>
+            <div class="resultcard wide"><div class="label">03 · Impak kepada bisnes</div><h4>Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><p class="muted small" id="impactPrompt"></p></div>
+          </div>
+          <section class="workshop" aria-labelledby="calculatorTitle">
+            <div class="label">04 · Kira / semak impak</div><h3 id="calculatorTitle"></h3><p class="sub" id="calculatorIntro"></p>
+            <div id="calculatorFields" class="calcfields"></div>
+            <div class="calcresult" id="calculatorResult" aria-live="polite"></div>
+            <p class="fineprint" id="calcNote"></p>
+          </section>
+          <section class="workshop" aria-labelledby="exerciseTitle">
+            <div class="label">05 · Quick Fix workshop</div><h3 id="exerciseTitle"></h3><p id="exerciseBrief"></p>
+            <div id="exercisePrompt" class="promptbox"></div>
+            <label class="fieldlabel" for="workOutput">Hasil latihan anda</label><textarea id="workOutput" class="grow" rows="5" maxlength="4000" placeholder="Tulis draf, kiraan atau keputusan anda di sini..."></textarea>
+            <div class="bottomrow"><span class="counter">Hasil latihan disimpan dalam laporan anda</span><button class="ghost" type="button" id="exampleBtn" aria-expanded="false" aria-controls="exampleBox">Lihat contoh</button></div>
+            <div class="example" id="exampleBox" hidden><div class="label">Contoh</div><p id="exampleText"></p><button class="ghost small" type="button" id="useExampleBtn">Guna contoh ini sebagai permulaan</button></div>
+          </section>
+          <section class="workshop" aria-labelledby="planTitle">
+            <div class="label">06 · Pelan tindakan 7 hari</div><h3 id="planTitle">Jangan berhenti setakat faham. Uji dalam bisnes.</h3><p class="sub">Pilih tindakan kecil yang boleh dibuat dan diukur. Anda boleh ubah pelan ini mengikut keadaan sebenar.</p>
+            <div class="planfields">
+              <div><label class="fieldlabel" for="actionPlan">Apa tindakan yang akan dibuat?</label><textarea id="actionPlan" class="grow" rows="2" maxlength="600" placeholder="Contoh: Uji skrip pembukaan baharu untuk satu LIVE..."></textarea></div>
+              <div><label class="fieldlabel" for="successMeasure">Apa ukuran kejayaan?</label><textarea id="successMeasure" class="grow" rows="2" maxlength="400" placeholder="Contoh: inquiry, order, masa menyiapkan content, margin..."></textarea></div>
+              <div><label class="fieldlabel" for="actionDate">Bila anda akan mula?</label><input id="actionDate" type="date"></div>
+              <div><label class="fieldlabel" for="proofToCheck">Bukti apa yang akan disemak selepas 7 hari?</label><textarea id="proofToCheck" class="grow" rows="2" maxlength="600" placeholder="Contoh: rekod jualan, data LIVE, 5 content, senarai kos..."></textarea></div>
+            </div>
+          </section>
+          <section class="workshop nextstep" aria-labelledby="reflectionTitle">
+            <div class="label">07 · Reflection</div><h3 id="reflectionTitle">Di mana execution gap anda?</h3><p id="reflectionText"></p>
+            <div class="cards">
+              <div class="resultcard"><h4>Apa yang sudah anda dapat hari ini</h4><p id="takeawayText"></p></div>
+              <div class="resultcard"><h4>Apa yang masih perlu dikuasai</h4><p id="gapText"></p></div>
+            </div>
+            <div class="closing"><h4 id="closingTitle"></h4><p id="closingText"></p></div>
+          </section>
+          <p class="fineprint" id="reportNote"></p>
+          <div id="reportMessage" class="message" role="status" aria-live="polite"></div>
+          <div class="bottomrow"><button class="ghost" type="button" id="backToQuestionsBtn">← Kembali edit pilihan</button><button class="primary" type="button" id="downloadBtn"><svg aria-hidden="true"><use href="#i-download"/></svg>Cetak / Simpan laporan (PDF)</button></div>
         </div>
       </main>
     </div>
+
+    <div class="account-links" id="accountLinks" hidden>
+      <button type="button" class="linkbtn" id="exportBtn">Muat turun semua data saya (JSON)</button>
+      <button type="button" class="linkbtn" id="restartBtn">Mula semula</button>
+      <button type="button" class="linkbtn danger" id="deleteBtn">Padam data saya</button>
+      <a class="linkbtn" href="/privacy">Notis privasi</a>
+    </div>
+    <footer class="footer">Business Quick Fix · Klinik Bisnes SME bersama Richworks X Academy. Diagnosis berasaskan checklist, bukan AI.</footer>
   </div>
-  <div id="print-area"></div>
   <script src="/js/common.js"></script>
   <script type="module" src="/js/app.js"></script>
 </body>
