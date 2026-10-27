@@ -4,7 +4,7 @@ delete process.env.ANTHROPIC_API_KEY;
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SYSTEM, OUTPUT_SCHEMA, WORKSHOP_SYSTEM, coach, workshop, workshopInput, coachInput, normalize, fixedReport, setClientForTests, CoachError } from '../server/coach.mjs';
+import { SYSTEM, OUTPUT_SCHEMA, WORKSHOP_SYSTEM, QUESTIONS_SYSTEM, writeQuestions, coach, workshop, workshopInput, coachInput, normalize, fixedReport, setClientForTests, CoachError } from '../server/coach.mjs';
 import { PILLARS } from '../public/js/content.mjs';
 
 const sample = JSON.parse(readFileSync(new URL('./fixtures/coach-response.json', import.meta.url), 'utf8'));
@@ -155,4 +155,25 @@ test('workshop(): needs a diagnosis and an answer; bad answers are retryable err
   assert.equal(r.source, 'fixed');
   assert.equal(r.output, 'S1?\nIbu bekerja\n\nS2?\nTiada masa');
   assert.equal(workshopInput(state()), null);
+});
+
+test('older reports: the exercise steps are turned into questions once; instructions are ruled out', async () => {
+  assert.match(SYSTEM, /never an instruction or a task/);
+  assert.match(QUESTIONS_SYSTEM, /Never write an instruction or a task/);
+  const old = state({ ai: { source: 'ai', result: normalize(sample) } });
+  const qs = [{ question: 'Produk apa yang akan anda jual?', hint: 'Contoh: serum' }, { question: 'Apa tawaran anda?', hint: '' }];
+  const fake = fakeClient(ok({ questions: qs }));
+  setClientForTests(fake);
+  const store = logStore();
+  assert.deepEqual(await writeQuestions({ store, journey: { id: 'j', state: old } }), qs);
+  assert.equal(fake.calls[0].system, QUESTIONS_SYSTEM);
+  assert.match(fake.calls[0].messages[0].content, new RegExp(sample.workshop.steps[0].slice(0, 20)));
+  assert.match(store.logs[0].title, /^Soalan workshop · /);
+  const has = state({ ai: { source: 'ai', result: normalize({ ...sample, workshop: { ...sample.workshop, questions: qs } }) } });
+  assert.deepEqual(await writeQuestions({ store, journey: { id: 'j', state: has } }), qs);
+  assert.equal(fake.calls.length, 1, 'no call when the report has questions');
+  setClientForTests(fakeClient(ok({ questions: [qs[0]] })));
+  await assert.rejects(writeQuestions({ store, journey: { id: 'j', state: old } }), (e) => e.status === 502);
+  setClientForTests(null);
+  assert.deepEqual(await writeQuestions({ store, journey: { id: 'j', state: old } }), []);
 });

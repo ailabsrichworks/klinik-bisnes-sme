@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
 import { reportPdf } from './report-pdf.mjs';
 import { pillarAnswers } from './store.mjs';
-import { coach, workshop, aiReady, limitReached, countIp, CoachError } from './coach.mjs';
+import { coach, workshop, writeQuestions, aiReady, limitReached, countIp, CoachError } from './coach.mjs';
 import { sessionNameOf } from './reports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -185,6 +185,25 @@ export function createApp({ store, reports }) {
     } catch (err) {
       if (err instanceof CoachError) return res.status(err.status).json({ error: err.message });
       console.error('[workshop] unexpected', err);
+      res.status(500).json({ error: 'Ralat server. Cuba semula.' });
+    }
+  });
+
+  // Workshop questions for a report written before the AI wrote them: made once, kept on the report.
+  api.post('/workshop/questions', ipLimit(60), json, requireJourney, async (req, res) => {
+    const j = req.journey;
+    try {
+      const questions = await writeQuestions({ store, journey: j });
+      const { pillar, ai } = pillarAnswers(j.state);
+      if (questions.length && !ai.result.workshop.questions?.length) {
+        const state = structuredClone(j.state);
+        state.byPillar[pillar].ai.result.workshop.questions = questions;
+        store.update(j, { state });
+      }
+      res.json({ questions });
+    } catch (err) {
+      if (err instanceof CoachError) return res.status(err.status).json({ error: err.message });
+      console.error('[workshop questions] unexpected', err);
       res.status(500).json({ error: 'Ralat server. Cuba semula.' });
     }
   });

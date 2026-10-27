@@ -420,17 +420,38 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
   // exercise output (POST /api/workshop), which they can still edit.
   const wsQuestions = () => workshopQuestions(answers().ai?.result?.workshop);
   const wsStep = () => Math.min(wsQuestions().length - 1, Math.max(0, answers().workStep || 0));
-  let wsBusy = false;
+  let wsBusy = false, wsLoadingQuestions = false;
+  const wsTried = new Set();
+  // Reports written before the AI wrote workshop questions get them once (else the steps are used).
+  async function loadQuestions() {
+    const a = answers();
+    wsTried.add(a.ai.at);
+    wsLoadingQuestions = true; drawWorkshop();
+    try {
+      await saveNow();
+      const r = await KB.api('/api/workshop/questions', { method: 'POST', body: {} });
+      if (r.questions?.length) a.ai.result.workshop.questions = r.questions;
+    } catch (err) {
+      msg('wsMessage', err.message || 'Soalan latihan gagal disediakan.', true);
+    } finally {
+      wsLoadingQuestions = false; drawWorkshop();
+    }
+  }
   function drawWorkshop() {
     const a = answers(), R = a.ai.result;
     a.workAnswers ||= [];
+    const started = a.workAnswers.some((x) => txt(x)) || txt(a.workOutput);
+    if (a.ai.source === 'ai' && KB.cfg.aiReady && !R.workshop.questions?.length && !started && !wsTried.has(a.ai.at)) return loadQuestions();
     $('exerciseTitle').textContent = R.workshop.title;
     $('exerciseBrief').textContent = R.workshop.purpose;
     $('workOutputLabel').textContent = R.workshop.output || 'Hasil latihan anda';
     const done = !a.workAsking && txt(a.workOutput) !== '';
-    show('wsWorking', wsBusy);
-    show('wsAsk', !wsBusy && !done);
-    show('wsDone', !wsBusy && done);
+    const busy = wsBusy || wsLoadingQuestions;
+    $('wsWorkingText').textContent = wsLoadingQuestions ? 'Menyediakan soalan latihan…' : 'AI sedang menyusun hasil latihan daripada jawapan anda…';
+    show('wsWorking', busy);
+    show('wsAsk', !busy && !done);
+    show('wsDone', !busy && done);
+    if (busy) return;
     if (done) drawWsDone(); else drawWsQuestion();
   }
   function drawWsQuestion() {

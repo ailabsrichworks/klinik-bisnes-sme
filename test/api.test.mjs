@@ -17,7 +17,8 @@ import { setClientForTests } from '../server/coach.mjs';
 const sample = JSON.parse(readFileSync(new URL('./fixtures/coach-response.json', import.meta.url), 'utf8'));
 const aiCalls = [];
 // The workshop call (its own system prompt) gets a short output instead.
-const answerFor = (req) => (req.system.includes('Build the exercise output') ? { output: 'Draf content untuk ibu bekerja', to_check: [] } : sample);
+const QS = [{ question: 'Produk apa?', hint: '' }, { question: 'Tawaran apa?', hint: '' }];
+const answerFor = (req) => (req.system.includes('Build the exercise output') ? { output: 'Draf content untuk ibu bekerja', to_check: [] } : req.system.includes('Turn the exercise below into those questions') ? { questions: QS } : sample);
 setClientForTests({ beta: { messages: { create: async (req) => { aiCalls.push(req); return { model: 'claude-sonnet-5-5', stop_reason: 'end_turn', usage: { input_tokens: 4200, output_tokens: 2000 }, content: [{ type: 'text', text: JSON.stringify(answerFor(req)) }] }; } } } });
 
 let g, store, server, base;
@@ -118,6 +119,17 @@ test('the workshop output is built from the saved answers', async () => {
   assert.equal(aiCalls.length, 1);
   assert.match(aiCalls[0].messages[0].content, /Ibu bekerja yang beli kuih untuk anak/);
   assert.equal(r.body.output, 'Draf content untuk ibu bekerja');
+});
+
+test('an older report gets its workshop questions once, kept on the report', async () => {
+  const k = await start();
+  await diagnose(k); // the stand-in answer has no questions, like a report from before
+  aiCalls.length = 0;
+  const r = await call('/api/workshop/questions', { method: 'POST', key: k, body: {} });
+  assert.deepEqual(r.body.questions, QS);
+  assert.deepEqual((await call('/api/journey', { key: k })).body.state.byPillar.marketing.ai.result.workshop.questions, QS);
+  await call('/api/workshop/questions', { method: 'POST', key: k, body: {} });
+  assert.equal(aiCalls.length, 1);
 });
 
 test('the optional daily cap per participant is enforced', async () => {
