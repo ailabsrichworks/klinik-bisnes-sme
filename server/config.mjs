@@ -8,7 +8,12 @@ export const config = {
   publicUrl: (env.PUBLIC_URL || '').replace(/\/$/, ''),
   canonicalHost: env.CANONICAL_HOST || '',
 
-  // Google service account key (the JSON file's text, or base64 of it), the Sheet and the Shared Drive folder.
+  // Simplest: the Apps Script pasted into the Sheet (apps-script/Code.gs) and its shared secret.
+  appsScriptUrl: env.APPS_SCRIPT_URL || '',
+  appsScriptSecret: env.APPS_SCRIPT_SECRET || '',
+
+  // Alternative: a Google Cloud service account key (the JSON file's text, or base64 of it),
+  // the Sheet and a folder in a Shared Drive.
   googleServiceAccount: env.GOOGLE_SERVICE_ACCOUNT_JSON || '',
   sheetId: env.SHEET_ID || '',
   driveFolderId: env.DRIVE_FOLDER_ID || '',
@@ -27,9 +32,11 @@ export const config = {
   noticeVersion: env.NOTICE_VERSION || '2026-10-v3',
 };
 
+export const appsScriptReady = () => Boolean(config.appsScriptUrl && config.appsScriptSecret);
 export const googleReady = () => Boolean(config.googleServiceAccount && config.sheetId && config.driveFolderId);
 
 export function missingConfig() {
-  const required = ['googleServiceAccount', 'sheetId', 'driveFolderId', 'anthropicKey'];
+  const required = ['anthropicKey'];
+  if (!appsScriptReady() && !googleReady()) required.unshift('APPS_SCRIPT_URL + APPS_SCRIPT_SECRET (or the Google service account values)');
   return required.filter((k) => !config[k]);
 }

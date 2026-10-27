@@ -4,14 +4,14 @@ Participant tool for the free 2-hour "Dah Promote. Mana Sales?" session: busines
 
 The tool is **public, with no login**. Accepting the privacy notice starts a journey: the server returns a random id + secret token that the browser keeps in `localStorage` and sends with every call (`X-Journey-Id` / `X-Journey-Token`; only a hash of the token is stored). A facilitator's link `/?c=CODE` files the participant under that session; the code is optional, and an unknown or expired code offers to continue without one.
 
-**Data lives in Google:** one Google Sheet (one row per participant, readable by the team; the Sheet *is* the trainer view) and a Shared Drive folder for uploaded evidence. The browser only ever talks to our server; the Google key and the Claude key stay server-side.
+**Data lives in Google:** one Google Sheet (one row per participant, readable by the team; the Sheet *is* the trainer view) and a Drive folder for uploaded evidence. The server reaches them through a small **Apps Script pasted into the Sheet** (`apps-script/Code.gs`, simplest: no Google Cloud project), or through the Google APIs with a service account. The browser only ever talks to our server; the script's secret and the Claude key stay server-side.
 
 The engine follows the **v3 Business Gap AI** spec (`original/v3/KBSME_Business_Gap_AI_v3_Developer_Spec.md`): pathways `cost` (Cash Flow / Profit), `content` (Marketing), `live` (Sales) and the `missing` fallback. Deterministic rules live in `public/js/rules.mjs` and are shared by the browser and the server: cost and LIVE maths, the evidence check, the LIVE guard (never `live` without LIVE experience and real LIVE evidence) and RM198 programme fit. Programme fit is decided by these rules only, never by the model; for RM30K+ participants it shows a neutral line, and no class duration is shown anywhere.
 
 **Departure from spec §4 (agreed):** the 7-day tracker tasks are written by the model in the same call as the diagnosis (`tasks`: 7 × `{title, proof}`, naming the participant's own product, costs, questions or LIVE numbers). The server validates them (`normalizeTasks`: exactly 7, none empty, long text shortened at a word boundary) and falls back to the v3 prototype templates (`TASK_TEMPLATES`) when they are unusable, when AI is off, when the LIVE guard changes the pathway, or when the participant picks a different pathway. Participants can edit each task and its proof in the tracker.
 
 - **App:** Node 20+ / Express (`server/`) serving static pages (`public/`)
-- **Data:** Google Sheets + Google Drive (Shared Drive) through a service account (`server/store.mjs`)
+- **Data:** Google Sheets + Google Drive (`server/store.mjs`), via the Apps Script web app (`server/apps-script.mjs`) or a service account
 - **AI:** Claude via the Anthropic API (`server/diagnose.mjs`)
 - **Hosting:** Railway, **one instance** (the server keeps the participant index in memory)
 
@@ -60,7 +60,27 @@ All participant endpoints need `X-Journey-Id` and `X-Journey-Token`, except wher
 
 ## One-time setup
 
-### 1. Google (about 15 minutes, signed in with your richworks.com Workspace account)
+### 1. Google: the Apps Script (about 5 minutes, recommended)
+
+Do this signed in to the Google account that should own the data (your richworks.com account).
+
+1. **Create the Sheet.** A blank Google Sheet, e.g. "KBSME Quick Fix". Share it with your team as you like.
+2. **Paste the script.** In the Sheet: *Extensions → Apps Script*. Delete what's there and paste the whole of `apps-script/Code.local.gs` (same as `Code.gs`, with your secret already filled in; it is not committed). If you start from `Code.gs`, set `SECRET` to the value of `APPS_SCRIPT_SECRET` in `.env`. Click **Save**.
+3. **Deploy it.** *Deploy → New deployment* → gear icon → **Web app**. Description: `KBSME`. **Execute as: Me**. **Who has access: Anyone**. Click **Deploy**.
+4. **Allow access.** Google asks you to authorise the script (it needs your Sheets and Drive). If it shows "Google hasn't verified this app", click *Advanced → Go to … (unsafe)*: it's your own script.
+5. **Copy the Web app URL** (ends in `/exec`) into `APPS_SCRIPT_URL` in `.env` (and on Railway). Opening that URL in a browser should show `{"ok":true,"app":"kbsme-quick-fix","secretSet":true}`.
+6. **Start the server.** On first start it creates the tabs; the first upload creates a Drive folder "KBSME Bukti peserta" in your Drive.
+
+Notes:
+- "Anyone" means anyone with the URL can call the script, but it refuses every request without the secret. Keep the secret private; to change it, update both `Code.gs` and `APPS_SCRIPT_SECRET`.
+- If "Anyone" isn't offered, your Workspace admin restricts web apps; ask them to allow it, or use option B.
+- After editing the script: *Deploy → Manage deployments → ✏️ → Version: New version → Deploy* (the URL stays the same).
+- "Padam data saya" moves the participant's file to the Drive bin; Google deletes it for good after 30 days.
+- Apps Script adds about a second per call and allows about 30 calls at once; the server batches writes, so a full class is fine.
+
+### 1B. Google: service account (alternative, about 15 minutes)
+
+Faster per call, but needs a Google Cloud project.
 
 1. **Google Cloud project.** At [console.cloud.google.com](https://console.cloud.google.com) create a project (e.g. `kbsme-quick-fix`). Under *APIs & Services → Library*, enable **Google Sheets API** and **Google Drive API**.
 2. **Service account.** *IAM & Admin → Service Accounts → Create service account*, name it `kbsme-app`, no roles needed. Open it → *Keys → Add key → Create new key → JSON*. A `.json` file downloads. **Keep it secret**; never commit it. Note the service account's email (`kbsme-app@<project>.iam.gserviceaccount.com`).
@@ -71,7 +91,7 @@ All participant endpoints need `X-Journey-Id` and `X-Journey-Token`, except wher
    - `GOOGLE_SERVICE_ACCOUNT_JSON`: the key file's contents. Either paste the JSON on one line, or base64 it: `base64 -i key.json | tr -d '\n'`.
    - `SHEET_ID`, `DRIVE_FOLDER_ID`: from steps 3 and 4.
 
-Without these three values the app still runs, on an **in-memory sheet** (handy for trying it out; everything is lost on restart). If the Sheet can't be opened at start-up, the server exits with a message saying what to check.
+Without either option configured the app still runs, on an **in-memory sheet** (handy for trying it out; everything is lost on restart). If the Sheet can't be opened at start-up, the server exits with a message saying what to check.
 
 ### 2. Local
 
@@ -92,7 +112,7 @@ Each diagnosis is one Claude call (`CLAUDE_MODEL`, default `claude-sonnet-5-5` a
 ## Tests
 
 ```bash
-npm test                                         # rules, the Sheets/Drive store and the API, against an in-process fake Google (no network)
+npm test                                         # rules, the store, the API, and Code.gs itself, against in-process stand-ins for Google (no network)
 node --env-file=.env test/acceptance.mjs         # spec §7 T01–T12 against the real AI (~11 Claude calls; server must be running)
 node --env-file=.env test/acceptance.mjs T05 T08 # a subset
 node --env-file=.env test/stress.mjs             # 10 diagnoses at once: time per report; cost too when Google is configured
@@ -105,4 +125,4 @@ The acceptance and stress runners start journeys through the API like a particip
 ## Before the first real cohort
 - Privacy notice approved, placeholders filled, retention periods decided.
 - Rehearse with at least 5 different cases, including image and PDF evidence, on a phone.
-- Check rows and files appear in the real Sheet and Shared Drive, and that "Padam data saya" removes them.
+- Check rows and files appear in the real Sheet and Drive folder, and that "Padam data saya" removes them.

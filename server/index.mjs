@@ -1,5 +1,6 @@
-import { config, googleReady, missingConfig } from './config.mjs';
+import { config, appsScriptReady, googleReady, missingConfig } from './config.mjs';
 import { Store, googleClients } from './store.mjs';
+import { appsScriptClients } from './apps-script.mjs';
 import { createFakeGoogle } from './google-fake.mjs';
 import { createApp } from './app.mjs';
 
@@ -9,8 +10,12 @@ if (missing.length) console.warn(`[config] missing: ${missing.join(', ')}`);
 // Without Google credentials the app still runs, on an in-memory sheet: fine for trying it out,
 // but everything is lost on restart.
 let clients;
-if (googleReady()) {
+if (appsScriptReady()) {
+  clients = appsScriptClients({ url: config.appsScriptUrl, secret: config.appsScriptSecret });
+  console.log('[store] using the Apps Script in the Google Sheet');
+} else if (googleReady()) {
   clients = await googleClients(config.googleServiceAccount);
+  console.log('[store] using the Google Sheets and Drive APIs (service account)');
 } else {
   console.warn('[store] Google not configured — using an IN-MEMORY sheet. Data is lost on restart.');
   clients = createFakeGoogle();
@@ -21,7 +26,8 @@ try {
 } catch (err) {
   const code = err?.code || err?.status;
   console.error(`[store] could not open the Google Sheet (${code}): ${err?.message}`);
-  if (code === 403 || code === 404) console.error('[store] Check SHEET_ID and that the sheet is shared with the service account as Editor.');
+  if (appsScriptReady()) console.error('[store] Check APPS_SCRIPT_URL, that SECRET in Code.gs matches APPS_SCRIPT_SECRET, and that the deployment is a Web app with access "Anyone".');
+  else if (code === 403 || code === 404) console.error('[store] Check SHEET_ID and that the sheet is shared with the service account as Editor.');
   process.exit(1);
 }
 

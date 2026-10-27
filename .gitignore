@@ -3,3 +3,6 @@ node_modules/
 .env.*
 !.env.example
 .DS_Store
+
+# Apps Script copy with the secret filled in (never commit)
+apps-script/*.local.gs
