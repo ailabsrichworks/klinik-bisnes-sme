@@ -115,7 +115,7 @@ import { INTAKE, PILLARS, PILLAR_KEYS, PICK, CLOSING, CALC_NOTE, REPORT_NOTE, ca
         KB.setKey(null); journey = null; // the journey was deleted or the key is stale: start again
       }
     }
-    if (session) $('sessionPill').textContent = session.name;
+    if (session) { $('sessionPill').textContent = session.name; show('sessionPill', true); }
     if (journey) {
       const obj = journey.state || {};
       state = { ...blank(), ...obj, profile: obj.profile || {}, byPillar: obj.byPillar || {} };

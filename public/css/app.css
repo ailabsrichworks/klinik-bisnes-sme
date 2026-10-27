@@ -36,10 +36,13 @@ svg { width: 20px; height: 20px; flex-shrink: 0; }
 
 /* ─── header ─── */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-.brand { display: flex; gap: 12px; align-items: center; font: 800 15px/1.2 var(--font-body); letter-spacing: -.01em; color: var(--ink); text-decoration: none; }
-.brand small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .08em; margin-top: 2px; }
-.mark { width: 42px; height: 42px; background: var(--green); color: var(--lime); border-radius: 13px; display: grid; place-items: center; font: 800 15px/1 var(--font-display); }
-.pill { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: #e8eddf; border-radius: 999px; padding: 8px 12px; color: var(--green); text-align: right; }
+/* Logos: Klinik Bisnes SME (left, links home) and RCG (right). Images are 2x their display size. */
+.brand { display: block; line-height: 0; border-radius: 6px; }
+.brand img { height: 68px; width: auto; display: block; }
+.partner { height: 50px; width: auto; display: block; }
+@media (min-width: 761px) { .brand img { height: 92px; } .partner { height: 64px; } }
+.pill { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: #e8eddf; border-radius: 999px; padding: 8px 12px; color: var(--green); }
+.session-pill { display: inline-block; background: #ffffff1f; color: #eef4ee; margin-bottom: 14px; position: relative; z-index: 1; }
 
 /* ─── hero ─── */
 .hero { background: var(--green); color: #fff; border-radius: 26px; padding: clamp(24px, 5vw, 48px); position: relative; overflow: hidden; }
@@ -128,8 +131,7 @@ textarea.grow { resize: none; overflow: hidden; }
 .meta .meta-gap { margin-top: 16px; }
 /* On phones the panel sits above the questions: keep it short (the instruction repeats the how-to). */
 @media (max-width: 760px) { .meta .howto { display: none; } .meta { margin-top: 12px; } }
-.pill { max-width: 46vw; }
-@media (max-width: 430px) { .pill { font-size: 10px; padding: 7px 10px; } }
+
 
 .sectionhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .sectionhead h2 { font-size: clamp(22px, 3vw, 26px); }
