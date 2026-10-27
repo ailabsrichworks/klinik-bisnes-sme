@@ -13,7 +13,7 @@ export function reportSaver(store, { delayMs = Number(process.env.REPORT_DELAY_M
   async function save(id) {
     timers.delete(id);
     const j = store.journeys.get(id);
-    if (!j || pillarAnswers(j.state).selected.length !== 3) return null;
+    if (!j || !pillarAnswers(j.state).ai) return null; // nothing to report before the diagnosis
     const sessionName = sessionNameOf(store, j);
     const { evidenceText, ...content } = j.state; // evidence is not part of the report
     const hash = createHash('sha256').update(JSON.stringify([content, sessionName])).digest('hex').slice(0, 16);

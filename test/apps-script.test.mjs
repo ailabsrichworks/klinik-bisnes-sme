@@ -158,7 +158,7 @@ test('first start creates the tabs, headers, protection and hidden columns', asy
   assert.equal(p.rowHeight, 54);
   assert.match(tab(fake, 'README').cells[0][0], /KBSME/);
   await open(fetchImpl); // a second start changes nothing
-  assert.deepEqual(fake.sheets.map((x) => x.name), ['Peserta', 'Sesi', 'README']);
+  assert.deepEqual(fake.sheets.map((x) => x.name), ['Peserta', 'Sesi', 'Log AI', 'README']);
 });
 
 test('journeys save as text, survive a restart, and follow a sorted sheet', async () => {
@@ -187,7 +187,7 @@ test('participant text is stored exactly as typed, never as a formula', async ()
   const s = await open(fetchImpl);
   assert.deepEqual(await c.selfTest(), []);
   const { journey } = s.create({ privacyVersion: 'v4' });
-  s.update(journey, { step: 3, state: { evidenceText: '=IMPORTXML("http://x")', profile: { name: '-Aina', business: '+60 Kedai', industry: 'TRUE' }, pillar: 'money', byPillar: { money: { selected: [0, 1, 2], calc: { sellingPrice: '25.50' }, workOutput: '@kos 0012' } } } });
+  s.update(journey, { step: 3, state: { evidenceText: '=IMPORTXML("http://x")', profile: { name: '-Aina', business: '+60 Kedai', industry: 'TRUE' }, pillar: 'money', byPillar: { money: { selected: [0, 1, 2], calc: { sellingPrice: '25.50' }, workOutput: '@kos 0012', ai: { source: 'ai', at: 't', result: { diagnosis_title: '=1+1', plan: [] } } } } } });
   await s.flush();
   const row = rowFor(fake, journey.id);
   assert.equal(row[col('evidence_text')], '=IMPORTXML("http://x")');
@@ -195,6 +195,7 @@ test('participant text is stored exactly as typed, never as a formula', async ()
   assert.equal(row[col('business')], '+60 Kedai');
   assert.equal(row[col('industry')], 'TRUE');
   assert.equal(row[col('workshop_output')], '@kos 0012');
+  assert.equal(row[col('diag_title')], '=1+1', 'AI text is stored as text too');
   assert.equal(row[col('calc_1')], 'Harga jualan seunit (RM): 25.50');
   assert.equal((await open(fetchImpl)).journeys.get(journey.id).state.byPillar.money.workOutput, '@kos 0012');
 });

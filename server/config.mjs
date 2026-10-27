@@ -18,13 +18,26 @@ export const config = {
   sheetId: env.SHEET_ID || '',
   driveFolderId: env.DRIVE_FOLDER_ID || '',
 
+  // The AI coach (server/coach.mjs). Without a key the report uses the fixed v4 text.
+  anthropicKey: env.ANTHROPIC_API_KEY || '',
+  claudeModel: env.CLAUDE_MODEL || 'claude-sonnet-5-5',
+  claudeEffort: env.CLAUDE_EFFORT || 'medium',
+
+  // Optional daily AI caps (rolling 24 hours); 0 or unset = no limit.
+  // With no caps, the Anthropic console spend limit is the only cost guard.
+  dailyAiLimitPerUser: int(env.DAILY_AI_LIMIT_PER_USER, 0),
+  dailyAiLimitPerIp: int(env.DAILY_AI_LIMIT_PER_IP, 0),
+  dailyAiLimitGlobal: int(env.DAILY_AI_LIMIT_GLOBAL, 0),
+
   // Bump when the privacy notice text changes; participants are asked to accept again.
-  noticeVersion: env.NOTICE_VERSION || '2026-10-v4',
+  noticeVersion: env.NOTICE_VERSION || '2026-10-v5',
 };
 
 export const appsScriptReady = () => Boolean(config.appsScriptUrl && config.appsScriptSecret);
 export const googleReady = () => Boolean(config.googleServiceAccount && config.sheetId && config.driveFolderId);
 
 export function missingConfig() {
-  return appsScriptReady() || googleReady() ? [] : ['APPS_SCRIPT_URL + APPS_SCRIPT_SECRET (or the Google service account values)'];
+  const missing = appsScriptReady() || googleReady() ? [] : ['APPS_SCRIPT_URL + APPS_SCRIPT_SECRET (or the Google service account values)'];
+  if (!config.anthropicKey) missing.push('ANTHROPIC_API_KEY (the report falls back to the fixed v4 text)');
+  return missing;
 }

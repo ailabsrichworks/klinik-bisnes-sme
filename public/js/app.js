@@ -1,8 +1,8 @@
-// Business Quick Fix (v4): intake → pick a pillar and 3 situations → optional evidence → report.
-// Fixed text per pillar (content.mjs), no AI. Saved through our API to the participant's row in
-// the Google Sheet. No login: a random key in this browser identifies the participant; a
+// Business Quick Fix: intake → pick a pillar and 3 situations → optional numbers, start date and
+// evidence → AI coach report (server/coach.mjs; the fixed v4 text when the AI is off). Saved
+// through our API to the participant's row in the Google Sheet. No login: a random key in this browser identifies the participant; a
 // facilitator's ?c=CODE files them under that session.
-import { INTAKE, PILLARS, PILLAR_KEYS, PICK, CLOSING, CALC_NOTE, REPORT_NOTE, calculate, calcInputs, defaultPlan } from './content.mjs';
+import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, defaultPlan, coachInput } from './content.mjs';
 
 (async () => {
   'use strict';
@@ -212,11 +212,13 @@ import { INTAKE, PILLARS, PILLAR_KEYS, PICK, CLOSING, CALC_NOTE, REPORT_NOTE, ca
     };
   });
 
-  // Shows one of the main panel's views: 1 pick · 2 evidence · 3 report.
+  // Shows one of the main panel's views: 1 pick · 2 numbers & evidence · 3 report.
+  // The report needs a diagnosis; without one, the participant is sent to step 2 to make it.
   function go(n) {
+    if (n === 3 && !answers().ai) n = 2;
     view = n;
     reached = Math.max(reached, n);
-    show('questionView', n === 1); show('evidenceView', n === 2); show('resultView', n === 3);
+    show('questionView', n === 1); show('evidenceView', n === 2); show('workingView', false); show('resultView', n === 3);
     clearFieldErrors();
     if (n === 1) drawIssues();
     if (n === 2) drawEvidence();
@@ -254,18 +256,44 @@ import { INTAKE, PILLARS, PILLAR_KEYS, PICK, CLOSING, CALC_NOTE, REPORT_NOTE, ca
   }
   $('diagnoseBtn').onclick = () => { if (answers().selected.length === PICK) { go(2); scrollToEl($('main')); } };
 
-  // ─────────────── optional evidence (stored, never analysed) ───────────────
+  // ─────────────── Langkah 03: numbers, start date and optional evidence ───────────────
   function drawEvidence() {
-    $('evidenceHint').textContent = `Contoh yang berguna: ${PILLARS[state.pillar].evidence}`;
+    const p = state.pillar, d = PILLARS[p], a = answers();
+    $('calculatorTitle').textContent = d.calculatorTitle;
+    $('calculatorIntro').textContent = d.calculatorIntro;
+    $('calcNote').textContent = CALC_NOTE;
+    const values = calcInputs(p, a.calc);
+    $('calculatorFields').innerHTML = d.fields.map((f) => `<div class="calcfield"><label for="calc_${f.id}">${KB.esc(f.label)}</label><input type="number" inputmode="decimal" id="calc_${f.id}" data-calc="${f.id}" min="${f.min ?? 0}" ${f.max != null ? `max="${f.max}"` : ''} step="${f.step ?? 1}" placeholder="${KB.esc(String(f.value))}" value="${KB.esc(a.calc[f.id] ?? '')}"></div>`).join('');
+    $$('[data-calc]').forEach((el) => { el.oninput = () => { a.calc[el.dataset.calc] = el.value; drawCalc(); safeSave(); }; });
+    drawCalc();
+    drawStartDate();
+    $('evidenceHint').textContent = `Contoh yang berguna: ${d.evidence}`;
     $('evidenceText').value = state.evidenceText || '';
+    $('evidenceBox').open = !!(txt(state.evidenceText) || journey?.evidenceFile);
+    $('reportBtn').textContent = a.ai && fresh() ? 'Lihat laporan saya →' : 'Jana diagnosis AI saya →';
     drawFile();
   }
+  // Empty boxes show the prototype's example figures, which the calculator uses until the
+  // participant enters their own; only their own figures are sent to the AI.
+  function drawCalc() {
+    const a = answers(), r = calculate(state.pillar, a.calc);
+    $('calculatorResult').innerHTML = `${r.lines.map(KB.esc).join('<br>')}<small>${KB.esc(r.note)}</small>`;
+    const own = PILLARS[state.pillar].fields.some((f) => txt(a.calc[f.id]) !== '');
+    $('calcOwnNote').textContent = own ? 'Angka anda akan digunakan oleh AI. Kotak kosong guna angka contoh.' : 'Kotak kosong: angka contoh digunakan untuk kiraan sahaja dan tidak dihantar kepada AI.';
+  }
+  function drawStartDate() { $$('[data-startdate]').forEach((el) => { el.value = answers().plan.startDate || ''; }); }
+  $$('[data-startdate]').forEach((el) => el.addEventListener('input', () => {
+    answers().plan.startDate = el.value;
+    drawStartDate(); safeSave();
+    if (view === 3) drawStale();
+  }));
   function drawFile() {
     const f = journey?.evidenceFile;
     $('fileStatus').textContent = f ? `Disimpan: ${f.name}` : 'Belum ada fail.';
     show('removeFileBtn', !!f);
   }
   $('evidenceText').addEventListener('input', () => { state.evidenceText = $('evidenceText').value; autoGrow($('evidenceText')); safeSave(); });
+  $('evidenceBox').addEventListener('toggle', () => requestAnimationFrame(growAll));
   $('fileUpload').addEventListener('change', async () => {
     const f = $('fileUpload').files?.[0];
     clearFieldErrors(); msg('evidenceMessage', '');
@@ -290,64 +318,92 @@ import { INTAKE, PILLARS, PILLAR_KEYS, PICK, CLOSING, CALC_NOTE, REPORT_NOTE, ca
     catch (err) { notice('evidenceMessage', err.message, true); }
   };
   $('evidenceBackBtn').onclick = () => { go(1); scrollToEl($('main')); };
-  $('reportBtn').onclick = () => { go(3); scrollToEl($('main')); };
+  $('reportBtn').onclick = () => { if (answers().ai && fresh()) { go(3); scrollToEl($('main')); } else generate(); };
+
+  // ─────────────── the AI coach ───────────────
+  // The diagnosis is current while the inputs the AI saw are unchanged (the same function the
+  // server uses builds them).
+  const fresh = () => answers().ai?.inputKey === JSON.stringify(coachInput(state));
+  let generating = false;
+  async function generate() {
+    if (generating) return;
+    generating = true;
+    clearFieldErrors(); msg('evidenceMessage', ''); msg('reportMessage', '');
+    show('questionView', false); show('evidenceView', false); show('resultView', false); show('workingView', true);
+    $('workingDetail').textContent = `${PILLARS[state.pillar].name} · ${answers().selected.length} situasi dipilih`;
+    scrollToEl($('main'));
+    try {
+      await saveNow(); // the server builds the AI input from the saved answers
+      const r = await KB.api('/api/coach', { method: 'POST', body: {} });
+      Object.assign(answers(), { ai: r.ai, planDone: [] });
+      reached = 3;
+      go(3);
+      scrollToEl($('main'));
+    } catch (err) {
+      go(2);
+      fieldError('reportBtn', err.status === 429 ? err.message : `${err.message || 'AI gagal menyediakan diagnosis.'} Tekan butang sekali lagi untuk cuba semula.`);
+    } finally {
+      generating = false;
+    }
+  }
+  $$('[data-regenerate]').forEach((b) => {
+    b.onclick = () => {
+      if (!confirm('Jana semula diagnosis, latihan dan pelan dengan angka terkini? Hasil latihan yang anda tulis akan kekal; tanda selesai pada pelan akan dikosongkan.')) return;
+      generate();
+    };
+  });
 
   // ─────────────── the report ───────────────
   function drawReport() {
-    const p = state.pillar, d = PILLARS[p], a = answers();
+    const p = state.pillar, d = PILLARS[p], a = answers(), ai = a.ai, R = ai.result;
     $('resultCategory').textContent = `${d.label} · BUSINESS QUICK FIX REPORT`;
-    $('diagnosisTitle').textContent = d.titleOut;
-    $('diagnosisIntro').textContent = d.introOut;
-    $('symptomList').innerHTML = a.selected.map((i) => `<li>${KB.esc(d.issues[i])}</li>`).join('');
-    $('causeText').textContent = d.cause;
-    $('impactText').textContent = d.impact;
-    $('impactPrompt').textContent = d.impactPrompt;
-    $('calculatorTitle').textContent = d.calculatorTitle;
-    $('calculatorIntro').textContent = d.calculatorIntro;
-    $('calcNote').textContent = CALC_NOTE;
-    const values = calcInputs(p, a.calc);
-    $('calculatorFields').innerHTML = d.fields.map((f) => `<div class="calcfield"><label for="calc_${f.id}">${KB.esc(f.label)}</label><input type="number" inputmode="decimal" id="calc_${f.id}" data-calc="${f.id}" min="${f.min ?? 0}" ${f.max != null ? `max="${f.max}"` : ''} step="${f.step ?? 1}" value="${KB.esc(values[f.id])}"></div>`).join('');
-    $$('[data-calc]').forEach((el) => { el.oninput = () => { a.calc[el.dataset.calc] = el.value; drawCalc(); safeSave(); }; });
-    drawCalc();
-    $('exerciseTitle').textContent = d.exerciseTitle;
-    $('exerciseBrief').textContent = d.exerciseBrief;
-    $('exercisePrompt').textContent = d.exercisePrompt;
-    $('exampleText').textContent = d.example;
+    $('sourceTag').textContent = ai.source === 'ai' ? 'DIAGNOSIS AI' : 'DIAGNOSIS + WORKSHOP';
+    $('diagEyebrow').textContent = ai.source === 'ai' ? 'DIAGNOSIS AWAL · DISEDIAKAN OLEH AI' : 'DIAGNOSIS AWAL';
+    $('diagnosisTitle').textContent = R.diagnosis_title;
+    $('diagnosisIntro').textContent = R.diagnosis_summary;
+    $('symptomList').innerHTML = a.selected.map((i, n) => `<li${R.primary_issue === n + 1 ? ' class="primary"' : ''}>${R.primary_issue === n + 1 ? '<span class="badge">Isu utama</span> ' : ''}${KB.esc(d.issues[i])}</li>`).join('');
+    $('priorityBlock').innerHTML = [R.priority_reason && `<p><b>Kenapa didahulukan:</b> ${KB.esc(R.priority_reason)}</p>`, R.other_issues && `<p><b>Kaitan dua isu lain:</b> ${KB.esc(R.other_issues)}</p>`].filter(Boolean).join('');
+    $('causeText').textContent = R.likely_cause;
+    $('impactText').textContent = R.impact;
+    $('evidenceToCheck').innerHTML = R.evidence_to_check.length ? `<p class="mini">Bukti untuk disemak</p><ul>${R.evidence_to_check.map((x) => `<li>${KB.esc(x)}</li>`).join('')}</ul>` : '';
+    // 04: the calculator figures as entered (computed by the app, not the AI)
+    const values = calcInputs(p, a.calc), r = calculate(p, a.calc);
+    $('calcSummaryTitle').textContent = d.calculatorTitle;
+    $('calcSummary').innerHTML = d.fields.map((f) => `<li>${KB.esc(f.label)}: <b>${KB.esc(values[f.id])}</b>${txt(a.calc[f.id]) === '' ? ' <span class="muted">(contoh)</span>' : ''}</li>`).join('');
+    $('calcSummaryResult').innerHTML = `${r.lines.map(KB.esc).join('<br>')}<small>${KB.esc(r.note)}</small>`;
+    // 05: the workshop
+    $('exerciseTitle').textContent = R.workshop.title;
+    $('exerciseBrief').textContent = R.workshop.purpose;
+    $('exerciseSteps').innerHTML = R.workshop.steps.map((x) => `<li>${KB.esc(x)}</li>`).join('');
+    $('workOutputLabel').textContent = R.workshop.output || 'Hasil latihan anda';
+    $('exampleText').textContent = R.workshop.example;
+    $('exampleBtn').hidden = !R.workshop.example;
     $('exampleBox').hidden = true; $('exampleBtn').setAttribute('aria-expanded', 'false'); $('exampleBtn').textContent = 'Lihat contoh';
     $('workOutput').value = a.workOutput;
-    $('actionPlan').value = a.plan.action ?? '';
-    $('successMeasure').value = a.plan.measure ?? '';
-    $('actionDate').value = a.plan.startDate ?? '';
-    $('proofToCheck').value = a.plan.proof ?? '';
-    $('reflectionText').textContent = d.reflection;
-    $('takeawayText').textContent = d.takeaway;
-    $('gapText').textContent = d.gap;
+    // 06: the plan
+    drawStartDate();
+    $('planList').innerHTML = R.plan.map((it, i) => `<li class="planitem${a.planDone[i] ? ' done' : ''}"><label class="plancheck"><input type="checkbox" data-done="${i}" ${a.planDone[i] ? 'checked' : ''}><span class="planday">Hari ${it.day}</span><span class="sr-only"> · item ${i + 1} selesai</span></label><dl><dt>A${i + 1}</dt><dd>${KB.esc(it.action)}</dd><dt>B${i + 1}</dt><dd>${KB.esc(it.measure)}</dd><dt>C${i + 1}</dt><dd>${KB.esc(it.evidence)}</dd></dl></li>`).join('');
+    $$('[data-done]').forEach((el) => { el.onchange = () => { a.planDone[+el.dataset.done] = el.checked; el.closest('.planitem').classList.toggle('done', el.checked); saveNow(); }; });
+    // 07: reflection
+    $('reflPrepared').textContent = R.reflection.prepared;
+    $('reflValidate').textContent = R.reflection.to_validate;
+    $('reflGuidance').textContent = R.reflection.further_guidance;
     $('closingTitle').textContent = CLOSING.title;
     $('closingText').textContent = CLOSING.text;
-    $('reportNote').textContent = REPORT_NOTE;
+    $('reportNote').textContent = ai.source === 'ai' ? AI_NOTE : REPORT_NOTE;
+    $$('[data-regenerate]').forEach((b) => { b.hidden = ai.source !== 'ai' && !KB.cfg.aiReady; });
+    drawStale();
     msg('reportMessage', '');
   }
-  function drawCalc() {
-    const r = calculate(state.pillar, answers().calc);
-    $('calculatorResult').innerHTML = `${r.lines.map(KB.esc).join('<br>')}<small>${KB.esc(r.note)}</small>`;
-  }
+  function drawStale() { show('staleNotice', !!answers().ai && !fresh()); }
   $('workOutput').addEventListener('input', () => { answers().workOutput = $('workOutput').value; autoGrow($('workOutput')); safeSave(); });
-  [['actionPlan', 'action'], ['successMeasure', 'measure'], ['actionDate', 'startDate'], ['proofToCheck', 'proof']].forEach(([id, k]) => {
-    $(id).addEventListener('input', () => { answers().plan[k] = $(id).value; if ($(id).tagName === 'TEXTAREA') autoGrow($(id)); safeSave(); });
-  });
   $('exampleBtn').onclick = () => {
     const open = $('exampleBox').hidden;
     $('exampleBox').hidden = !open;
     $('exampleBtn').setAttribute('aria-expanded', String(open));
     $('exampleBtn').textContent = open ? 'Tutup contoh' : 'Lihat contoh';
   };
-  $('useExampleBtn').onclick = () => {
-    const el = $('workOutput');
-    if (txt(el.value) && !confirm('Gantikan hasil latihan anda dengan contoh ini?')) return;
-    el.value = PILLARS[state.pillar].example;
-    answers().workOutput = el.value; autoGrow(el); safeSave();
-    el.focus();
-  };
+  $('editNumbersBtn').onclick = () => { go(2); scrollToEl($('main')); };
   $('backToQuestionsBtn').onclick = () => { go(1); scrollToEl($('main')); };
 
   // Downloads the report PDF the server builds (the same file kept in Drive). Saves first.

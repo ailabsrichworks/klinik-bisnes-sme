@@ -312,5 +312,50 @@ export function calculate(pillar, saved = {}) {
 // The plan fields start from the pillar's defaults (the start date is the participant's to pick).
 export const defaultPlan = (pillar) => ({ action: PILLARS[pillar].defaultAction, measure: PILLARS[pillar].defaultMeasure, startDate: '', proof: PILLARS[pillar].defaultProof });
 
+// Under an AI-written report.
+export const AI_NOTE = 'Nota: Diagnosis, latihan dan pelan ini disediakan oleh AI berdasarkan maklumat yang anda pilih. Ia diagnosis awal: punca ialah hipotesis yang perlu disahkan dengan data dan bukti sebenar, dan bukan jaminan hasil. Angka kalkulator dikira oleh sistem berdasarkan input anda.';
 // Under the report (adapted from the prototype's note, without "prototype").
 export const REPORT_NOTE = 'Nota: Laporan ini berasaskan checklist dan respons berpandukan kategori, bukan AI. Punca ialah hipotesis awal yang perlu disahkan melalui data dan konteks anda. Hasil kalkulator bergantung pada input anda.';
+
+// The current pillar's answers (each pillar keeps its own, so switching back loses nothing).
+export function pillarAnswers(state = {}) {
+  const pillar = PILLARS[state.pillar] ? state.pillar : null;
+  const a = (pillar && state.byPillar?.[pillar]) || {};
+  return {
+    pillar,
+    selected: Array.isArray(a.selected) ? a.selected.filter((i) => Number.isInteger(i) && i >= 0 && i < 10).slice(0, 3) : [],
+    calc: a.calc || {}, workOutput: a.workOutput || '', plan: a.plan || {},
+    ai: a.ai?.result ? a.ai : null, // { source: 'ai' | 'fixed', result, at, model, inputKey }
+    planDone: Array.isArray(a.planDone) ? a.planDone.map(Boolean) : [],
+  };
+}
+
+// The category names the AI coach prompt uses.
+export const CATEGORY = { sales: 'Sales', marketing: 'Marketing', money: 'Cash Flow / Profit' };
+
+// What the model sees: the business profile (no name or business name), the challenge, the three
+// situations, and the calculator and start date only if the participant gave them.
+export function coachInput(state = {}) {
+  const p = state.profile || {};
+  const { pillar, selected, calc, plan } = pillarAnswers(state);
+  const P = PILLARS[pillar];
+  const own = P.fields.filter((f) => String(calc[f.id] ?? '').trim() !== '');
+  const values = calcInputs(pillar, calc);
+  const r = calculate(pillar, calc);
+  return {
+    business_industry: p.industry || 'Tidak dinyatakan',
+    business_model: p.businessModel || 'Tidak dinyatakan',
+    business_operating_age: p.businessAge || 'Tidak dinyatakan',
+    monthly_sales_range: p.monthlySales || 'Tidak dinyatakan',
+    selected_business_category: CATEGORY[pillar],
+    selected_issues: selected.map((i, n) => ({ number: n + 1, issue: P.issues[i] })),
+    calculator: own.length
+      ? {
+          title: P.calculatorTitle,
+          inputs: P.fields.map((f) => ({ label: f.label, value: values[f.id], entered_by_participant: own.includes(f) })),
+          results_computed_by_app: [...r.lines, r.note],
+        }
+      : 'Peserta tidak memasukkan angka kalkulator.',
+    action_start_date: plan.startDate || 'Belum dipilih',
+  };
+}

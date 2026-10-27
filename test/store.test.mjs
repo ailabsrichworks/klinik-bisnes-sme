@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { createFakeGoogle } from '../server/google-fake.mjs';
 import { Store, PESERTA, HEADER, COLUMNS, SECTIONS } from '../server/store.mjs';
 import { PILLARS } from '../public/js/content.mjs';
+import { readFileSync } from 'node:fs';
+const sample = JSON.parse(readFileSync(new URL('./fixtures/coach-response.json', import.meta.url), 'utf8'));
 
 const open = async (g) => {
   const s = new Store({ sheets: g.sheets, drive: g.drive, sheetId: 'sheet', folderId: 'folder' });
@@ -23,15 +25,17 @@ test('first run creates the tabs; each header names its section and field', asyn
   assert.deepEqual(head, PESERTA);
   assert.equal(head[col('full_name')], 'LANGKAH 1 · MAKLUMAT BISNES\nNama penuh');
   assert.equal(head[col('situation_2')], 'LANGKAH 2 · PILIH CABARAN\nSituasi 2');
-  assert.equal(head[col('calc_1')], 'LAPORAN 04 · KIRA / SEMAK IMPAK\nInput 1');
-  assert.equal(head[col('plan_start_date')], 'LAPORAN 06 · PELAN TINDAKAN 7 HARI\nTarikh mula');
+  assert.equal(head[col('calc_1')], 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN)\nKalkulator · Input 1');
+  assert.equal(head[col('plan_start_date')], 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN)\nBila akan mula');
+  assert.equal(head[col('primary_issue')], 'LAPORAN · DIAGNOSIS AI\nIsu utama');
+  assert.equal(head[col('plan_3_measure')], 'LAPORAN · PELAN TINDAKAN 7 HARI\nB3 · Ukuran kejayaan');
   assert.equal(new Set(PESERTA).size, PESERTA.length, 'every header is unique');
   // sections are contiguous, so each colour band reads as one block
   const order = COLUMNS.map((c) => c.s).filter((x, i, a) => a.indexOf(x) === i);
   assert.deepEqual(order, Object.keys(SECTIONS));
   assert.equal(g.rows('Sesi')[0][0], 'code');
   assert.match(g.rows('README')[0][0], /KBSME/);
-  assert.equal(g.rows('Log AI').length, 0);
+  assert.equal(g.rows('Log AI')[0][0], 'time');
   await open(g); // a second start adds nothing
   assert.deepEqual(g.rows('Peserta')[0], PESERTA);
 });
@@ -87,7 +91,8 @@ test('every answer has its own readable column; the token is checked', async () 
   const { journey, token } = s.create({ sessionCode: 'KL-NOV26', privacyVersion: 'v4' });
   s.update(journey, { step: 3, state: {
     profile, pillar: 'money', evidenceText: '=HYPERLINK("http://x")',
-    byPillar: { money: { selected: [0, 3, 6], calc: { productCost: '22' }, workOutput: 'Kos produk RM22', plan: { action: 'Lengkapkan kos', measure: 'Ada sumber', startDate: '2026-11-03', proof: 'Invois' } }, sales: { selected: [1] } },
+    byPillar: { money: { selected: [0, 3, 6], calc: { productCost: '22' }, workOutput: 'Kos produk RM22', plan: { startDate: '2026-11-03' }, planDone: [true, false, true],
+      ai: { source: 'ai', model: 'claude-sonnet-5-5', at: '2026-10-27T09:00:00.000Z', result: sample } }, sales: { selected: [1] } },
   } });
   await s.flush();
   const r = rowFor(g, journey.id);
@@ -99,9 +104,20 @@ test('every answer has its own readable column; the token is checked', async () 
   assert.equal(at('situation_1'), PILLARS.money.issues[0]);
   assert.equal(at('situation_3'), PILLARS.money.issues[6]);
   assert.equal(at('evidence_text'), '=HYPERLINK("http://x")');
-  assert.equal(at('calc_1'), 'Harga jualan seunit (RM): 50');
+  assert.equal(at('calc_1'), 'Harga jualan seunit (RM): 50 (contoh, tidak diubah)');
   assert.equal(at('calc_2'), 'Kos produk seunit (RM): 22');
-  assert.equal(at('calc_4'), 'Caj platform / transaksi seunit (RM): 2');
+  assert.equal(at('calc_4'), 'Caj platform / transaksi seunit (RM): 2 (contoh, tidak diubah)');
+  // the AI report
+  assert.equal(at('diag_source'), 'AI · claude-sonnet-5-5');
+  assert.equal(at('diag_title'), sample.diagnosis_title);
+  assert.equal(at('primary_issue'), `${sample.primary_issue} · ${PILLARS.money.issues[[0, 3, 6][sample.primary_issue - 1]]}`);
+  assert.match(at('evidence_to_check'), /^• /);
+  assert.match(at('ws_steps'), /^1\. /);
+  assert.equal(at('plan_1_action'), `Hari ${sample.plan[0].day} · ${sample.plan[0].action} ✓`);
+  assert.equal(at('plan_2_action'), `Hari ${sample.plan[1].day} · ${sample.plan[1].action}`);
+  assert.equal(at('plan_5_evidence'), sample.plan[4].evidence);
+  assert.equal(at('plan_done'), '2/5');
+  assert.equal(at('refl_validate'), sample.reflection.to_validate);
   assert.match(at('calc_result'), /^Jumlah kos yang disenaraikan: RM27\.00 seunit\nBaki selepas kos yang disenaraikan: RM23\.00 seunit/);
   assert.equal(at('workshop_output'), 'Kos produk RM22');
   assert.equal(at('plan_start_date'), '2026-11-03');
@@ -116,7 +132,7 @@ test('every answer has its own readable column; the token is checked', async () 
   assert.equal(s2.verify(journey.id, 'wrong'), null);
 });
 
-test('the report columns stay empty until the participant reaches the report', async () => {
+test('the numbers and report columns stay empty until the participant gets that far', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
   const { journey } = s.create({ privacyVersion: 'v4' });
@@ -126,7 +142,8 @@ test('the report columns stay empty until the participant reaches the report', a
   assert.equal(r[col('step')], '2 · Pilih cabaran');
   assert.equal(r[col('situation_2')], PILLARS.sales.issues[1]);
   assert.equal(r[col('calc_result')], '');
-  assert.equal(r[col('plan_action')], '');
+  assert.equal(r[col('diag_title')], '');
+  assert.equal(r[col('plan_1_action')], '');
 });
 
 test('rows moved by hand are still updated in the right place', async () => {

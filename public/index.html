@@ -33,7 +33,7 @@
       <div class="eyebrow">Business Quick Fix · Kenal pasti. Faham. Baiki.</div>
       <h1>Apakah cabaran utama dalam bisnes anda?</h1>
       <p>Pilih cabaran yang paling dekat dengan keadaan bisnes anda. Kenal pasti kemungkinan punca, fahami kesannya dan siapkan satu tindakan praktikal untuk diuji dalam tujuh hari.</p>
-      <ol class="steps" aria-label="Aliran sesi"><li>01 Diagnosis</li><li>02 Kira / semak impak</li><li>03 Buat latihan</li><li>04 Pelan 7 hari</li></ol>
+      <ol class="steps" aria-label="Aliran sesi"><li>01 Diagnosis AI</li><li>02 Kira / semak impak</li><li>03 Buat latihan</li><li>04 Pelan 7 hari</li></ol>
     </section>
 
     <div class="demo-bar" id="demoBar" hidden>
@@ -70,7 +70,7 @@
           <div class="field"><label for="businessAge">Berapa lama bisnes beroperasi? *</label><select id="businessAge"></select></div>
           <div class="field"><label for="monthlySales">Purata jualan bulanan *</label><select id="monthlySales"></select></div>
         </div>
-        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini (nama, profil bisnes, pilihan cabaran dan bukti yang saya kongsi) disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
+        <label class="consent"><input type="checkbox" id="consentData"><span>Saya bersetuju maklumat ini (nama, profil bisnes, pilihan cabaran, angka dan bukti yang saya kongsi) disimpan dalam rekod Klinik Bisnes SME untuk memahami cabaran bisnes, merekod penyertaan dan membuat susulan berkaitan sesi Business Quick Fix, dan profil bisnes, pilihan cabaran serta angka saya (tanpa nama) dianalisis oleh AI untuk menyediakan diagnosis. <a href="/privacy" target="_blank" rel="noopener">Baca notis privasi</a>. *</span></label>
         <p class="intake-note">Maklumat bertanda * diperlukan untuk meneruskan. Jawapan anda disimpan dalam rekod Klinik Bisnes SME (Google Sheet Richworks) dan boleh dipadam bila-bila masa dengan butang "Padam data saya".</p>
         <div class="bottomrow"><span class="counter">Langkah 1 daripada 2 · Maklumat peserta</span><button class="primary" type="submit" id="profileBtn">Simpan maklumat &amp; mula →</button></div>
         <div id="intakeMessage" class="message" role="status" aria-live="polite"></div>
@@ -105,64 +105,82 @@
           <div class="bottomrow"><span class="counter" id="counter" aria-live="polite">0 daripada 3 dipilih</span><button class="primary" type="button" id="diagnoseBtn" disabled>Lihat diagnosis saya →</button></div>
         </div>
 
-        <!-- Optional evidence, before the report -->
+        <!-- Langkah 03: numbers, start date and optional evidence, before the AI report -->
         <div id="evidenceView" hidden>
-          <div class="sectionhead"><div><div class="label">Bukti tambahan · Pilihan</div><h2>Ada contoh sebenar untuk dikongsi?</h2></div><div class="tag">PILIHAN</div></div>
-          <p class="instruction">Anda boleh langkau langkah ini. Jika ada, contoh sebenar membantu fasilitator memahami situasi anda dengan lebih tepat.</p>
-          <div class="promptbox" id="evidenceHint"></div>
-          <div class="notice"><strong>Penting:</strong> bukti ini <strong>tidak dianalisis</strong> oleh app dan tidak mengubah laporan anda. Ia disimpan dalam rekod Klinik Bisnes SME (Google Sheet dan Google Drive Richworks) supaya fasilitator boleh menyemaknya. Buang nama, nombor telefon dan maklumat pelanggan sebelum berkongsi.</div>
-          <div class="field"><label for="evidenceText">Tampal contoh (pilihan)</label><textarea id="evidenceText" class="grow" rows="4" maxlength="9500" placeholder="Contoh: perbualan dengan pelanggan, caption, angka jualan atau kos…"></textarea></div>
-          <div class="upload">
-            <label for="fileUpload" class="upload-label"><svg aria-hidden="true"><use href="#i-upload"/></svg><span><strong>Lampirkan satu fail (pilihan)</strong><small>PNG, JPG, WEBP, PDF, TXT atau CSV · maksimum 4 MB</small></span></label>
-            <input id="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,text/plain,text/csv,application/pdf,.txt,.csv,.pdf">
-            <div class="filestatus"><span id="fileStatus">Belum ada fail.</span><button type="button" class="linkbtn danger" id="removeFileBtn" hidden>Buang fail</button></div>
-          </div>
+          <div class="sectionhead"><div><div class="label">Langkah 03 · Angka &amp; bukti (pilihan)</div><h2>Tambah angka anda sebelum diagnosis.</h2></div><div class="tag">PILIHAN</div></div>
+          <p class="instruction">Semua di bawah ialah pilihan. Jika anda isi angka sendiri dan tarikh mula, AI menggunakannya untuk menyesuaikan diagnosis dan pelan anda.</p>
+          <section class="workshop" aria-labelledby="calculatorTitle">
+            <div class="label">Kalkulator</div><h3 id="calculatorTitle"></h3><p class="sub" id="calculatorIntro"></p>
+            <div id="calculatorFields" class="calcfields"></div>
+            <div class="calcresult" id="calculatorResult" aria-live="polite"></div>
+            <p class="fineprint" id="calcNote"></p>
+            <p class="fineprint" id="calcOwnNote"></p>
+          </section>
+          <div class="field datefield"><label for="startDate">Bila anda akan mula?</label><input id="startDate" type="date" data-startdate></div>
+          <details class="evidence-box" id="evidenceBox">
+            <summary>Ada contoh sebenar untuk dikongsi? <span>(pilihan · untuk fasilitator)</span></summary>
+            <div class="promptbox" id="evidenceHint"></div>
+            <div class="notice"><strong>Penting:</strong> bukti ini <strong>tidak dihantar kepada AI</strong> dan tidak mengubah laporan anda. Ia disimpan dalam rekod Klinik Bisnes SME (Google Sheet dan Google Drive Richworks) supaya fasilitator boleh menyemaknya. Buang nama, nombor telefon dan maklumat pelanggan sebelum berkongsi.</div>
+            <div class="field"><label for="evidenceText">Tampal contoh (pilihan)</label><textarea id="evidenceText" class="grow" rows="4" maxlength="9500" placeholder="Contoh: perbualan dengan pelanggan, caption, angka jualan atau kos…"></textarea></div>
+            <div class="upload">
+              <label for="fileUpload" class="upload-label"><svg aria-hidden="true"><use href="#i-upload"/></svg><span><strong>Lampirkan satu fail (pilihan)</strong><small>PNG, JPG, WEBP, PDF, TXT atau CSV · maksimum 4 MB</small></span></label>
+              <input id="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,text/plain,text/csv,application/pdf,.txt,.csv,.pdf">
+              <div class="filestatus"><span id="fileStatus">Belum ada fail.</span><button type="button" class="linkbtn danger" id="removeFileBtn" hidden>Buang fail</button></div>
+            </div>
+          </details>
           <div id="evidenceMessage" class="message" role="status" aria-live="polite"></div>
-          <div class="bottomrow"><button class="ghost" type="button" id="evidenceBackBtn">← Kembali</button><button class="primary" type="button" id="reportBtn">Lihat laporan saya →</button></div>
+          <div class="bottomrow"><button class="ghost" type="button" id="evidenceBackBtn">← Kembali</button><button class="primary" type="button" id="reportBtn">Jana diagnosis AI saya →</button></div>
+        </div>
+
+        <!-- AI is writing the report -->
+        <div id="workingView" hidden aria-live="polite">
+          <div class="working">
+            <div class="pulse" aria-hidden="true"></div>
+            <div><h2>AI sedang menyediakan diagnosis anda…</h2><p class="sub">Biasanya 20–40 saat. Jangan tutup halaman ini.</p><p class="sub" id="workingDetail"></p></div>
+          </div>
         </div>
 
         <!-- The report -->
         <div id="resultView" hidden>
-          <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag">DIAGNOSIS + WORKSHOP</div></div>
-          <div class="resulttop"><div class="eyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
+          <div class="sectionhead"><div><div class="label" id="resultCategory">BUSINESS QUICK FIX REPORT</div><h2>Jom faham masalah ini dengan lebih mendalam.</h2></div><div class="tag" id="sourceTag">DIAGNOSIS AI</div></div>
+          <div class="stale" id="staleNotice" hidden><span>Angka atau tarikh mula berubah sejak diagnosis ini dijana.</span><button class="ghost small" type="button" data-regenerate>Jana semula</button></div>
+          <div class="resulttop"><div class="eyebrow" id="diagEyebrow">DIAGNOSIS AWAL</div><h3 id="diagnosisTitle"></h3><p id="diagnosisIntro"></p></div>
           <div class="cards">
-            <div class="resultcard"><div class="label">01 · Simptom</div><h4>Apa yang sedang berlaku?</h4><ul id="symptomList"></ul></div>
+            <div class="resultcard wide"><div class="label">01 · Simptom</div><h4>Apa yang sedang berlaku?</h4><ol class="symptoms" id="symptomList"></ol><div id="priorityBlock"></div></div>
             <div class="resultcard"><div class="label">02 · Punca berkemungkinan</div><h4>Apa yang mungkin menjadi punca?</h4><p id="causeText"></p></div>
-            <div class="resultcard wide"><div class="label">03 · Impak kepada bisnes</div><h4>Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><p class="muted small" id="impactPrompt"></p></div>
+            <div class="resultcard"><div class="label">03 · Impak kepada bisnes</div><h4>Kenapa masalah ini patut diberi perhatian?</h4><p id="impactText"></p><div id="evidenceToCheck"></div></div>
           </div>
-          <section class="workshop" aria-labelledby="calculatorTitle">
-            <div class="label">04 · Kira / semak impak</div><h3 id="calculatorTitle"></h3><p class="sub" id="calculatorIntro"></p>
-            <div id="calculatorFields" class="calcfields"></div>
-            <div class="calcresult" id="calculatorResult" aria-live="polite"></div>
-            <p class="fineprint" id="calcNote"></p>
+          <section class="workshop" aria-labelledby="calcSummaryTitle">
+            <div class="label">04 · Kira / semak impak</div><h3 id="calcSummaryTitle"></h3>
+            <ul class="calclist" id="calcSummary"></ul>
+            <div class="calcresult" id="calcSummaryResult"></div>
+            <div class="bottomrow"><span class="counter">Angka dikira oleh sistem, bukan AI.</span><button class="ghost small" type="button" id="editNumbersBtn">Ubah angka</button></div>
           </section>
           <section class="workshop" aria-labelledby="exerciseTitle">
             <div class="label">05 · Quick Fix workshop</div><h3 id="exerciseTitle"></h3><p id="exerciseBrief"></p>
-            <div id="exercisePrompt" class="promptbox"></div>
-            <label class="fieldlabel" for="workOutput">Hasil latihan anda</label><textarea id="workOutput" class="grow" rows="5" maxlength="4000" placeholder="Tulis draf, kiraan atau keputusan anda di sini..."></textarea>
+            <ol class="steplist promptbox" id="exerciseSteps"></ol>
+            <label class="fieldlabel" for="workOutput" id="workOutputLabel">Hasil latihan anda</label><textarea id="workOutput" class="grow" rows="5" maxlength="4000" placeholder="Tulis hasil latihan anda di sini..."></textarea>
             <div class="bottomrow"><span class="counter">Hasil latihan disimpan dalam laporan anda</span><button class="ghost" type="button" id="exampleBtn" aria-expanded="false" aria-controls="exampleBox">Lihat contoh</button></div>
-            <div class="example" id="exampleBox" hidden><div class="label">Contoh</div><p id="exampleText"></p><button class="ghost small" type="button" id="useExampleBtn">Guna contoh ini sebagai permulaan</button></div>
+            <div class="example" id="exampleBox" hidden><div class="label">Contoh</div><p id="exampleText"></p></div>
           </section>
           <section class="workshop" aria-labelledby="planTitle">
-            <div class="label">06 · Pelan tindakan 7 hari</div><h3 id="planTitle">Jangan berhenti setakat faham. Uji dalam bisnes.</h3><p class="sub">Pilih tindakan kecil yang boleh dibuat dan diukur. Anda boleh ubah pelan ini mengikut keadaan sebenar.</p>
-            <div class="planfields">
-              <div><label class="fieldlabel" for="actionPlan">Apa tindakan yang akan dibuat?</label><textarea id="actionPlan" class="grow" rows="2" maxlength="600" placeholder="Contoh: Uji skrip pembukaan baharu untuk satu LIVE..."></textarea></div>
-              <div><label class="fieldlabel" for="successMeasure">Apa ukuran kejayaan?</label><textarea id="successMeasure" class="grow" rows="2" maxlength="400" placeholder="Contoh: inquiry, order, masa menyiapkan content, margin..."></textarea></div>
-              <div><label class="fieldlabel" for="actionDate">Bila anda akan mula?</label><input id="actionDate" type="date"></div>
-              <div><label class="fieldlabel" for="proofToCheck">Bukti apa yang akan disemak selepas 7 hari?</label><textarea id="proofToCheck" class="grow" rows="2" maxlength="600" placeholder="Contoh: rekod jualan, data LIVE, 5 content, senarai kos..."></textarea></div>
-            </div>
+            <div class="label">06 · Pelan tindakan 7 hari</div><h3 id="planTitle">Jangan berhenti setakat faham. Uji dalam bisnes.</h3>
+            <div class="field datefield"><label for="actionDate">Bila anda akan mula?</label><input id="actionDate" type="date" data-startdate></div>
+            <p class="sub">Setiap item: <b>A</b> tindakan, <b>B</b> ukuran kejayaan, <b>C</b> bukti yang akan disemak. Tandakan apabila selesai.</p>
+            <ol class="checklist" id="planList"></ol>
           </section>
           <section class="workshop nextstep" aria-labelledby="reflectionTitle">
-            <div class="label">07 · Reflection</div><h3 id="reflectionTitle">Di mana execution gap anda?</h3><p id="reflectionText"></p>
-            <div class="cards">
-              <div class="resultcard"><h4>Apa yang sudah anda dapat hari ini</h4><p id="takeawayText"></p></div>
-              <div class="resultcard"><h4>Apa yang masih perlu dikuasai</h4><p id="gapText"></p></div>
+            <div class="label">07 · Reflection</div><h3 id="reflectionTitle">Di mana execution gap anda?</h3>
+            <div class="cards three">
+              <div class="resultcard"><h4>Apa yang sudah anda faham / sediakan</h4><p id="reflPrepared"></p></div>
+              <div class="resultcard"><h4>Apa yang masih perlu disahkan</h4><p id="reflValidate"></p></div>
+              <div class="resultcard"><h4>Apa yang mungkin perlukan bimbingan lanjut</h4><p id="reflGuidance"></p></div>
             </div>
             <div class="closing"><h4 id="closingTitle"></h4><p id="closingText"></p></div>
           </section>
           <p class="fineprint" id="reportNote"></p>
           <div id="reportMessage" class="message" role="status" aria-live="polite"></div>
-          <div class="bottomrow"><button class="ghost" type="button" id="backToQuestionsBtn">← Kembali edit pilihan</button><button class="primary" type="button" id="downloadBtn"><svg aria-hidden="true"><use href="#i-download"/></svg>Cetak / Simpan laporan (PDF)</button></div>
+          <div class="bottomrow"><button class="ghost" type="button" id="backToQuestionsBtn">← Kembali edit pilihan</button><button class="ghost" type="button" data-regenerate>Jana semula</button><button class="primary" type="button" id="downloadBtn"><svg aria-hidden="true"><use href="#i-download"/></svg>Cetak / Simpan laporan (PDF)</button></div>
         </div>
       </main>
     </div>
@@ -173,7 +191,7 @@
       <button type="button" class="linkbtn danger" id="deleteBtn">Padam data saya</button>
       <a class="linkbtn" href="/privacy">Notis privasi</a>
     </div>
-    <footer class="footer">Business Quick Fix · Klinik Bisnes SME bersama Richworks X Academy. Diagnosis berasaskan checklist, bukan AI.</footer>
+    <footer class="footer">Business Quick Fix · Klinik Bisnes SME bersama Richworks X Academy. Diagnosis disediakan oleh AI dan perlu disahkan dengan bukti sebenar.</footer>
   </div>
   <script src="/js/common.js"></script>
   <script type="module" src="/js/app.js"></script>

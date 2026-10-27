@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
 import { reportPdf } from './report-pdf.mjs';
 import { pillarAnswers } from './store.mjs';
+import { coach, aiReady, limitReached, countIp, CoachError } from './coach.mjs';
 import { sessionNameOf } from './reports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -101,7 +102,7 @@ export function createApp({ store, reports }) {
   api.use(sameOrigin);
 
   api.get('/config', (_req, res) => {
-    res.set('Cache-Control', 'no-store').json({ noticeVersion: config.noticeVersion });
+    res.set('Cache-Control', 'no-store').json({ noticeVersion: config.noticeVersion, aiReady: aiReady() });
   });
 
   // Session code lookup for facilitator links (/?c=CODE). The code is optional.
@@ -132,9 +133,40 @@ export function createApp({ store, reports }) {
     if (!state || typeof state !== 'object' || Array.isArray(state)) return res.status(400).json({ error: 'Data tidak sah.' });
     if (state.evidenceText != null && String(state.evidenceText).length > 9500) return res.status(413).json({ error: 'Teks bukti terlalu panjang (maksimum 9,500 aksara).' });
     if (JSON.stringify(state).length > STATE_MAX) return res.status(413).json({ error: 'Data terlalu besar. Ringkaskan teks bukti atau Quick Fix.' });
+    // The AI result is written by the server (POST /api/coach); a save from the browser never
+    // replaces it with an older or missing one (e.g. a save that was in flight during the call).
+    for (const [p, saved] of Object.entries(req.journey.state?.byPillar || {})) {
+      const mine = state.byPillar?.[p];
+      if (saved?.ai && mine && (!mine.ai || String(mine.ai.at || '') < String(saved.ai.at || ''))) mine.ai = saved.ai;
+    }
     store.update(req.journey, { state, step: Number.isInteger(step) && step >= 0 && step <= 3 ? step : req.journey.step });
     if (reports && req.journey.step === 3) reports.schedule(req.journey); // the report step: keep a copy of the report in Drive
     res.json({ saved: true });
+  });
+
+  // The AI coach: builds the report for the participant's current challenge from their saved answers
+  // and stores it on their row (the browser saves first, then calls this).
+  api.post('/coach', ipLimit(60), json, requireJourney, async (req, res) => {
+    const j = req.journey;
+    try {
+      if (aiReady()) {
+        const limit = limitReached(store, j, req.ip);
+        if (limit) return res.status(429).json({ error: limit });
+        countIp(req.ip);
+      }
+      const { source, result, input, model } = await coach({ store, journey: j });
+      const ai = { source, result, model, at: new Date().toISOString(), inputKey: JSON.stringify(input) };
+      const { pillar } = pillarAnswers(j.state);
+      const state = structuredClone(j.state);
+      state.byPillar[pillar] = { ...state.byPillar[pillar], ai, planDone: [] };
+      store.update(j, { state, step: 3 });
+      if (reports) reports.schedule(j);
+      res.json({ ai });
+    } catch (err) {
+      if (err instanceof CoachError) return res.status(err.status).json({ error: err.message });
+      console.error('[coach] unexpected', err);
+      res.status(500).json({ error: 'Ralat server. Cuba semula.' });
+    }
   });
 
   // Accepting a newer privacy notice.
@@ -175,7 +207,7 @@ export function createApp({ store, reports }) {
   // The participant's report as a PDF download (the same file that is kept in Drive).
   api.get('/report.pdf', ipLimit(60), requireJourney, async (req, res) => {
     const j = req.journey;
-    if (pillarAnswers(j.state).selected.length !== 3) return res.status(409).json({ error: 'Pilih tiga situasi dahulu sebelum memuat turun laporan.' });
+    if (!pillarAnswers(j.state).ai) return res.status(409).json({ error: 'Jana diagnosis dahulu sebelum memuat turun laporan.' });
     try {
       const bytes = await reportPdf({ state: j.state, sessionName: sessionNameOf(store, j) });
       store.update(j, { reportDownloadedAt: new Date().toISOString() });

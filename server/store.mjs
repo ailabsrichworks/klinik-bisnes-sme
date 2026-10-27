@@ -1,7 +1,7 @@
 // Participant data in one Google Sheet, uploaded evidence and report PDFs in a Drive folder.
 //
-// Tabs: Peserta (one row per participant), Sesi (session codes, edited by hand), README
-// (column notes). Created on first run.
+// Tabs: Peserta (one row per participant), Sesi (session codes, edited by hand), Log AI (one
+// row per AI call), README (column guide). Created on first run.
 //
 // The server keeps every journey in memory and writes changed rows in batches every few
 // seconds (one read + up to two writes per flush), well inside the Sheets quota of
@@ -9,7 +9,8 @@
 // filter the sheet without the app overwriting the wrong row. Run ONE server instance.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { PILLARS, calculate, calcInputs } from '../public/js/content.mjs';
+import { PILLARS, calculate, calcInputs, pillarAnswers } from '../public/js/content.mjs';
+export { pillarAnswers };
 
 // The Peserta tab: one column per answer, grouped by the part of the app it comes from. Each
 // header shows the section on its first line and the field on the second, and every section
@@ -18,14 +19,20 @@ export const SECTIONS = {
   rekod: { title: 'REKOD', color: '#e8eaed' },
   l1: { title: 'LANGKAH 1 · MAKLUMAT BISNES', color: '#d9ead3' },
   l2: { title: 'LANGKAH 2 · PILIH CABARAN', color: '#fff2cc' },
-  l3: { title: 'LANGKAH 3 · BUKTI (PILIHAN)', color: '#fce5cd' },
-  calc: { title: 'LAPORAN 04 · KIRA / SEMAK IMPAK', color: '#cfe2f3' },
-  work: { title: 'LAPORAN 05 · QUICK FIX WORKSHOP', color: '#d0e0e3' },
-  plan: { title: 'LAPORAN 06 · PELAN TINDAKAN 7 HARI', color: '#f4cccc' },
+  l3: { title: 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN)', color: '#fce5cd' },
+  diag: { title: 'LAPORAN · DIAGNOSIS AI', color: '#cfe2f3' },
+  work: { title: 'LAPORAN · QUICK FIX WORKSHOP', color: '#d0e0e3' },
+  plan: { title: 'LAPORAN · PELAN TINDAKAN 7 HARI', color: '#f4cccc' },
+  refl: { title: 'LAPORAN · REFLEKSI', color: '#d9d2e9' },
   pdf: { title: 'LAPORAN PDF', color: '#ead1dc' },
   consent: { title: 'PERSETUJUAN', color: '#efefef' },
   sys: { title: 'SISTEM · JANGAN EDIT', color: '#d9d9d9' },
 };
+const PLAN_COLUMNS = [1, 2, 3, 4, 5].flatMap((n) => [
+  { key: `plan_${n}_action`, s: 'plan', label: `A${n} · Tindakan` },
+  { key: `plan_${n}_measure`, s: 'plan', label: `B${n} · Ukuran kejayaan` },
+  { key: `plan_${n}_evidence`, s: 'plan', label: `C${n} · Bukti selepas 7 hari` },
+]);
 export const COLUMNS = [
   { key: 'id', s: 'rekod', label: 'ID peserta' },
   { key: 'session_code', s: 'rekod', label: 'Kod sesi' },
@@ -42,19 +49,35 @@ export const COLUMNS = [
   { key: 'situation_1', s: 'l2', label: 'Situasi 1' },
   { key: 'situation_2', s: 'l2', label: 'Situasi 2' },
   { key: 'situation_3', s: 'l2', label: 'Situasi 3' },
+  { key: 'calc_1', s: 'l3', label: 'Kalkulator · Input 1' },
+  { key: 'calc_2', s: 'l3', label: 'Kalkulator · Input 2' },
+  { key: 'calc_3', s: 'l3', label: 'Kalkulator · Input 3' },
+  { key: 'calc_4', s: 'l3', label: 'Kalkulator · Input 4' },
+  { key: 'calc_result', s: 'l3', label: 'Kalkulator · Hasil' },
+  { key: 'plan_start_date', s: 'l3', label: 'Bila akan mula' },
   { key: 'evidence_text', s: 'l3', label: 'Contoh ditampal' },
   { key: 'evidence_file', s: 'l3', label: 'Nama fail' },
   { key: 'evidence_link', s: 'l3', label: 'Pautan fail (Drive)' },
-  { key: 'calc_1', s: 'calc', label: 'Input 1' },
-  { key: 'calc_2', s: 'calc', label: 'Input 2' },
-  { key: 'calc_3', s: 'calc', label: 'Input 3' },
-  { key: 'calc_4', s: 'calc', label: 'Input 4' },
-  { key: 'calc_result', s: 'calc', label: 'Hasil kalkulator' },
+  { key: 'diag_source', s: 'diag', label: 'Dijana oleh' },
+  { key: 'diag_at', s: 'diag', label: 'Masa dijana' },
+  { key: 'diag_title', s: 'diag', label: 'Tajuk diagnosis' },
+  { key: 'diag_summary', s: 'diag', label: 'Ringkasan' },
+  { key: 'primary_issue', s: 'diag', label: 'Isu utama' },
+  { key: 'priority_reason', s: 'diag', label: 'Sebab diutamakan' },
+  { key: 'other_issues', s: 'diag', label: 'Kaitan dua isu lain' },
+  { key: 'likely_cause', s: 'diag', label: 'Punca berkemungkinan' },
+  { key: 'impact', s: 'diag', label: 'Impak kepada bisnes' },
+  { key: 'evidence_to_check', s: 'diag', label: 'Bukti untuk disemak' },
+  { key: 'ws_title', s: 'work', label: 'Tajuk latihan' },
+  { key: 'ws_purpose', s: 'work', label: 'Hasil yang dituju' },
+  { key: 'ws_steps', s: 'work', label: 'Langkah-langkah' },
+  { key: 'ws_example', s: 'work', label: 'Contoh (AI)' },
   { key: 'workshop_output', s: 'work', label: 'Hasil latihan peserta' },
-  { key: 'plan_action', s: 'plan', label: 'Tindakan' },
-  { key: 'plan_success_measure', s: 'plan', label: 'Ukuran kejayaan' },
-  { key: 'plan_start_date', s: 'plan', label: 'Tarikh mula' },
-  { key: 'plan_proof', s: 'plan', label: 'Bukti selepas 7 hari' },
+  ...PLAN_COLUMNS,
+  { key: 'plan_done', s: 'plan', label: 'Item selesai' },
+  { key: 'refl_prepared', s: 'refl', label: 'Sudah difahami / disediakan' },
+  { key: 'refl_validate', s: 'refl', label: 'Perlu disahkan' },
+  { key: 'refl_guidance', s: 'refl', label: 'Perlu bimbingan lanjut' },
   { key: 'report_link', s: 'pdf', label: 'Pautan laporan (Drive)' },
   { key: 'report_at', s: 'pdf', label: 'Laporan disimpan' },
   { key: 'report_downloaded_at', s: 'pdf', label: 'Dimuat turun peserta' },
@@ -68,7 +91,9 @@ export const PESERTA = COLUMNS.map(headerOf);
 export const HEADER = Object.fromEntries(COLUMNS.map((c) => [c.key, headerOf(c)]));
 const KEY_OF = Object.fromEntries(COLUMNS.map((c) => [headerOf(c), c.key]));
 export const SESI = ['code', 'name', 'session_date', 'active_until', 'notes'];
-export const STEP_NAMES = ['Maklumat bisnes', 'Pilih cabaran', 'Bukti (pilihan)', 'Laporan'];
+export const STEP_NAMES = ['Maklumat bisnes', 'Pilih cabaran', 'Angka & bukti', 'Laporan'];
+// One row per AI call, including reruns: what was sent and what came back.
+export const LOG_AI = ['time', 'journey_id', 'model', 'status', 'input_tokens', 'output_tokens', 'pillar', 'title', 'primary_issue', 'error', 'request', 'response'];
 const README = [
   ['KBSME Business Quick Fix — data peserta'],
   [''],
@@ -76,10 +101,11 @@ const README = [
   ['', 'Untuk menyusun atau menapis, guna Filter view (Data → Filter views) supaya susunan baris asal kekal. Jangan edit lajur SISTEM.'],
   ['Bahagian', 'REKOD: ID, kod sesi, masa mula / dikemas kini, langkah terakhir dicapai (1 Maklumat bisnes … 4 Laporan).'],
   ['', 'LANGKAH 1 · MAKLUMAT BISNES: borang pertama. LANGKAH 2 · PILIH CABARAN: Sales / Marketing / Urus Duit dan tiga situasi yang ditanda.'],
-  ['', 'LANGKAH 3 · BUKTI (PILIHAN): contoh yang ditampal dan fail yang dimuat naik (tidak dianalisis oleh app).'],
-  ['', 'LAPORAN 04 · KIRA / SEMAK IMPAK: setiap input kalkulator ("label: nilai") dan hasilnya. LAPORAN 05: hasil latihan Quick Fix. LAPORAN 06: pelan tindakan 7 hari.'],
-  ['', 'Bahagian 01–03 dan 07 dalam laporan ialah teks tetap mengikut cabaran, jadi tidak disimpan di sini.'],
-  ['', 'LAPORAN PDF: pautan laporan dalam Drive (disimpan apabila peserta sampai laporan, dikemas kini jika berubah) dan masa peserta memuat turun.'],
+  ['', 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN): input kalkulator ("label: nilai"; "contoh, tidak diubah" = angka contoh yang peserta tidak tukar) dan hasilnya, tarikh mula, serta contoh / fail bukti (bukti tidak dihantar kepada AI).'],
+  ['', 'LAPORAN · DIAGNOSIS AI: tajuk, ringkasan, isu utama dan sebabnya, kaitan dua isu lain, punca berkemungkinan, impak, bukti untuk disemak. "Dijana oleh" menunjukkan AI (dan model) atau teks tetap jika AI tidak aktif.'],
+  ['', 'LAPORAN · QUICK FIX WORKSHOP: latihan yang dicadangkan AI dan hasil yang ditulis peserta. LAPORAN · PELAN TINDAKAN 7 HARI: A1–A5 tindakan (dengan hari), B1–B5 ukuran kejayaan, C1–C5 bukti; nombor yang sama = aktiviti yang sama. ✓ = peserta tanda selesai.'],
+  ['', 'LAPORAN · REFLEKSI: apa yang sudah difahami, perlu disahkan, dan perlu bimbingan lanjut. LAPORAN PDF: pautan laporan dalam Drive dan masa peserta memuat turun.'],
+  ['Log AI', 'Satu baris setiap panggilan AI (termasuk jana semula): masa, peserta, model, status, token, cabaran, tajuk, isu utama, dan input (request) serta output penuh AI (response).'],
   ['Sesi', 'Kod sesi untuk fasilitator. Isi code (huruf besar), name, session_date dan active_until (kosong = tiada tamat). Pautan: /?c=KOD'],
   [''],
   ['Padam data', 'Butang "Padam data saya" dalam app mengosongkan baris peserta dan memadam fail dalam Drive. Untuk permintaan manual, kosongkan baris dan padam fail di Drive.'],
@@ -127,21 +153,20 @@ function parseUntil(v) {
   return Number.isNaN(t) ? null : t;
 }
 
-// The current pillar's answers (each pillar keeps its own, so switching back loses nothing).
-export function pillarAnswers(state = {}) {
-  const pillar = PILLARS[state.pillar] ? state.pillar : null;
-  const a = (pillar && state.byPillar?.[pillar]) || {};
-  return { pillar, selected: Array.isArray(a.selected) ? a.selected.filter((i) => Number.isInteger(i) && i >= 0 && i < 10).slice(0, 3) : [], calc: a.calc || {}, workOutput: a.workOutput || '', plan: a.plan || {} };
-}
-
 // One readable row for trainers; state_json keeps the full state for the participant's app.
+const bullets = (a) => (a || []).map((x) => `• ${x}`).join('\n');
+const numbered = (a) => (a || []).map((x, i) => `${i + 1}. ${x}`).join('\n');
+
 function toRow(j) {
   const s = j.state || {};
   const p = s.profile || {};
-  const { pillar, selected, calc, workOutput, plan } = pillarAnswers(s);
+  const { pillar, selected, calc, workOutput, plan, ai, planDone } = pillarAnswers(s);
   const P = pillar && PILLARS[pillar];
-  const reachedReport = (j.step ?? 0) >= 3 && selected.length === 3;
-  const result = reachedReport ? calculate(pillar, calc) : null;
+  const ready = selected.length === 3;
+  const pastPicking = ready && (j.step ?? 0) >= 2;
+  const r = ai?.result;
+  const calcResult = pastPicking ? calculate(pillar, calc) : null;
+  const items = r?.plan || [];
   return {
     id: j.id, session_code: j.sessionCode, created_at: j.createdAt, updated_at: j.updatedAt,
     step: j.step == null ? '' : `${j.step + 1} · ${STEP_NAMES[j.step] || ''}`,
@@ -151,15 +176,27 @@ function toRow(j) {
     situation_1: P && selected[0] != null ? P.issues[selected[0]] : '',
     situation_2: P && selected[1] != null ? P.issues[selected[1]] : '',
     situation_3: P && selected[2] != null ? P.issues[selected[2]] : '',
-    evidence_text: s.evidenceText, evidence_file: j.evidence?.name, evidence_link: j.evidence?.link,
     ...Object.fromEntries([0, 1, 2, 3].map((i) => {
-      const f = reachedReport && P.fields[i];
-      return [`calc_${i + 1}`, f ? `${f.label}: ${calcInputs(pillar, calc)[f.id]}` : ''];
+      const f = pastPicking && P.fields[i];
+      return [`calc_${i + 1}`, f ? `${f.label}: ${calcInputs(pillar, calc)[f.id]}${String(calc[f.id] ?? '').trim() === '' ? ' (contoh, tidak diubah)' : ''}` : ''];
     })),
-    calc_result: result ? [...result.lines, result.note].join('\n') : '',
-    workshop_output: reachedReport ? workOutput : '',
-    plan_action: reachedReport ? plan.action : '', plan_success_measure: reachedReport ? plan.measure : '',
-    plan_start_date: reachedReport ? plan.startDate : '', plan_proof: reachedReport ? plan.proof : '',
+    calc_result: calcResult ? [...calcResult.lines, calcResult.note].join('\n') : '',
+    plan_start_date: pastPicking ? plan.startDate : '',
+    evidence_text: s.evidenceText, evidence_file: j.evidence?.name, evidence_link: j.evidence?.link,
+    diag_source: r ? (ai.source === 'ai' ? `AI · ${ai.model || ''}`.trim() : 'Teks tetap (AI tidak aktif)') : '',
+    diag_at: r ? ai.at : '',
+    diag_title: r?.diagnosis_title, diag_summary: r?.diagnosis_summary,
+    primary_issue: r?.primary_issue && P ? `${r.primary_issue} · ${P.issues[selected[r.primary_issue - 1]] || ''}` : '',
+    priority_reason: r?.priority_reason, other_issues: r?.other_issues,
+    likely_cause: r?.likely_cause, impact: r?.impact, evidence_to_check: r ? bullets(r.evidence_to_check) : '',
+    ws_title: r?.workshop?.title, ws_purpose: r?.workshop?.purpose, ws_steps: r ? numbered(r.workshop?.steps) : '', ws_example: r?.workshop?.example,
+    workshop_output: r ? workOutput : '',
+    ...Object.fromEntries([0, 1, 2, 3, 4].flatMap((i) => {
+      const it = items[i];
+      return [[`plan_${i + 1}_action`, it ? `Hari ${it.day} · ${it.action}${planDone[i] ? ' ✓' : ''}` : ''], [`plan_${i + 1}_measure`, it?.measure], [`plan_${i + 1}_evidence`, it?.evidence]];
+    })),
+    plan_done: items.length ? `${items.filter((_, i) => planDone[i]).length}/${items.length}` : '',
+    refl_prepared: r?.reflection?.prepared, refl_validate: r?.reflection?.to_validate, refl_guidance: r?.reflection?.further_guidance,
     report_link: j.report?.link, report_at: j.report?.at, report_downloaded_at: j.reportDownloadedAt,
     consent_at: j.consent.privacyAt, privacy_notice_version: j.consent.privacyVersion,
     token_hash: j.tokenHash,
@@ -186,6 +223,8 @@ export class Store {
     this.dirty = new Set();
     this.deleted = new Set();
     this.sessions = [];
+    this.pendingLogs = [];
+    this.aiCalls = []; // { t, journeyId } within the last 24h, for the optional daily caps
     this.cols = {}; // tab → header array as it is in the sheet
     this.tab = 'Peserta'; // the participant tab (see ensureSchema)
     this.flushing = null;
@@ -194,7 +233,7 @@ export class Store {
   // ─── startup ───
   async init() {
     await this.ensureSchema();
-    await Promise.all([this.loadJourneys(), this.loadSessions()]);
+    await Promise.all([this.loadJourneys(), this.loadSessions(), this.loadAiLog()]);
     this.timer = setInterval(() => this.flush().catch((e) => console.error('[store] flush failed', e.message)), FLUSH_MS);
     this.sesiTimer = setInterval(() => this.loadSessions().catch((e) => console.error('[store] Sesi refresh failed', e.message)), SESI_REFRESH_MS);
     this.timer.unref?.(); this.sesiTimer.unref?.();
@@ -220,7 +259,11 @@ export class Store {
       this.tab = t;
       if (ids[t] === undefined) break;
       const h = (await get(`${q(t)}!1:1`, `read ${t} header`))[0] || [];
-      if (h.includes(HEADER.id) && h.includes(HEADER.state_json)) break;
+      if (h.includes(HEADER.id) && h.includes(HEADER.state_json)) {
+        // ours: keep it as it is if the columns are in the current order, else rewrite it in place
+        if (PESERTA.every((x, i) => h[i] === x)) break;
+        this.legacyCols = h; reset = true; oldWidth = h.length; break;
+      }
       if (h.some((x) => AI_COLUMNS.includes(x))) { console.log(`[store] the "${t}" tab is from the AI version; it is left as it is`); continue; }
       if (['id', 'token_hash', 'state_json'].every((k) => h.includes(k))) { this.legacyCols = h; reset = true; oldWidth = h.length; break; }
       const rows = (await get(`${q(t)}!A2:A`, `read ${t} rows`)).filter((r) => r[0]);
@@ -230,10 +273,10 @@ export class Store {
     if (this.tab !== 'Peserta') console.log(`[store] participant rows go to the "${this.tab}" tab`);
     if (this.legacyCols) {
       this.legacyRows = await this.readTab(this.tab, this.legacyCols); // read before the header changes
-      console.log(`[store] upgrading "${this.tab}" to the sectioned layout (${this.legacyRows.filter((r) => r.id).length} rows)`);
+      console.log(`[store] upgrading "${this.tab}" to the current layout (${this.legacyRows.filter((r) => r[HEADER.id] || r.id).length} rows)`);
     }
 
-    const missing = [this.tab, 'Sesi', 'README'].filter((t) => ids[t] === undefined);
+    const missing = [this.tab, 'Sesi', 'Log AI', 'README'].filter((t) => ids[t] === undefined);
     if (missing.length) {
       const res = await withRetry(() => this.sheets.spreadsheets.batchUpdate({
         spreadsheetId: this.sheetId,
@@ -247,21 +290,23 @@ export class Store {
     {
       const got = reset ? [] : (await get(`${q(this.tab)}!1:1`, 'read header'))[0] || [];
       const add = PESERTA.filter((h) => !got.includes(h));
-      this.cols[this.tab] = [...got, ...add];
-      if (reset) writes.push({ range: `${q(this.tab)}!A1`, values: [[...PESERTA, ...Array(Math.max(0, oldWidth - PESERTA.length)).fill('')]] });
+      // a reset tab keeps blank header cells over any old extra columns, so rewriting rows clears them
+      const pad = reset ? Array(Math.max(0, oldWidth - PESERTA.length)).fill('') : [];
+      this.cols[this.tab] = [...got, ...add, ...pad];
+      if (reset) writes.push({ range: `${q(this.tab)}!A1`, values: [[...PESERTA, ...pad]] });
       else if (add.length) writes.push({ range: `${q(this.tab)}!${letter(got.length)}1`, values: [add] });
     }
-    // Sesi: plain header, edited by hand.
-    {
-      const got = (await get(`${q('Sesi')}!1:1`, 'read Sesi header'))[0] || [];
-      const add = SESI.filter((h) => !got.includes(h));
-      this.cols.Sesi = [...got, ...add];
-      if (add.length) writes.push({ range: `${q('Sesi')}!${letter(got.length)}1`, values: [add] });
+    // Sesi (edited by hand) and Log AI: plain headers.
+    for (const [title, want] of [['Sesi', SESI], ['Log AI', LOG_AI]]) {
+      const got = (await get(`${q(title)}!1:1`, `read ${title} header`))[0] || [];
+      const add = want.filter((h) => !got.includes(h));
+      this.cols[title] = [...got, ...add];
+      if (add.length) writes.push({ range: `${q(title)}!${letter(got.length)}1`, values: [add] });
     }
     // README: rewritten at each start so the column guide stays current.
     writes.push({ range: `${q('README')}!A1`, values: [...README, ...Array(Math.max(0, README_ROWS - README.length)).fill([''])].map((r) => [r[0] ?? '', r[1] ?? '']) });
 
-    for (const title of [this.tab, 'Sesi']) {
+    for (const title of [this.tab, 'Sesi', 'Log AI']) {
       if (!missing.includes(title)) continue;
       format.push({ addProtectedRange: { protectedRange: { range: { sheetId: ids[title], startRowIndex: 0, endRowIndex: 1 }, description: 'Header — app bergantung pada nama lajur ini', warningOnly: true } } });
       format.push({ repeatCell: { range: { sheetId: ids[title], startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: 'userEnteredFormat.textFormat.bold' } });
@@ -293,7 +338,7 @@ export class Store {
 
   async loadJourneys() {
     const upgrading = !!this.legacyRows;
-    for (const byHeader of this.legacyRows || await this.readTab(this.tab)) {
+    for (const byHeader of (this.legacyRows || await this.readTab(this.tab)).filter((r) => Object.values(r).some((v) => v !== ''))) {
       const r = Object.fromEntries(Object.entries(byHeader).map(([h, v]) => [KEY_OF[h] ?? h, v]));
       const j = fromRow(r);
       if (!j) continue;
@@ -307,6 +352,27 @@ export class Store {
     this.sessions = (await this.readTab('Sesi'))
       .filter((r) => String(r.code).trim())
       .map((r) => ({ code: String(r.code).trim().toUpperCase(), name: String(r.name || '').trim(), sessionDate: r.session_date, until: parseUntil(r.active_until) }));
+  }
+
+  async loadAiLog() {
+    const since = Date.now() - DAY;
+    this.aiCalls = (await this.readTab('Log AI')).map((r) => ({ t: Date.parse(r.time), journeyId: r.journey_id })).filter((c) => c.t > since);
+  }
+
+  // ─── AI log ───
+  logAi({ journeyId, model, status, input, output, pillar, title, primary, error, request, response }) {
+    const t = now();
+    this.aiCalls.push({ t: Date.parse(t), journeyId });
+    this.pendingLogs.push({
+      time: t, journey_id: journeyId, model, status, input_tokens: input ?? '', output_tokens: output ?? '', pillar, title, primary_issue: primary ?? '',
+      error: error || '', request: request ? JSON.stringify(request, null, 1) : '', response: response ? (typeof response === 'string' ? response : JSON.stringify(response, null, 1)) : '',
+    });
+  }
+
+  aiCount(journeyId) {
+    const since = Date.now() - DAY;
+    this.aiCalls = this.aiCalls.filter((c) => c.t > since);
+    return { mine: this.aiCalls.filter((c) => c.journeyId === journeyId).length, all: this.aiCalls.length };
   }
 
   // ─── sessions ───
@@ -411,35 +477,42 @@ export class Store {
   }
 
   async #flush() {
-    if (!this.dirty.size && !this.deleted.size) return;
+    if (!this.dirty.size && !this.deleted.size && !this.pendingLogs.length) return;
     const tab = this.tab, cols = this.cols[tab];
-    const dirty = [...this.dirty], deleted = [...this.deleted];
+    const dirty = [...this.dirty], deleted = [...this.deleted], logs = this.pendingLogs.splice(0);
     this.dirty.clear(); this.deleted.clear();
     try {
       const updates = [], appends = [];
-      // Find each row by id now, in case rows were sorted or moved by hand.
-      const idCol = letter(cols.indexOf(HEADER.id));
-      const { data } = await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(tab)}!${idCol}:${idCol}` }), 'read ids');
-      const rowOf = new Map((data.values || []).map((r, i) => [r[0], i + 1]).filter(([id], i) => i > 0 && id));
-      const end = letter(cols.length - 1);
-      for (const id of dirty) {
-        const j = this.journeys.get(id);
-        if (!j) continue;
-        const v = toRow(j);
-        const values = [cols.map((c) => cell(v[KEY_OF[c]]))];
-        if (rowOf.has(id)) updates.push({ range: `${q(tab)}!A${rowOf.get(id)}:${end}${rowOf.get(id)}`, values });
-        else appends.push(values[0]);
-      }
-      for (const id of deleted) {
-        if (rowOf.has(id)) updates.push({ range: `${q(tab)}!A${rowOf.get(id)}:${end}${rowOf.get(id)}`, values: [cols.map(() => '')] });
+      if (dirty.length || deleted.length) {
+        // Find each row by id now, in case rows were sorted or moved by hand.
+        const idCol = letter(cols.indexOf(HEADER.id));
+        const { data } = await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(tab)}!${idCol}:${idCol}` }), 'read ids');
+        const rowOf = new Map((data.values || []).map((r, i) => [r[0], i + 1]).filter(([id], i) => i > 0 && id));
+        const end = letter(cols.length - 1);
+        for (const id of dirty) {
+          const j = this.journeys.get(id);
+          if (!j) continue;
+          const v = toRow(j);
+          const values = [cols.map((c) => cell(v[KEY_OF[c]]))];
+          if (rowOf.has(id)) updates.push({ range: `${q(tab)}!A${rowOf.get(id)}:${end}${rowOf.get(id)}`, values });
+          else appends.push(values[0]);
+        }
+        for (const id of deleted) {
+          if (rowOf.has(id)) updates.push({ range: `${q(tab)}!A${rowOf.get(id)}:${end}${rowOf.get(id)}`, values: [cols.map(() => '')] });
+        }
       }
       // RAW: participant text is stored as text, never run as a formula.
       if (updates.length) await withRetry(() => this.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: this.sheetId, requestBody: { valueInputOption: 'RAW', data: updates } }), 'update rows');
       if (appends.length) await withRetry(() => this.sheets.spreadsheets.values.append({ spreadsheetId: this.sheetId, range: `${q(tab)}!A1`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS', requestBody: { values: appends } }), 'add rows');
+      if (logs.length) {
+        const lc = this.cols['Log AI'];
+        await withRetry(() => this.sheets.spreadsheets.values.append({ spreadsheetId: this.sheetId, range: `${q('Log AI')}!A1`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS', requestBody: { values: logs.map((l) => lc.map((c) => cell(l[c]))) } }), 'add AI log');
+      }
     } catch (err) {
       // Keep the changes for the next flush.
       dirty.forEach((id) => this.journeys.has(id) && this.dirty.add(id));
       deleted.forEach((id) => this.deleted.add(id));
+      this.pendingLogs.unshift(...logs);
       throw err;
     }
   }
