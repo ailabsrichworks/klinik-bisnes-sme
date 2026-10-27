@@ -292,7 +292,7 @@ export function calculate(pillar, saved = {}) {
 export const defaultPlan = (pillar) => ({ action: PILLARS[pillar].defaultAction, measure: PILLARS[pillar].defaultMeasure, startDate: '', proof: PILLARS[pillar].defaultProof });
 
 // Under an AI-written report.
-export const AI_NOTE = 'Nota: Diagnosis, latihan dan pelan ini disediakan oleh AI berdasarkan maklumat yang anda pilih. Ia diagnosis awal: punca ialah hipotesis yang perlu disahkan dengan data dan bukti sebenar, dan bukan jaminan hasil. Angka kalkulator dikira oleh sistem berdasarkan input anda.';
+export const AI_NOTE = 'Penafian AI: Diagnosis dan anggaran kalkulator ini adalah cadangan awal berasaskan input anda. Punca masalah perlu disahkan dengan data sebenar dan hasil tidak dijamin.';
 // Under the report (adapted from the prototype's note, without "prototype").
 export const REPORT_NOTE = 'Nota: Laporan ini berasaskan checklist dan respons berpandukan kategori, bukan AI. Punca ialah hipotesis awal yang perlu disahkan melalui data dan konteks anda. Hasil kalkulator bergantung pada input anda.';
 

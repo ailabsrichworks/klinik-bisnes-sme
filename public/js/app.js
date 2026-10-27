@@ -2,7 +2,7 @@
 // → AI coach report (server/coach.mjs; the fixed v4 text when the AI is off). Saved
 // through our API to the participant's row in the Google Sheet. No login: a random key in this browser identifies the participant; a
 // facilitator's ?c=CODE files them under that session.
-import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calculate, calcInputs, defaultPlan, coachInput, workshopQuestions } from './content.mjs';
+import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, calculate, calcInputs, defaultPlan, coachInput, workshopQuestions } from './content.mjs';
 
 (async () => {
   'use strict';
@@ -378,7 +378,6 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     $('reflGuidance').textContent = R.reflection.further_guidance;
     $('closingTitle').textContent = CLOSING.title;
     $('closingText').textContent = CLOSING.text;
-    $('reportNote').textContent = ai.source === 'ai' ? AI_NOTE : REPORT_NOTE;
     $$('[data-regenerate]').forEach((b) => { b.hidden = ai.source !== 'ai' && !KB.cfg.aiReady; });
     drawStale();
     drawPage();
@@ -544,33 +543,6 @@ import { INTAKE, PILLARS, PICK, CLOSING, CALC_NOTE, AI_NOTE, REPORT_NOTE, calcul
     } finally {
       btn.disabled = false; btn.innerHTML = label;
     }
-  };
-
-  // ─────────────── account actions ───────────────
-  $('exportBtn').onclick = async () => {
-    await saveNow();
-    const saved = await KB.api('/api/journey').catch(() => null);
-    const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), id: journey?.id, session: saved?.session?.code || null, created: saved?.createdAt || null, consent: saved?.consent || null, evidence_file: saved?.evidenceFile || null, answers: state }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'Business_Quick_Fix_data_saya.json'; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  };
-  $('restartBtn').onclick = () => {
-    if (!confirm('Kosongkan pilihan cabaran, bukti dan laporan? Maklumat bisnes anda kekal.')) return;
-    state = { ...blank(), profile: state.profile };
-    reached = 1;
-    openLayout(1);
-  };
-  $('deleteBtn').onclick = async () => {
-    if (!confirm('Padam semua maklumat, pilihan, bukti dan laporan anda? Tindakan ini tidak boleh dibatalkan.')) return;
-    try {
-      clearTimeout(saveTimer); unsaved = false;
-      await KB.api('/api/me', { method: 'DELETE' });
-      try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(COHORT_KEY); } catch {}
-      KB.setKey(null);
-      alert('Data anda telah dipadam.');
-      location.href = '/';
-    } catch (err) { alert(err.message); }
   };
 
   // ─────────────── test data (localhost or ?demo) ───────────────

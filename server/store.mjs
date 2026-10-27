@@ -109,7 +109,7 @@ const README = [
   ['Log AI', 'Satu baris setiap panggilan AI (termasuk jana semula): masa, peserta, model, status, token, cabaran, tajuk, isu utama, dan input (request) serta output penuh AI (response).'],
   ['Sesi', 'Kod sesi untuk fasilitator. Isi code (huruf besar), name, session_date dan active_until (kosong = tiada tamat). Pautan: /?c=KOD'],
   [''],
-  ['Padam data', 'Butang "Padam data saya" dalam app mengosongkan baris peserta dan memadam fail dalam Drive. Untuk permintaan manual, kosongkan baris dan padam fail di Drive.'],
+  ['Padam data', 'Permintaan peserta (melalui info@rcg.my): kosongkan baris peserta dan padam fail laporan mereka di Drive.'],
 ];
 // Tabs the participant rows may live in, in order. A tab that already has rows in another
 // layout (e.g. from the earlier AI version) is left alone and the next name is used.
