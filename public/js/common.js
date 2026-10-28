@@ -18,7 +18,7 @@ window.KB = (() => {
   function show(id, on) { const el = $(id); if (el) el.hidden = !on; }
 
   async function init() {
-    cfg = await fetch('/api/config').then((r) => r.json());
+    cfg = await fetch('api/config').then((r) => r.json());
     return { cfg };
   }
 
