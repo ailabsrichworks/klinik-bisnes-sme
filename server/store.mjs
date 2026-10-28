@@ -35,6 +35,7 @@ const PLAN_COLUMNS = [1, 2, 3, 4, 5].flatMap((n) => [
 ]);
 export const COLUMNS = [
   { key: 'id', s: 'rekod', label: 'ID peserta' },
+  { key: 'attempt', s: 'rekod', label: 'Percubaan' },
   { key: 'session_code', s: 'rekod', label: 'Kod sesi' },
   { key: 'created_at', s: 'rekod', label: 'Mula' },
   { key: 'updated_at', s: 'rekod', label: 'Dikemas kini' },
@@ -102,7 +103,8 @@ const README = [
   [''],
   ['Peserta', 'Satu baris setiap peserta, dikemas kini oleh app. Baris pertama setiap lajur: bahagian app (warna sama = bahagian sama); baris kedua: medan.'],
   ['', 'Untuk menyusun atau menapis, guna Filter view (Data → Filter views) supaya susunan baris asal kekal. Jangan edit lajur SISTEM.'],
-  ['Bahagian', 'REKOD: ID, kod sesi, masa mula / dikemas kini, langkah terakhir dicapai (1 Maklumat bisnes … 4 Laporan).'],
+  ['Bahagian', 'REKOD: ID, percubaan, kod sesi, masa mula / dikemas kini, langkah terakhir dicapai (1 Maklumat bisnes … 4 Laporan).'],
+  ['Percubaan', 'Jika peserta menukar pillar dan menetapkan semula, baris lama dikekalkan seperti asal ("1 · ditutup", ID berakhir -1) bersama pautan laporan PDFnya, dan peserta diteruskan dalam baris baharu ("2 · semasa").'],
   ['', 'LANGKAH 1 · MAKLUMAT BISNES: borang pertama. LANGKAH 2 · PILIH CABARAN: Sales / Marketing / Urus Duit dan tiga situasi yang ditanda.'],
   ['', 'LANGKAH 3 · ANGKA & BUKTI (PILIHAN): input kalkulator ("label: nilai"; "contoh, tidak diubah" = angka contoh yang peserta tidak tukar) dan hasilnya, tarikh mula, serta contoh / fail bukti (bukti tidak dihantar kepada AI).'],
   ['', 'LAPORAN · DIAGNOSIS AI: tajuk, ringkasan, isu utama dan sebabnya, kaitan dua isu lain, punca berkemungkinan, impak, bukti untuk disemak. "Dijana oleh" menunjukkan AI (dan model) atau teks tetap jika AI tidak aktif.'],
@@ -171,7 +173,7 @@ function toRow(j) {
   const calcResult = pastPicking ? calculate(pillar, calc) : null;
   const items = r?.plan || [];
   return {
-    id: j.id, session_code: j.sessionCode, created_at: j.createdAt, updated_at: j.updatedAt,
+    id: j.id, attempt: `${j.attempt || 1} · semasa`, session_code: j.sessionCode, created_at: j.createdAt, updated_at: j.updatedAt,
     step: j.step == null ? '' : `${j.step + 1} · ${STEP_NAMES[j.step] || ''}`,
     full_name: p.name, phone: p.phone, email: p.email, business: p.business, industry: p.industry, business_model: p.businessModel,
     years_running: p.businessAge, monthly_sales: p.monthlySales,
@@ -204,7 +206,7 @@ function toRow(j) {
     report_link: j.report?.link, report_at: j.report?.at, report_downloaded_at: j.reportDownloadedAt,
     consent_at: j.consent.privacyAt, privacy_notice_version: j.consent.privacyVersion,
     token_hash: j.tokenHash,
-    state_json: JSON.stringify({ state: s, consent: j.consent, evidence: j.evidence || null, report: j.report || null, reportDownloadedAt: j.reportDownloadedAt || null }),
+    state_json: JSON.stringify({ state: s, consent: j.consent, evidence: j.evidence || null, report: j.report || null, reportDownloadedAt: j.reportDownloadedAt || null, attempt: j.attempt || 1, archived: j.archived || [] }),
   };
 }
 
@@ -217,6 +219,7 @@ function fromRow(r) {
     id: r.id, tokenHash: r.token_hash, sessionCode: r.session_code || '', createdAt: r.created_at, updatedAt: r.updated_at,
     step: Number.isInteger(step) ? step - 1 : null, state: extra.state || {}, consent: extra.consent || {},
     evidence: extra.evidence || null, report: extra.report || null, reportDownloadedAt: extra.reportDownloadedAt || null,
+    attempt: Number(extra.attempt) || 1, archived: Array.isArray(extra.archived) ? extra.archived : [],
   };
 }
 
@@ -228,6 +231,7 @@ export class Store {
     this.deleted = new Set();
     this.sessions = [];
     this.pendingLogs = [];
+    this.archives = []; // rows frozen when a participant resets to another pillar: { liveId, values }
     this.aiCalls = []; // { t, journeyId } within the last 24h, for the optional daily caps
     this.cols = {}; // tab → header array as it is in the sheet
     this.tab = 'Peserta'; // the participant tab (see ensureSchema)
@@ -414,6 +418,22 @@ export class Store {
     this.dirty.add(j.id);
   }
 
+  // A participant who switches pillar and resets starts a new attempt. Their current row is frozen
+  // as it is (same place in the sheet, id "<id>-<n>", no key, "n · ditutup"), the report PDF of that
+  // attempt stays in Drive, and the participant continues in a new row below.
+  archive(j, reason = '') {
+    const n = j.attempt || 1;
+    const v = toRow(j);
+    const frozen = { ...v, id: `${j.id}-${n}`, attempt: `${n} · ditutup${reason ? ` (${reason})` : ''}`, updated_at: now(), token_hash: '' };
+    this.archives.push({ liveId: j.id, frozenId: frozen.id, values: frozen });
+    j.archived = [...(j.archived || []), { id: frozen.id, reportFileId: j.report?.fileId || null }];
+    j.attempt = n + 1;
+    j.report = null; // the next report is a new file; the frozen row keeps the link to this one
+    j.reportDownloadedAt = null;
+    j.createdAt = now();
+    this.dirty.add(j.id);
+  }
+
   setConsent(j, version) {
     Object.assign(j.consent, { privacyVersion: version, privacyAt: now() });
     this.update(j, {});
@@ -423,6 +443,7 @@ export class Store {
   async remove(j) {
     if (j.evidence?.fileId) await this.deleteFile(j.evidence.fileId);
     if (j.report?.fileId) await this.deleteFile(j.report.fileId);
+    for (const a of j.archived || []) { if (a.reportFileId) await this.deleteFile(a.reportFileId); this.deleted.add(a.id); }
     this.journeys.delete(j.id);
     this.dirty.delete(j.id);
     this.deleted.add(j.id);
@@ -481,18 +502,25 @@ export class Store {
   }
 
   async #flush() {
-    if (!this.dirty.size && !this.deleted.size && !this.pendingLogs.length) return;
+    if (!this.dirty.size && !this.deleted.size && !this.pendingLogs.length && !this.archives.length) return;
     const tab = this.tab, cols = this.cols[tab];
-    const dirty = [...this.dirty], deleted = [...this.deleted], logs = this.pendingLogs.splice(0);
+    const dirty = [...this.dirty], deleted = [...this.deleted], logs = this.pendingLogs.splice(0), archives = this.archives.splice(0);
     this.dirty.clear(); this.deleted.clear();
     try {
       const updates = [], appends = [];
-      if (dirty.length || deleted.length) {
+      if (dirty.length || deleted.length || archives.length) {
         // Find each row by id now, in case rows were sorted or moved by hand.
         const idCol = letter(cols.indexOf(HEADER.id));
         const { data } = await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(tab)}!${idCol}:${idCol}` }), 'read ids');
         const rowOf = new Map((data.values || []).map((r, i) => [r[0], i + 1]).filter(([id], i) => i > 0 && id));
         const end = letter(cols.length - 1);
+        const rowValues = (v) => [cols.map((c) => cell(v[KEY_OF[c]]))];
+        // a frozen attempt takes over its live row's place; the live row is then added below
+        for (const a of archives) {
+          const at = rowOf.get(a.liveId);
+          if (at) { updates.push({ range: `${q(tab)}!A${at}:${end}${at}`, values: rowValues(a.values) }); rowOf.delete(a.liveId); rowOf.set(a.frozenId, at); }
+          else appends.push(rowValues(a.values)[0]);
+        }
         for (const id of dirty) {
           const j = this.journeys.get(id);
           if (!j) continue;
@@ -517,6 +545,7 @@ export class Store {
       dirty.forEach((id) => this.journeys.has(id) && this.dirty.add(id));
       deleted.forEach((id) => this.deleted.add(id));
       this.pendingLogs.unshift(...logs);
+      this.archives.unshift(...archives);
       throw err;
     }
   }

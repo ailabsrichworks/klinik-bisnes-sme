@@ -96,6 +96,26 @@ test('a save from the browser never replaces the AI result with an older one', a
   assert.equal(back.workOutput, 'ditulis semasa AI berjalan');
 });
 
+test('switching pillar after an analysis keeps the old attempt as its own row', async () => {
+  const k = await start();
+  await diagnose(k);
+  await call('/api/journey', { method: 'PUT', key: k, body: { state: { profile, pillar: 'sales', byPillar: {}, resetAt: new Date(Date.now() + 1000).toISOString() }, step: 1 } });
+  await store.flush();
+  const rows = g.rows('Peserta').filter((r) => r?.[0] === k.id || r?.[0] === `${k.id}-1`);
+  const at = (r, key) => r[PESERTA.indexOf(HEADER[key])];
+  assert.equal(rows.length, 2);
+  const frozen = rows.find((r) => r[0] === `${k.id}-1`), live = rows.find((r) => r[0] === k.id);
+  assert.equal(at(frozen, 'attempt'), '1 · ditutup (tukar Marketing → Sales (LIVE Sales))');
+  assert.equal(at(frozen, 'pillar'), 'Marketing');
+  assert.ok(at(frozen, 'diag_title'));
+  assert.equal(at(live, 'attempt'), '2 · semasa');
+  assert.equal(at(live, 'pillar'), 'Sales (LIVE Sales)');
+  // an ordinary save afterwards does not freeze anything again
+  await call('/api/journey', { method: 'PUT', key: k, body: { state: { profile, pillar: 'sales', byPillar: { sales: { selected: [1] } }, resetAt: (await call('/api/journey', { key: k })).body.state.resetAt }, step: 1 } });
+  await store.flush();
+  assert.equal(g.rows('Peserta').filter((r) => String(r?.[0]).startsWith(k.id)).length, 2);
+});
+
 test('switching challenge after an analysis: a deliberate reset really clears it', async () => {
   const k = await start();
   await diagnose(k);

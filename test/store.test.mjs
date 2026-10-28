@@ -172,6 +172,42 @@ test('the numbers and report columns stay empty until the participant gets that 
   assert.equal(r[col('plan_1_action')], '');
 });
 
+test('a pillar reset freezes the old row in place and continues in a new row', async () => {
+  const g = createFakeGoogle();
+  const s = await open(g);
+  const { journey: j, token } = s.create({ privacyVersion: 'v6' });
+  const other = s.create({ privacyVersion: 'v6' }).journey;
+  s.update(j, { step: 3, state: { profile, pillar: 'sales', byPillar: { sales: { selected: [0, 1, 2], ai: { source: 'ai', at: '2026-10-28T01:00:00Z', result: sample } } } } });
+  j.report = { fileId: 'f1', link: 'https://drive/old', at: 't', hash: 'h' };
+  await s.flush();
+  s.archive(j, 'tukar Sales → Urus Duit');
+  s.update(j, { step: 1, state: { profile, pillar: 'money', byPillar: {}, resetAt: '2026-10-28T02:00:00Z' } });
+  await s.flush();
+  const rows = g.rows('Peserta').filter((r) => r?.[0]);
+  assert.deepEqual(rows.map((r) => r[0]), [HEADER.id, `${j.id}-1`, other.id, j.id], 'frozen row keeps its place; the new attempt goes below');
+  const frozen = rows[1], live = rows[3];
+  assert.equal(frozen[col('attempt')], '1 · ditutup (tukar Sales → Urus Duit)');
+  assert.equal(frozen[col('pillar')], 'Sales (LIVE Sales)');
+  assert.equal(frozen[col('diag_title')], sample.diagnosis_title);
+  assert.equal(frozen[col('report_link')], 'https://drive/old');
+  assert.equal(frozen[col('token_hash')], '', 'a frozen row cannot be opened');
+  assert.equal(frozen[col('full_name')], 'Nur Aina');
+  assert.equal(live[col('attempt')], '2 · semasa');
+  assert.equal(live[col('pillar')], 'Urus Duit');
+  assert.equal(live[col('diag_title')], '');
+  assert.equal(live[col('report_link')], '');
+  assert.equal(live[col('phone')], '012-345 6789');
+  // after a restart only the live attempt is loaded; it remembers its number
+  const s2 = await open(g);
+  assert.equal(s2.journeys.has(`${j.id}-1`), false);
+  const back = s2.verify(j.id, token);
+  assert.equal(back.attempt, 2);
+  assert.equal(back.archived[0].reportFileId, 'f1');
+  // deleting the participant clears both rows
+  await s2.remove(back);
+  assert.deepEqual(g.rows('Peserta').filter((r) => r?.[0]).map((r) => r[0]), [HEADER.id, other.id]);
+});
+
 test('rows moved by hand are still updated in the right place', async () => {
   const g = createFakeGoogle();
   const s = await open(g);

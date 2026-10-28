@@ -246,28 +246,28 @@ export const CLOSING = {
   text: 'Anda sudah ada satu tindakan untuk diuji. Selepas mengumpulkan bukti, semak sama ada masalah utama sudah berkurang atau masih memerlukan proses dan latihan yang lebih mendalam. Jika perlukan bantuan, pilih sesi lanjutan yang paling relevan dengan gap anda. Tiada keperluan untuk membuat keputusan sekarang.',
 };
 // The recommended class at the end of the report (07), one per challenge. Class names from the
-// KBSME programme list; Sales copy as agreed. url: blank = CLASS_URL from the server.
+// KBSME programme list; Sales copy as agreed. url: the clinic's page (blank = CLASS_URL from the server).
 export const NEXT_CLASS = {
   sales: {
     title: 'Viewers Dah Ramai, Tapi Sales Masih Perlahan?',
     lead: 'Berdasarkan jawapan anda, cabaran utama mungkin terletak pada cara meyakinkan viewers untuk membeli.',
     text: 'Anda dah ada tindakan pertama untuk dicuba. Nak belajar susun LIVE daripada opening sampai closing? Jom bina flow LIVE selling anda sendiri dengan bimbingan praktikal.',
     name: 'Live Laris: Dari Viewers ke Buyers', price: 'RM198', meta: '4.5 jam · Kelas praktikal',
-    cta: 'Saya Nak Sertai Klinik Live Laris', url: '',
+    cta: 'Saya Nak Sertai Klinik Live Laris', url: 'https://klinikbisnessme.rcg.my/klinik-sales',
   },
   marketing: {
     title: 'Dah Selalu Post, Tapi Inquiry Masih Sikit?',
     lead: 'Berdasarkan jawapan anda, cabaran utama mungkin terletak pada sistem content yang belum tersusun.',
     text: 'Anda dah ada tindakan pertama untuk dicuba. Nak siapkan content sebulan tanpa pening cari idea setiap hari? Jom bina prompt, idea dan kalendar content anda sendiri dengan bimbingan praktikal.',
     name: 'Content Sebulan Settle! — Guna ChatGPT', price: 'RM198', meta: 'Kelas praktikal',
-    cta: 'Saya Nak Sertai Klinik Content Sebulan Settle', url: '',
+    cta: 'Saya Nak Sertai Klinik Content Sebulan Settle', url: 'https://klinikbisnessme.rcg.my/klinik-marketing',
   },
   money: {
     title: 'Jualan Ada, Tapi Untung Masih Kabur?',
     lead: 'Berdasarkan jawapan anda, cabaran utama mungkin terletak pada kos dan harga yang belum dikira dengan lengkap.',
     text: 'Anda dah ada tindakan pertama untuk dicuba. Nak tahu harga minimum dan harga sasaran yang betul untuk produk anda? Jom lengkapkan costing anda sendiri dengan bimbingan praktikal.',
     name: 'Kira Cost Guna AI: Lepas Ni, Kira Harga Sendiri!', price: 'RM198', meta: 'Kelas praktikal',
-    cta: 'Saya Nak Sertai Klinik Kira Cost Guna AI', url: '',
+    cta: 'Saya Nak Sertai Klinik Kira Cost Guna AI', url: 'https://klinikbisnessme.rcg.my/klinik-urus-duit',
   },
 };
 

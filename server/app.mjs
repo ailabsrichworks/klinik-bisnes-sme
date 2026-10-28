@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
 import { reportPdf } from './report-pdf.mjs';
 import { pillarAnswers } from './store.mjs';
+import { PILLARS } from '../public/js/content.mjs';
 import { coach, workshop, writeQuestions, aiReady, limitReached, countIp, CoachError } from './coach.mjs';
 import { sessionNameOf } from './reports.mjs';
 
@@ -139,6 +140,13 @@ export function createApp({ store, reports }) {
       const mine = state.byPillar?.[p];
       const wipedAfter = state.resetAt && String(state.resetAt) > String(saved?.ai?.at || ''); // reset on purpose (switching challenge)
       if (saved?.ai && mine && !wipedAfter && (!mine.ai || String(mine.ai.at || '') < String(saved.ai.at || ''))) mine.ai = saved.ai;
+    }
+    // Switching pillar after an analysis resets the challenge data (the browser asks first): keep the
+    // attempt that was there as its own frozen row and continue in a new one.
+    const before = req.journey.state || {};
+    if (state.resetAt && String(state.resetAt) > String(before.resetAt || '') && Object.values(before.byPillar || {}).some((x) => x?.ai)) {
+      const from = PILLARS[before.pillar]?.name, to = PILLARS[state.pillar]?.name;
+      store.archive(req.journey, from && to && from !== to ? `tukar ${from} → ${to}` : 'tetapan semula');
     }
     store.update(req.journey, { state, step: Number.isInteger(step) && step >= 0 && step <= 3 ? step : req.journey.step });
     if (reports && req.journey.step === 3) reports.schedule(req.journey); // the report step: keep a copy of the report in Drive
