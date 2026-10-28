@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
 import { reportPdf } from './report-pdf.mjs';
@@ -71,20 +70,11 @@ export function createApp({ store, reports }) {
     next();
   });
 
-  // The visitor's IP. Behind the Cloudflare Worker every request comes from Cloudflare, so the Worker's
-  // X-Client-IP is used instead, but only when it carries the shared secret.
-  const secret = Buffer.from(config.proxySecret);
-  const ipOf = (req) => {
-    const given = Buffer.from(req.get('x-proxy-secret') || '');
-    const fromProxy = secret.length && given.length === secret.length && timingSafeEqual(given, secret);
-    return (fromProxy && req.get('x-client-ip')) || req.ip;
-  };
-
   // ─── small in-memory per-IP limiter (blunts scripted abuse). Limits allow a whole class on one venue Wi-Fi. ───
   const hits = new Map();
   setInterval(() => hits.clear(), 60_000).unref();
   const ipLimit = (max) => (req, res, next) => {
-    const key = `${ipOf(req)}:${req.method}:${req.path}`;
+    const key = `${req.ip}:${req.method}:${req.path}`;
     const n = (hits.get(key) || 0) + 1;
     hits.set(key, n);
     if (n > max) return res.status(429).json({ error: 'Terlalu banyak permintaan. Cuba semula sebentar lagi.' });
@@ -173,9 +163,9 @@ export function createApp({ store, reports }) {
     const j = req.journey;
     try {
       if (aiReady()) {
-        const limit = limitReached(store, j, ipOf(req));
+        const limit = limitReached(store, j, req.ip);
         if (limit) return res.status(429).json({ error: limit });
-        countIp(ipOf(req));
+        countIp(req.ip);
       }
       const { source, result, input, model } = await coach({ store, journey: j });
       const ai = { source, result, model, at: new Date().toISOString(), inputKey: JSON.stringify(input) };
@@ -198,9 +188,9 @@ export function createApp({ store, reports }) {
     const j = req.journey;
     try {
       if (aiReady()) {
-        const limit = limitReached(store, j, ipOf(req));
+        const limit = limitReached(store, j, req.ip);
         if (limit) return res.status(429).json({ error: limit });
-        countIp(ipOf(req));
+        countIp(req.ip);
       }
       const { source, output, toCheck, model } = await workshop({ store, journey: j });
       res.json({ source, output, toCheck, model });

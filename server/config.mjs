@@ -7,9 +7,6 @@ export const config = {
   port: int(env.PORT, 3000),
   publicUrl: (env.PUBLIC_URL || '').replace(/\/$/, ''),
   canonicalHost: env.CANONICAL_HOST || '',
-  // Set when a Cloudflare Worker serves the app under another site's path (cloudflare/worker.js):
-  // the Worker sends this secret with the visitor's real IP, so per-IP limits still count each visitor.
-  proxySecret: env.PROXY_SECRET || '',
 
   // Simplest: the Apps Script pasted into the Sheet (apps-script/Code.gs) and its shared secret.
   appsScriptUrl: env.APPS_SCRIPT_URL || '',

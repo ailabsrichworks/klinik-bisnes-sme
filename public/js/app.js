@@ -84,7 +84,7 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     unsaved = false;
     saving = saving.then(async () => {
       try {
-        await KB.api('api/journey', { method: 'PUT', body: { state, step: reached }, keepalive });
+        await KB.api('/api/journey', { method: 'PUT', body: { state, step: reached }, keepalive });
       } catch (err) {
         unsaved = true;
         if (err.status === 401) notice('reportMessage', 'Sesi tamat — muat semula halaman.', true);
@@ -101,14 +101,14 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     showOnly('loadingGate');
     const code = cohortCode();
     if (code) {
-      try { session = await KB.api(`api/session/${encodeURIComponent(code)}`); } catch (err) {
+      try { session = await KB.api(`/api/session/${encodeURIComponent(code)}`); } catch (err) {
         if (err.status === 404) return askForCode('Kod sesi ini tidak sah.', true);
         console.error(err); return failed();
       }
     }
     if (KB.getKey()) {
       try {
-        journey = await KB.api('api/journey');
+        journey = await KB.api('/api/journey');
         session = journey.session || session;
       } catch (err) {
         if (err.status !== 401) { console.error(err); return failed(); }
@@ -176,11 +176,11 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     const btn = $('profileBtn'); btn.disabled = true;
     try {
       if (!journey) {
-        const j = await KB.api('api/journey', { method: 'POST', body: { code: session?.code || undefined, acceptNotice: KB.cfg.noticeVersion } });
+        const j = await KB.api('/api/journey', { method: 'POST', body: { code: session?.code || undefined, acceptNotice: KB.cfg.noticeVersion } });
         KB.setKey({ id: j.id, token: j.token });
         journey = j; session = j.session || session;
       } else if (journey.consent.privacyVersion !== KB.cfg.noticeVersion) {
-        const r = await KB.api('api/consent', { method: 'POST', body: { acceptNotice: KB.cfg.noticeVersion } });
+        const r = await KB.api('/api/consent', { method: 'POST', body: { acceptNotice: KB.cfg.noticeVersion } });
         journey.consent = r.consent;
       }
       state.profile = profile;
@@ -325,7 +325,7 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     scrollToEl($('main'));
     try {
       await saveNow(); // the server builds the AI input from the saved answers
-      const r = await KB.api('api/coach', { method: 'POST', body: {} });
+      const r = await KB.api('/api/coach', { method: 'POST', body: {} });
       // a new analysis brings new workshop questions, so the workshop starts again
       Object.assign(answers(), { ai: r.ai, planDone: [], page: 1, workAnswers: [], workStep: 0, workAsking: false, workOutput: '', workGenerated: '', workToCheck: [], workSource: '' });
       reached = 3;
@@ -442,7 +442,7 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     wsLoadingQuestions = true; drawWorkshop();
     try {
       await saveNow();
-      const r = await KB.api('api/workshop/questions', { method: 'POST', body: {} });
+      const r = await KB.api('/api/workshop/questions', { method: 'POST', body: {} });
       if (r.questions?.length) a.ai.result.workshop.questions = r.questions;
     } catch (err) {
       msg('wsMessage', err.message || 'Soalan latihan gagal disediakan.', true);
@@ -518,7 +518,7 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     wsBusy = true; drawWorkshop();
     try {
       await saveNow(); // the server builds the output from the saved answers
-      const r = await KB.api('api/workshop', { method: 'POST', body: {} });
+      const r = await KB.api('/api/workshop', { method: 'POST', body: {} });
       Object.assign(a, { workOutput: r.output, workGenerated: r.output, workToCheck: r.toCheck || [], workSource: r.source, workAsking: false });
       saveNow();
     } catch (err) {
@@ -544,7 +544,7 @@ import { INTAKE, PILLARS, PICK, NEXT_CLASS, CALC_NOTE, calculate, calcInputs, de
     try {
       await saveNow();
       const k = KB.getKey();
-      const res = await fetch('api/report.pdf', { headers: k ? { 'X-Journey-Id': k.id, 'X-Journey-Token': k.token } : {} });
+      const res = await fetch('/api/report.pdf', { headers: k ? { 'X-Journey-Id': k.id, 'X-Journey-Token': k.token } : {} });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Ralat ${res.status}`);
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Laporan-Business-Quick-Fix.pdf';
       const url = URL.createObjectURL(await res.blob());

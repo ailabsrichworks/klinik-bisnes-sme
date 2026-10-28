@@ -114,18 +114,6 @@ npm run dev            # http://localhost:3000
 
 New service from this repo → set the variables from `.env.example` → health check path `/healthz` → **one replica** → add the custom domain → set `PUBLIC_URL` and `CANONICAL_HOST` to it. On redeploy, Railway's SIGTERM makes the server write any pending changes before it exits.
 
-### 4. Optional: serve it at klinikbisnessme.rcg.my/business-quick-fix-assessment/
-
-`cloudflare/worker.js` fetches every request under that path from the app on Railway, so the address bar keeps the Klinik address. The app uses relative links, so it works both there and on its own domain.
-
-1. Railway: set `PROXY_SECRET` to a long random value, and `PUBLIC_URL` to `https://klinikbisnessme.rcg.my` (the origin the browser sends). Keep `CANONICAL_HOST` as the app's own domain. Deploy.
-2. Cloudflare → Workers & Pages → Create → Worker → paste `cloudflare/worker.js` → Deploy.
-3. The Worker's Settings → Variables and Secrets: `APP_ORIGIN` = `https://quickfix.rcg.my`; `PROXY_SECRET` (type Secret) = the same value as on Railway.
-4. Settings → Domains & Routes → Add route: zone `rcg.my`, route `klinikbisnessme.rcg.my/business-quick-fix-assessment*`.
-5. Remove the old redirect rule for that path (Rules → Redirect Rules or Page Rules), then open the link and check it loads.
-
-Browsers keep each participant's key per site, so someone who started on quickfix.rcg.my starts again at the new address (their old row stays in the Sheet).
-
 ## Cost guard
 
 Each report is one Claude call: about 4,200 input and 2,000 output tokens, roughly **US$0.03** on Sonnet 5.5, 20–40 seconds. "Jana semula" makes another. The daily caps are **off by default**; set `DAILY_AI_LIMIT_PER_USER`, `DAILY_AI_LIMIT_PER_IP` and/or `DAILY_AI_LIMIT_GLOBAL` to cap calls per rolling 24 hours. **Set a spend limit in the Anthropic console.** Usage per call is in the Log AI tab.
