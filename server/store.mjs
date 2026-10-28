@@ -231,7 +231,8 @@ export class Store {
     this.deleted = new Set();
     this.sessions = [];
     this.pendingLogs = [];
-    this.archives = []; // rows frozen when a participant resets to another pillar: { liveId, values }
+    this.archives = [];
+    this.misses = new Map(); // id → time of a sheet lookup that found nothing // rows frozen when a participant resets to another pillar: { liveId, values }
     this.aiCalls = []; // { t, journeyId } within the last 24h, for the optional daily caps
     this.cols = {}; // tab → header array as it is in the sheet
     this.tab = 'Peserta'; // the participant tab (see ensureSchema)
@@ -405,6 +406,30 @@ export class Store {
     return { journey: j, token };
   }
 
+  // A participant this server does not know yet: started on the other server during a deploy, or
+  // added to the sheet after this server loaded it. Looks the id up in the sheet (one read shared by
+  // concurrent lookups; a miss is remembered for a minute).
+  async loadOne(id) {
+    if (typeof id !== 'string' || !/^[\w-]{6,40}$/.test(id) || this.journeys.has(id)) return this.journeys.get(id) || null;
+    const missAt = this.misses.get(id);
+    if (missAt && Date.now() - missAt < 60_000) return null;
+    this.lookup ||= (async () => {
+      const head = (await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(this.tab)}!1:1` }), 'read header')).data.values?.[0] || [];
+      return this.readTab(this.tab, head);
+    })().finally(() => { this.lookup = null; });
+    const rows = await this.lookup;
+    for (const byHeader of rows) {
+      const r = Object.fromEntries(Object.entries(byHeader).map(([h, v]) => [KEY_OF[h] ?? h, v]));
+      if (r.id !== id) continue;
+      const j = fromRow(r);
+      if (j && !this.journeys.has(id) && !this.deleted.has(id)) this.journeys.set(id, j);
+      return this.journeys.get(id) || null;
+    }
+    if (this.misses.size > 5000) this.misses.clear();
+    this.misses.set(id, Date.now());
+    return null;
+  }
+
   // Constant-time token check; returns the journey or null.
   verify(id, token) {
     const j = typeof id === 'string' && this.journeys.get(id);
@@ -503,12 +528,21 @@ export class Store {
 
   async #flush() {
     if (!this.dirty.size && !this.deleted.size && !this.pendingLogs.length && !this.archives.length) return;
-    const tab = this.tab, cols = this.cols[tab];
+    const tab = this.tab;
+    let cols = this.cols[tab];
     const dirty = [...this.dirty], deleted = [...this.deleted], logs = this.pendingLogs.splice(0), archives = this.archives.splice(0);
     this.dirty.clear(); this.deleted.clear();
     try {
       const updates = [], appends = [];
       if (dirty.length || deleted.length || archives.length) {
+        // Write by the header as it is in the sheet now: during a deploy the old and the new server
+        // run side by side for a moment, and the new one may have changed the columns.
+        const head = (await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(tab)}!1:1` }), 'read header')).data.values?.[0] || [];
+        if (!(cols.length === head.length && cols.every((c, i) => c === head[i]))) {
+          if (!head.includes(HEADER.id) || !head.includes(HEADER.state_json)) throw new Error(`the "${tab}" header is not one this app wrote`);
+          console.warn(`[store] the "${tab}" columns changed in the sheet; writing by the current header`);
+          cols = this.cols[tab] = head;
+        }
         // Find each row by id now, in case rows were sorted or moved by hand.
         const idCol = letter(cols.indexOf(HEADER.id));
         const { data } = await withRetry(() => this.sheets.spreadsheets.values.get({ spreadsheetId: this.sheetId, range: `${q(tab)}!${idCol}:${idCol}` }), 'read ids');

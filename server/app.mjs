@@ -91,8 +91,12 @@ export function createApp({ store, reports }) {
   };
 
   // Participant identity: a random journey id + secret token kept in the browser. No login.
-  const requireJourney = (req, res, next) => {
-    const j = store.verify(req.get('x-journey-id'), req.get('x-journey-token'));
+  const requireJourney = async (req, res, next) => {
+    const id = req.get('x-journey-id'), token = req.get('x-journey-token');
+    if (id && token && !store.journeys.has(id)) {
+      try { await store.loadOne(id); } catch (err) { console.error('[store] lookup failed', err?.message); }
+    }
+    const j = store.verify(id, token);
     if (!j) return res.status(401).json({ error: 'Sesi anda tidak dijumpai. Muat semula halaman untuk mula semula.' });
     req.journey = j;
     next();

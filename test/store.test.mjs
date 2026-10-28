@@ -208,6 +208,32 @@ test('a pillar reset freezes the old row in place and continues in a new row', a
   assert.deepEqual(g.rows('Peserta').filter((r) => r?.[0]).map((r) => r[0]), [HEADER.id, other.id]);
 });
 
+test('during a deploy: rows follow the header in the sheet, and a participant from the other server is found', async () => {
+  const g = createFakeGoogle();
+  const oldServer = await open(g);
+  const newServer = await open(g);
+  // the new server changed the columns (here: an extra one in front of "Kod sesi")
+  const changed = [PESERTA[0], 'REKOD\nKolum baharu', ...PESERTA.slice(1)];
+  await g.sheets.spreadsheets.values.batchUpdate({ requestBody: { valueInputOption: 'RAW', data: [{ range: "'Peserta'!A1", values: [changed] }] } });
+  // the old server still writes a new participant: by name, not by position
+  const { journey, token } = oldServer.create({ privacyVersion: 'v6' });
+  oldServer.update(journey, { state: { profile } });
+  await oldServer.flush();
+  const row = rowFor(g, journey.id);
+  const at = (key) => row[changed.indexOf(HEADER[key])];
+  assert.equal(at('full_name'), 'Nur Aina');
+  assert.equal(at('phone'), '012-345 6789');
+  assert.match(at('token_hash'), /^[0-9a-f]{64}$/);
+  assert.ok(at('state_json').startsWith('{'));
+  assert.equal(row[1] ?? '', '', 'the unknown column is left empty');
+  // the new server did not know this participant yet; their key still works
+  assert.equal(newServer.verify(journey.id, token), null);
+  const j = await newServer.loadOne(journey.id);
+  assert.equal(j?.state.profile.name, 'Nur Aina');
+  assert.equal(newServer.verify(journey.id, token)?.id, journey.id);
+  assert.equal(await newServer.loadOne('nobody-here'), null);
+});
+
 test('rows moved by hand are still updated in the right place', async () => {
   const g = createFakeGoogle();
   const s = await open(g);
