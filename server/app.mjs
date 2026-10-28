@@ -57,8 +57,17 @@ export function createApp({ store, reports }) {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
+  // Requests from the Cloudflare Worker (cloudflare/worker.js) carry the shared secret. They come to Railway's own
+  // address, so they skip the move to the canonical domain, and the Worker's X-Client-IP is the visitor's IP.
+  const secret = Buffer.from(config.proxySecret);
+  const fromProxy = (req) => {
+    const given = Buffer.from(req.get('x-proxy-secret') || '');
+    return secret.length > 0 && given.length === secret.length && timingSafeEqual(given, secret);
+  };
+  const ipOf = (req) => (fromProxy(req) && req.get('x-client-ip')) || req.ip;
+
   app.use((req, res, next) => {
-    if (config.canonicalHost && req.hostname !== config.canonicalHost && req.path !== '/healthz') {
+    if (config.canonicalHost && req.hostname !== config.canonicalHost && req.path !== '/healthz' && !fromProxy(req)) {
       return res.redirect(301, `https://${config.canonicalHost}${req.originalUrl}`);
     }
     res.set({
@@ -70,15 +79,6 @@ export function createApp({ store, reports }) {
     if (req.secure) res.set('Strict-Transport-Security', 'max-age=31536000');
     next();
   });
-
-  // The visitor's IP. Behind the Cloudflare Worker every request comes from Cloudflare, so the Worker's
-  // X-Client-IP is used instead, but only when it carries the shared secret.
-  const secret = Buffer.from(config.proxySecret);
-  const ipOf = (req) => {
-    const given = Buffer.from(req.get('x-proxy-secret') || '');
-    const fromProxy = secret.length && given.length === secret.length && timingSafeEqual(given, secret);
-    return (fromProxy && req.get('x-client-ip')) || req.ip;
-  };
 
   // ─── small in-memory per-IP limiter (blunts scripted abuse). Limits allow a whole class on one venue Wi-Fi. ───
   const hits = new Map();
