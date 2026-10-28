@@ -118,10 +118,10 @@ New service from this repo → set the variables from `.env.example` → health 
 
 `cloudflare/worker.js` fetches every request under that path from the app on Railway, so the address bar keeps the Klinik address. The app uses relative links, so it works both there and on its own domain.
 
-1. Railway: set `PROXY_SECRET` to a long random value, and `PUBLIC_URL` to `https://klinikbisnessme.rcg.my` (the origin the browser sends). Keep `CANONICAL_HOST` as the app's own domain: requests carrying the secret skip that redirect. Deploy.
+1. Railway: set `PROXY_SECRET` to a long random value, and `PUBLIC_URL` to `https://klinikbisnessme.rcg.my` (the origin the browser sends). Keep `CANONICAL_HOST` as the app's own domain. Deploy.
 2. Cloudflare → Workers & Pages → Create → Worker → paste `cloudflare/worker.js` → Deploy.
-3. The Worker's Settings → Variables and Secrets: `APP_ORIGIN` = the service's Railway address (`https://….up.railway.app`, under Settings → Networking), not quickfix.rcg.my; `PROXY_SECRET` (type Secret) = the same value as on Railway.
-4. Settings → Domains & Routes → Add route: zone `rcg.my`, route `klinikbisnessme.rcg.my/business-quick-fix-assessment*`. The `klinikbisnessme` DNS record must be Proxied (orange cloud) for the route to run.
+3. The Worker's Settings → Variables and Secrets: `APP_ORIGIN` = `https://quickfix.rcg.my`; `PROXY_SECRET` (type Secret) = the same value as on Railway.
+4. Settings → Domains & Routes → Add route: zone `rcg.my`, route `klinikbisnessme.rcg.my/business-quick-fix-assessment*`.
 5. Remove the old redirect rule for that path (Rules → Redirect Rules or Page Rules), then open the link and check it loads.
 
 Browsers keep each participant's key per site, so someone who started on quickfix.rcg.my starts again at the new address (their old row stays in the Sheet).
